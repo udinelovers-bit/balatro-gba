@@ -1,6 +1,5 @@
 #include <tonc.h>
 #include <maxmod.h>
-
 #include <string.h>
 
 #include "sprite.h"
@@ -17,16 +16,21 @@
 
 void init()
 {
-    // Initialize Maxmod
     irq_init(NULL);
     irq_add(II_VBLANK, mmVBlank);
 
-    mmInitDefault((mm_addr)soundbank_bin, 8);
+    // Initialize maxmod
+    mmInitDefault((mm_addr)soundbank_bin, 12);
     mmStart(MOD_MAIN_THEME, MM_PLAY_LOOP);
 
+    // Initialize text engine
+    tte_init_se(1, BG_CBB(1) | BG_SBB(31) | BG_8BPP, 0, CLR_WHITE, 11, NULL, NULL);
+    tte_init_con();
+
     // Set up the video mode
-    REG_DISPCNT = DCNT_MODE0 | DCNT_BG0 | DCNT_OBJ_1D | DCNT_OBJ;
-	REG_BG0CNT = BG_CBB(0) | BG_SBB(30) | BG_8BPP | BG_REG_64x32;
+    REG_DISPCNT = DCNT_MODE0 | DCNT_OBJ_1D | DCNT_BG0 | DCNT_BG1 | DCNT_OBJ;
+	REG_BG0CNT = BG_PRIO(1) | BG_CBB(0) | BG_SBB(30) | BG_8BPP | BG_REG_64x32;
+    REG_BG1CNT = BG_PRIO(0) | BG_CBB(1) | BG_SBB(31) | BG_8BPP;
 
     // Load the tiles and palette
     memcpy(pal_bg_mem, background_gfxPal, background_gfxPalLen);

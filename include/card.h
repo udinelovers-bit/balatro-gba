@@ -26,6 +26,16 @@
 #define KING 11
 #define ACE 12
 
+// Hand states
+enum HandState
+{
+    HAND_DRAW,
+    HAND_SELECT,
+    HAND_PLAY,
+    HAND_DISCARD
+};
+
+// Card types
 typedef struct
 {
     u8 suit;
@@ -52,11 +62,18 @@ void card_object_destroy(CardObject **card_object);
 // Card functions
 void card_init();
 void card_update();
-void card_draw();
 
 // Hand functions
-void hand_index(int index); // This makes the card at the given index the one that's being looked at
+void hand_set_focus(int index); // This makes the card at the given index the one that's being looked at
+int hand_get_focus(); // This gets the index of the card that's being looked at
 void hand_select(); // This lets the player select the card they're looking at for the next action
 void hand_change_sort(); // This sorts the hand by suit or rank
+void hand_discard(); // This discards the selected cards
+int hand_get_size(); // This gets the size of the hand
+int hand_get_max_size(); // This gets the maximum size of the hand (this doesn't get the array max, it gets the total amount of cards that you have)
+
+// Deck functions
+int deck_get_size(); // This gets the size of the deck
+int deck_get_max_size(); // This gets the maximum size of the deck (this doesn't get the array max, it gets the total amount of cards that you have)
 
 #endif // CARD_H
