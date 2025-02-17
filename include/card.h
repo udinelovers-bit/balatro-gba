@@ -68,7 +68,7 @@ void hand_set_focus(int index); // This makes the card at the given index the on
 int hand_get_focus(); // This gets the index of the card that's being looked at
 void hand_select(); // This lets the player select the card they're looking at for the next action
 void hand_change_sort(); // This sorts the hand by suit or rank
-void hand_discard(); // This discards the selected cards
+bool hand_discard(); // This discards the selected cards
 int hand_get_size(); // This gets the size of the hand
 int hand_get_max_size(); // This gets the maximum size of the hand (this doesn't get the array max, it gets the total amount of cards that you have)
 

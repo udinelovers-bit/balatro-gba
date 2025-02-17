@@ -273,6 +273,14 @@ void card_update() // This whole function is currently pretty unoptimized due to
                             hand_x = int2fx(240);
                             hand_y = int2fx(70);
 
+                            if (!sound_played)
+                            {
+                                const int pitch_lut[MAX_SELECTION_SIZE] = {1024, 960, 896, 832, 768};
+                                mm_sound_effect sfx_draw = {{SFX_CARD_DRAW}, pitch_lut[cards_drawn], 0, 255, 128,};
+                                mmEffectEx(&sfx_draw);
+                                sound_played = true;
+                            }
+
                             if (hand[i]->x >= hand_x)
                             {
                                 card_object_destroy(&hand[i]);
@@ -281,14 +289,6 @@ void card_update() // This whole function is currently pretty unoptimized due to
                                 hand_top--;
                                 cards_drawn++; // This technically isn't drawing cards, I'm just reusing the variable
                                 sound_played = false;
-                            }
-
-                            if (!sound_played)
-                            {
-                                const int pitch_lut[MAX_SELECTION_SIZE] = {1024, 960, 896, 832, 768};
-                                mm_sound_effect sfx_draw = {{SFX_CARD_DRAW}, pitch_lut[cards_drawn], 0, 255, 128,};
-                                mmEffectEx(&sfx_draw);
-                                sound_played = true;
                             }
 
                             discarded_card = true;
@@ -351,7 +351,7 @@ void card_update() // This whole function is currently pretty unoptimized due to
 // Hand functions
 void hand_set_focus(int index)
 {
-    if (index < 0 || index > hand_top) return;
+    if (index < 0 || index > hand_top || hand_state != HAND_SELECT) return;
     card_focused = index;
 
     mm_sound_effect sfx_focus = {{SFX_CARD_FOCUS}, 1024 + rand() % 512, 0, 255, 128,};
@@ -391,11 +391,12 @@ void hand_change_sort()
     sort_cards();
 }
 
-void hand_discard()
+bool hand_discard()
 {
-    if (hand_state != HAND_SELECT) return;
+    if (hand_state != HAND_SELECT || hand_selections == 0) return false;
     hand_state = HAND_DISCARD;
     card_focused = 0;
+    return true;
 }
 
 int hand_get_size()

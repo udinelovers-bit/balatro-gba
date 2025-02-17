@@ -9,6 +9,7 @@
 // Graphics
 #include "deck_gfx.h"
 #include "background_gfx.h"
+#include "background_play_gfx.h"
 
 // Audio
 #include "soundbank.h"
@@ -23,14 +24,10 @@ void init()
     mmInitDefault((mm_addr)soundbank_bin, 12);
     mmStart(MOD_MAIN_THEME, MM_PLAY_LOOP);
 
-    // Initialize text engine
-    tte_init_se(1, BG_CBB(1) | BG_SBB(31) | BG_8BPP, 0, CLR_WHITE, 11, NULL, NULL);
-    tte_init_con();
-
     // Set up the video mode
     REG_DISPCNT = DCNT_MODE0 | DCNT_OBJ_1D | DCNT_BG0 | DCNT_BG1 | DCNT_OBJ;
-	REG_BG0CNT = BG_PRIO(1) | BG_CBB(0) | BG_SBB(30) | BG_8BPP | BG_REG_64x32;
-    REG_BG1CNT = BG_PRIO(0) | BG_CBB(1) | BG_SBB(31) | BG_8BPP;
+    REG_BG0CNT = BG_PRIO(1) | BG_CBB(0) | BG_SBB(30) | BG_8BPP | BG_REG_64x32;
+    REG_BG1CNT = BG_PRIO(0) | BG_CBB(1) | BG_SBB(31) | BG_4BPP;
 
     // Load the tiles and palette
     memcpy(pal_bg_mem, background_gfxPal, background_gfxPalLen);
@@ -39,6 +36,15 @@ void init()
 
     memcpy(&tile_mem[4][0], deck_gfxTiles, deck_gfxTilesLen);
     memcpy(pal_obj_mem, deck_gfxPal, deck_gfxPalLen);
+
+    // Initialize text engine
+    tte_init_se(1, BG_CBB(1) | BG_SBB(31), 0, CLR_WHITE, 11, NULL, NULL);
+    tte_erase_screen();
+    tte_init_con();
+
+    pal_bg_bank[1][12] = 0x029F; // honestly fuck libtonc because i cannot figure out how you're supposed to select a color from the palette index so i'm doing it like this
+    pal_bg_bank[2][12] = pal_bg_bank[0][11];
+    pal_bg_bank[3][12] = pal_bg_bank[0][2];
 
     // Initialize subsystems
     sprite_init();
