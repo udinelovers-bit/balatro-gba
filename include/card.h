@@ -9,7 +9,7 @@
 #define HEARTS 0
 #define DIAMONDS 1
 #define CLUBS 2
-#define SPADES 2
+#define SPADES 3
 
 // Card ranks
 #define TWO 0
@@ -26,13 +26,33 @@
 #define KING 11
 #define ACE 12
 
+// Hand types
+enum HandType
+{
+    NONE,
+    HIGH_CARD,
+    PAIR,
+    TWO_PAIR,
+    THREE_OF_A_KIND,
+    STRAIGHT,
+    FLUSH,
+    FULL_HOUSE,
+    FOUR_OF_A_KIND,
+    STRAIGHT_FLUSH,
+    ROYAL_FLUSH,
+    FIVE_OF_A_KIND,
+    FLUSH_HOUSE,
+    FLUSH_FIVE
+};
+
 // Hand states
 enum HandState
 {
     HAND_DRAW,
     HAND_SELECT,
+    HAND_DISCARD,
     HAND_PLAY,
-    HAND_DISCARD
+    HAND_PLAYING
 };
 
 // Card types
@@ -68,9 +88,11 @@ void hand_set_focus(int index); // This makes the card at the given index the on
 int hand_get_focus(); // This gets the index of the card that's being looked at
 void hand_select(); // This lets the player select the card they're looking at for the next action
 void hand_change_sort(); // This sorts the hand by suit or rank
-bool hand_discard(); // This discards the selected cards
 int hand_get_size(); // This gets the size of the hand
 int hand_get_max_size(); // This gets the maximum size of the hand (this doesn't get the array max, it gets the total amount of cards that you have)
+enum HandType hand_get_type(); // This gets the type of the hand
+bool hand_discard(); // This discards the selected cards
+bool hand_play(); // This plays the selected cards
 
 // Deck functions
 int deck_get_size(); // This gets the size of the deck

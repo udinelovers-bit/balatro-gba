@@ -20,6 +20,8 @@ const static u16 card_sprite_lut[4][13] = {
 
 static enum HandState hand_state = HAND_DRAW;
 
+static enum HandType hand_type = NONE;
+
 static CardObject *played[MAX_SELECTION_SIZE] = {NULL};
 static CardObject *hand[MAX_HAND_SIZE] = {NULL};
 static Card *deck[MAX_DECK_SIZE] = {NULL};
@@ -36,7 +38,7 @@ static int card_focused = 0;
 
 static bool sort_by_suit = false;
 
-// Sorting functions
+// General functions
 static inline void sort_cards()
 {
     if (sort_by_suit)
@@ -91,26 +93,26 @@ static inline void sort_cards()
 }
 
 // Played stack
-inline void played_push(CardObject *card_object)
+static inline void played_push(CardObject *card_object)
 {
     if (played_top >= MAX_SELECTION_SIZE - 1) return;
     played[++played_top] = card_object;
 }
 
-inline CardObject *played_pop()
+static inline CardObject *played_pop()
 {
     if (played_top < 0) return NULL;
     return played[played_top--];
 }
 
 // Deck stack
-inline void deck_push(Card *card)
+static inline void deck_push(Card *card)
 {
     if (deck_top >= MAX_DECK_SIZE - 1) return;
     deck[++deck_top] = card;
 }
 
-inline Card *deck_pop()
+static inline Card *deck_pop()
 {
     if (deck_top < 0) return NULL;
     return deck[deck_top--];
@@ -208,7 +210,9 @@ void card_update() // This whole function is currently pretty unoptimized due to
 {
     const int update_frame = 10; // This is the number of frames between each card event
 
-    static int timer = 0;
+    static int timer = 1;
+    timer++;
+
     if (hand_state == HAND_DRAW && cards_drawn < hand_size)
     {
         if (timer % update_frame == 0) // Draw a card every 10 frames
@@ -216,15 +220,16 @@ void card_update() // This whole function is currently pretty unoptimized due to
             cards_drawn++;
             card_draw();
         }
-        timer++;
     }
     else if (hand_state == HAND_DRAW)
     {
         hand_state = HAND_SELECT; // Change the hand state to select after drawing all the cards
         cards_drawn = 0;
-        timer = 0;
+        timer = 1;
     }
 
+    static int played_selections = 0;
+    static bool sound_played = false;
     bool discarded_card = false;
 
     for (int i = 0; i < MAX_HAND_SIZE; i++)
@@ -264,8 +269,6 @@ void card_update() // This whole function is currently pretty unoptimized due to
                     hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top]; // TODO: Change this later to reference a 2D LUT of positions
                     break;
                 case HAND_DISCARD: // TODO: Add sound
-                    static bool sound_played = false;
-
                     if (hand[i]->selected)
                     {
                         if (!discarded_card)
@@ -289,6 +292,7 @@ void card_update() // This whole function is currently pretty unoptimized due to
                                 hand_top--;
                                 cards_drawn++; // This technically isn't drawing cards, I'm just reusing the variable
                                 sound_played = false;
+                                timer = 1;
                             }
 
                             discarded_card = true;
@@ -304,19 +308,169 @@ void card_update() // This whole function is currently pretty unoptimized due to
                         hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
                     }
 
-                    if (i == hand_top && discarded_card == false)
+                    if (i == hand_top && discarded_card == false && timer % update_frame == 0)
                     {
                         hand_state = HAND_DRAW;
                         sound_played = false;
                         cards_drawn = 0;
                         hand_selections = 0;
-                        timer = 0;
+                        timer = 1;
+                        break;
                     }
 
-                    timer++;
                     break;
                 case HAND_PLAY:
-                    
+                    hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
+                    hand_y += (24 << FIX_SHIFT);
+
+                    if (hand[i]->selected && timer % update_frame == 0)
+                    {
+                        hand[i]->selected = false;
+                        played_push(hand[i]);
+                        sprite_destroy(&hand[i]->sprite);
+                        hand[i] = NULL;
+                        sort_cards();
+
+                        const int pitch_lut[MAX_SELECTION_SIZE] = {1024, 960, 896, 832, 768};
+                        mm_sound_effect sfx_draw = {{SFX_CARD_DRAW}, pitch_lut[cards_drawn], 0, 255, 128,};
+                        mmEffectEx(&sfx_draw);
+
+                        hand_top--;
+                        hand_selections--;
+                        cards_drawn++;
+
+                        timer = 1;
+                    }
+
+                    if (i == hand_top && timer % update_frame == 0)
+                    {
+                        hand_state = HAND_PLAYING;
+                        cards_drawn = 0;
+                        hand_selections = 0;
+                        timer = 1;
+                        played_selections = played_top + 1;
+                        
+                        switch (hand_type) // select the cards that apply to the hand type
+                        {
+                            case NONE:
+                                break;
+                            case HIGH_CARD:
+                                int highest_rank_index = 0;
+
+                                for (int i = 0; i <= played_top; i++) // find the card with the highest rank in the hand
+                                {                                    
+                                    if (played[i]->card->rank > played[highest_rank_index]->card->rank)
+                                    {
+                                        highest_rank_index = i;
+                                    }
+                                }
+
+                                played[highest_rank_index]->selected = true;
+                                break;
+                            case PAIR:
+                                for (int i = 0; i <= played_top - 1; i++) // find two cards with the same rank
+                                {
+                                    if (played[i]->card->rank == played[i + 1]->card->rank)
+                                    {
+                                        played[i]->selected = true;
+                                        played[i + 1]->selected = true;
+                                        break;
+                                    }
+                                }
+                                break;
+                            case TWO_PAIR:
+                                for (int i = 0; i <= played_top - 1; i++) // find two pairs of cards with the same rank
+                                {
+                                    if (played[i]->card->rank == played[i + 1]->card->rank)
+                                    {
+                                        played[i]->selected = true;
+                                        played[i + 1]->selected = true;
+                                    }
+                                }
+                                break;
+                            case THREE_OF_A_KIND:
+                                for (int i = 0; i <= played_top - 2; i++) // find three cards with the same rank
+                                {
+                                    if (played[i]->card->rank == played[i + 1]->card->rank && played[i]->card->rank == played[i + 2]->card->rank)
+                                    {
+                                        played[i]->selected = true;
+                                        played[i + 1]->selected = true;
+                                        played[i + 2]->selected = true;
+                                        break;
+                                    }
+                                }
+                                break;
+                            case STRAIGHT:
+                                for (int i = 0; i <= played_top; i++) // find five cards in a row
+                                {
+                                    played[i]->selected = true; // we don't have to check if cards are being played because a straight needs 5 cards which is the max selection size
+                                }
+                                break;
+                            case FLUSH:
+                                for (int i = 0; i <= played_top; i++) // find five cards with the same suit
+                                {
+                                    played[i]->selected = true; // flush functions the same as straight
+                                }
+                                break;
+                            case FULL_HOUSE:
+                                for (int i = 0; i <= played_top; i++) // find three cards with the same rank and two cards with the same rank
+                                {
+                                    played[i]->selected = true; // full house functions the same as straight
+                                }
+                                break;
+                            case FOUR_OF_A_KIND:
+                                for (int i = 0; i <= played_top - 3; i++) // find four cards with the same rank
+                                {
+                                    if (played[i]->card->rank == played[i + 1]->card->rank && played[i]->card->rank == played[i + 2]->card->rank && played[i]->card->rank == played[i + 3]->card->rank)
+                                    {
+                                        played[i]->selected = true;
+                                        played[i + 1]->selected = true;
+                                        played[i + 2]->selected = true;
+                                        played[i + 3]->selected = true;
+                                        break;
+                                    }
+                                }
+                                break;
+                            case STRAIGHT_FLUSH:
+                                for (int i = 0; i <= played_top; i++) // find five cards in a row with the same suit
+                                {
+                                    played[i]->selected = true; // straight flush functions the same as straight
+                                }
+                                break;
+                            case ROYAL_FLUSH:
+                                for (int i = 0; i <= played_top; i++) // find five cards in a row with the same suit starting with a 10
+                                {
+                                    played[i]->selected = true; // royal flush functions the same as straight
+                                }
+                                break;
+                            case FIVE_OF_A_KIND:
+                                for (int i = 0; i <= played_top; i++) // find five cards with the same rank
+                                {
+                                    played[i]->selected = true; // five of a kind functions the same as straight
+                                }
+                                break;
+                            case FLUSH_HOUSE:
+                                for (int i = 0; i <= played_top; i++) // find three cards with the same rank and two cards with the same suit
+                                {
+                                    played[i]->selected = true; // flush house functions the same as straight
+                                }
+                                break;
+                            case FLUSH_FIVE:
+                                for (int i = 0; i <= played_top; i++) // find five cards with the same suit
+                                {
+                                    played[i]->selected = true; // flush five functions the same as straight
+                                }
+                                break;
+                        }
+                    }
+
+                    break;
+                case HAND_PLAYING:
+                    hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
+                    hand_y += (24 << FIX_SHIFT);
+
+                    // Method for switching back to drawn not thought of yet
+
                     break;
             }
 
@@ -344,6 +498,57 @@ void card_update() // This whole function is currently pretty unoptimized due to
 
             obj_aff_rotate(hand[i]->sprite->aff, -hand[i]->vx);
             sprite_position(hand[i]->sprite, fx2int(hand[i]->x), fx2int(hand[i]->y));
+        }
+    }
+
+    if (played_selections > 0 && (timer % update_frame == 0 || played[played_selections - 1]->selected == false))
+    {
+        played_selections--;
+    }
+
+    for (int i = 0; i < played_top + 1; i++)
+    {
+        if (played[i] != NULL)
+        {
+            if (played[i]->sprite == NULL)
+            {
+                played[i]->sprite = sprite_new(ATTR0_SQUARE | ATTR0_4BPP | ATTR0_AFF, ATTR1_SIZE_32, card_sprite_lut[played[i]->card->suit][played[i]->card->rank], 0, i + MAX_HAND_SIZE);
+            }
+
+            FIXED played_x = int2fx(120);
+            FIXED played_y = int2fx(70);
+
+            played_x = played_x + (int2fx(i) - int2fx(played_top) / 2) * -27;
+
+            if (played[i]->selected && played_selections <= i)
+            {
+                played_y -= (10 << FIX_SHIFT);
+            }
+
+            played[i]->vx += (played_x - played[i]->x) / 8;
+            played[i]->vy += (played_y - played[i]->y) / 8;
+
+            // set velocity to 0 if it's close enough to the target
+            const float epsilon = float2fx(0.01f);
+            if (played[i]->vx < epsilon && played[i]->vx > -epsilon && played[i]->vy < epsilon && played[i]->vy > -epsilon)
+            {
+                played[i]->vx = 0;
+                played[i]->vy = 0;
+
+                played[i]->x = played_x;
+                played[i]->y = played_y;
+            }
+            else
+            {
+                played[i]->vx = (played[i]->vx * 7) / 10;
+                played[i]->vy = (played[i]->vy * 7) / 10;
+
+                played[i]->x += played[i]->vx;
+                played[i]->y += played[i]->vy;
+            }
+
+            obj_aff_rotate(played[i]->sprite->aff, -played[i]->vx);
+            sprite_position(played[i]->sprite, fx2int(played[i]->x), fx2int(played[i]->y));
         }
     }
 }
@@ -391,14 +596,6 @@ void hand_change_sort()
     sort_cards();
 }
 
-bool hand_discard()
-{
-    if (hand_state != HAND_SELECT || hand_selections == 0) return false;
-    hand_state = HAND_DISCARD;
-    card_focused = 0;
-    return true;
-}
-
 int hand_get_size()
 {
     return hand_top + 1;
@@ -409,8 +606,146 @@ int hand_get_max_size()
     return hand_size;
 }
 
-// Deck functions
+enum HandType hand_get_type()
+{
+    // Idk if this is how Balatro does it but this is how I'm doing it
+    if (hand_selections == 0)
+    {
+        hand_type = NONE;
+        return hand_type;
+    }
 
+    hand_type = HIGH_CARD;
+
+    u8 suits[4] = {0};
+    u8 ranks[13] = {0};
+
+    for (int i = 0; i <= hand_top; i++)
+    {
+        if (hand[i] != NULL && hand[i]->selected)
+        {
+            suits[hand[i]->card->suit]++;
+            ranks[hand[i]->card->rank]++;
+        }
+    }
+
+    // Check for flush
+    for (int i = 0; i < 4; i++)
+    {
+        if (suits[i] >= MAX_SELECTION_SIZE) // if i add jokers just MAX_SELECTION_SIZE - 1 for four fingers
+        {
+            hand_type = FLUSH;
+            break;
+        }
+    }
+
+    // Check for straight
+    for (int i = 0; i < 9; i++)
+    {
+        if (ranks[i] && ranks[i + 1] && ranks[i + 2] && ranks[i + 3] && ranks[i + 4])
+        {
+            if (hand_type == FLUSH)
+            {
+                hand_type = STRAIGHT_FLUSH;
+            }
+            else
+            {
+                hand_type = STRAIGHT;
+            }
+            break;
+        }
+    }
+
+    // Check for ace low straight
+    if (ranks[ACE] && ranks[TWO] && ranks[THREE] && ranks[FOUR] && ranks[FIVE])
+    {
+        hand_type = STRAIGHT;
+    }
+
+    // Check for royal flush
+    if (hand_type == STRAIGHT_FLUSH && ranks[TEN] && ranks[JACK] && ranks[QUEEN] && ranks[KING] && ranks[ACE])
+    {
+        hand_type = ROYAL_FLUSH;
+        return hand_type;
+    }
+
+    // Check for straight flush
+    if (hand_type == STRAIGHT_FLUSH)
+    {
+        hand_type = STRAIGHT_FLUSH;
+        return hand_type;
+    }
+
+    // Check for flush five and five of a kind
+    if (hand_type == FLUSH && ranks[FIVE] >= 5)
+    {
+        hand_type = FLUSH_FIVE;
+        return hand_type;
+    }
+    else if (ranks[FIVE] >= 5)
+    {
+        return FIVE_OF_A_KIND;
+    }
+    
+    // Check for for of a kind
+    for (int i = 0; i < 13; i++)
+    {
+        if (ranks[i] >= 4)
+        {
+            hand_type = FOUR_OF_A_KIND;
+            return hand_type;
+        }
+        else if (ranks[i] == 3)
+        {   
+            if (hand_type == PAIR)
+            {
+                hand_type = FULL_HOUSE;
+                return hand_type;
+            }
+            else
+            {
+                hand_type = THREE_OF_A_KIND;
+            }
+        }
+        else if (ranks[i] == 2)
+        {
+            if (hand_type == THREE_OF_A_KIND)
+            {
+                hand_type = FULL_HOUSE;
+                return hand_type;
+            }
+            else if (hand_type == PAIR)
+            {
+                hand_type = TWO_PAIR;
+                return hand_type;
+            }
+            else
+            {
+                hand_type = PAIR;
+            }
+        }
+    }
+
+    return hand_type;
+}
+
+bool hand_discard()
+{
+    if (hand_state != HAND_SELECT || hand_selections == 0) return false;
+    hand_state = HAND_DISCARD;
+    card_focused = 0;
+    return true;
+}
+
+bool hand_play()
+{
+    if (hand_state != HAND_SELECT || hand_selections == 0) return false;
+    hand_state = HAND_PLAY;
+    card_focused = 0;
+    return true;
+}
+
+// Deck functions
 int deck_get_size()
 {
     return deck_top + 1;

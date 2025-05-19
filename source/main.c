@@ -30,9 +30,8 @@ void init()
     REG_BG1CNT = BG_PRIO(0) | BG_CBB(1) | BG_SBB(31) | BG_4BPP;
 
     // Load the tiles and palette
-    memcpy(pal_bg_mem, background_gfxPal, background_gfxPalLen);
-    memcpy(&tile_mem[0][0], background_gfxTiles, background_gfxTilesLen);   
-    memcpy32(&se_mem[30][0], background_gfxMap, background_gfxMapLen);
+    memcpy16(pal_bg_mem, background_gfxPal, background_gfxPalLen);
+    memcpy32(&tile_mem[0][0], background_gfxTiles, background_gfxTilesLen);   
 
     memcpy(&tile_mem[4][0], deck_gfxTiles, deck_gfxTilesLen);
     memcpy(pal_obj_mem, deck_gfxPal, deck_gfxPalLen);
