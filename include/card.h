@@ -55,6 +55,13 @@ enum HandState
     HAND_PLAYING
 };
 
+enum PlayState
+{
+    PLAY_PLAYING,
+    PLAY_SCORING,
+    PLAY_END
+};
+
 // Card types
 typedef struct
 {
@@ -68,6 +75,10 @@ typedef struct
     Sprite *sprite;
     FIXED x, y; // position
     FIXED vx, vy; // velocity
+    FIXED scale;
+    FIXED vscale;
+    FIXED rotation;
+    FIXED vrotation;
     bool selected;
 } CardObject;
 
@@ -91,6 +102,7 @@ void hand_change_sort(); // This sorts the hand by suit or rank
 int hand_get_size(); // This gets the size of the hand
 int hand_get_max_size(); // This gets the maximum size of the hand (this doesn't get the array max, it gets the total amount of cards that you have)
 enum HandType hand_get_type(); // This gets the type of the hand
+enum HandState hand_get_state(); // This gets the current state of the hand
 bool hand_discard(); // This discards the selected cards
 bool hand_play(); // This plays the selected cards
 

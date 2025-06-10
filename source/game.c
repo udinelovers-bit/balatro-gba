@@ -45,7 +45,7 @@ void change_background(int id)
         // tte_printf("#{P:48,144}%d", 1); // Round
         // tte_printf("#{P:8,144}%d#{cx:0}/%d", 1, 8); // Ante
 
-        tte_erase_rect(128, 152, 160, 136);
+        tte_erase_rect(128, 152, 152, 160);
     }
     else if (id == 2) // playing
     {
@@ -73,6 +73,102 @@ void change_background(int id)
     background = id;
 }
 
+void set_hand()
+{
+    tte_erase_rect(8, 64, 64, 72);
+
+    tte_erase_rect(8, 80, 32, 88);
+    tte_erase_rect(40, 80, 64, 88);
+
+    switch (hand_get_type())
+    {
+    case HIGH_CARD:
+        tte_printf("#{P:8,64;}HIGH C");
+        chips = 5;
+        mult = 1;
+        break;
+    case PAIR:
+        tte_printf("#{P:8,64;}PAIR");
+        chips = 10;
+        mult = 2;
+        break;
+    case TWO_PAIR:
+        tte_printf("#{P:8,64;}2 PAIR");
+        chips = 20;
+        mult = 2;
+        break;
+    case THREE_OF_A_KIND:
+        tte_printf("#{P:8,64;}3 OAK");
+        chips = 30;
+        mult = 3;
+        break;
+    case STRAIGHT:
+        tte_printf("#{P:8,64;}STRT");
+        chips = 30;
+        mult = 4;
+        break;
+    case FLUSH:
+        tte_printf("#{P:8,64;}FLUSH");
+        chips = 35;
+        mult = 4;
+        break;
+    case FULL_HOUSE:
+        tte_printf("#{P:8,64;}FULL H");
+        chips = 40;
+        mult = 4;
+        break;
+    case FOUR_OF_A_KIND:
+        tte_printf("#{P:8,64;}4 OAK");
+        chips = 60;
+        mult = 7;
+        break;
+    case STRAIGHT_FLUSH:
+        tte_printf("#{P:8,64;}STRT F");
+        chips = 100;
+        mult = 8;
+        break;
+    case ROYAL_FLUSH:
+        tte_printf("#{P:8,64;}ROYAL F");
+        chips = 100;
+        mult = 8;
+        break;
+    case FIVE_OF_A_KIND:
+        tte_printf("#{P:8,64;}5 OAK");
+        chips = 120;
+        mult = 12;
+        break;
+    case FLUSH_HOUSE:
+        tte_printf("#{P:8,64;}FLUSH H");
+        chips = 140;
+        mult = 14;
+        break;
+    case FLUSH_FIVE:
+        tte_printf("#{P:8,64;}FLUSH 5");
+        chips = 160;
+        mult = 16;
+        break;
+    case NONE:
+        chips = 0;
+        mult = 0;
+        break;
+    }
+
+    if (chips < 10)
+    {
+        tte_printf("#{P:24,80;}%d", chips); // Chips
+    }
+    else if (chips < 100)
+    {
+        tte_printf("#{P:16,80;}%d", chips);
+    }
+    else
+    {
+        tte_printf("#{P:8,80;}%d", chips);
+    }
+
+    tte_printf("#{P:40,80;}%d", mult); // Mult
+}
+
 void game_init()
 {
     change_background(1);
@@ -96,132 +192,50 @@ void game_init()
 
 void game_update()
 {
-    if (key_hit(KEY_LEFT))
+    if (hand_get_state() == HAND_DRAW || hand_get_state() == HAND_DISCARD || hand_get_state() == HAND_SELECT)
     {
-        hand_set_focus(hand_get_focus() + 1); // The reason why this adds 1 is because the hand is drawn from right to left. There is no particular reason for this, it's just how I did it.
+        change_background(1);
     }
-    else if (key_hit(KEY_RIGHT))
+    else
     {
-        hand_set_focus(hand_get_focus() - 1);
-    }
-
-    if (key_hit(KEY_A))
-    {
-        hand_select();
-
-        tte_erase_rect(8, 64, 64, 72);
-
-        tte_erase_rect(8, 80, 32, 88);
-        tte_erase_rect(40, 80, 64, 88);
-
-        switch (hand_get_type())
-        {
-        case HIGH_CARD:
-            tte_printf("#{P:8,64;}HIGH C");
-            chips = 5;
-            mult = 1;
-            break;
-        case PAIR:
-            tte_printf("#{P:8,64;}PAIR");
-            chips = 10;
-            mult = 2;
-            break;
-        case TWO_PAIR:
-            tte_printf("#{P:8,64;}2 PAIR");
-            chips = 20;
-            mult = 2;
-            break;
-        case THREE_OF_A_KIND:
-            tte_printf("#{P:8,64;}3 OAK");
-            chips = 30;
-            mult = 3;
-            break;
-        case STRAIGHT:
-            tte_printf("#{P:8,64;}STRT");
-            chips = 30;
-            mult = 4;
-            break;
-        case FLUSH:
-            tte_printf("#{P:8,64;}FLUSH");
-            chips = 35;
-            mult = 4;
-            break;
-        case FULL_HOUSE:
-            tte_printf("#{P:8,64;}FULL H");
-            chips = 40;
-            mult = 4;
-            break;
-        case FOUR_OF_A_KIND:
-            tte_printf("#{P:8,64;}4 OAK");
-            chips = 60;
-            mult = 7;
-            break;
-        case STRAIGHT_FLUSH:
-            tte_printf("#{P:8,64;}STRT F");
-            chips = 100;
-            mult = 8;
-            break;
-        case ROYAL_FLUSH:
-            tte_printf("#{P:8,64;}ROYAL F");
-            chips = 100;
-            mult = 8;
-            break;
-        case FIVE_OF_A_KIND:
-            tte_printf("#{P:8,64;}5 OAK");
-            chips = 120;
-            mult = 12;
-            break;
-        case FLUSH_HOUSE:
-            tte_printf("#{P:8,64;}FLUSH H");
-            chips = 140;
-            mult = 14;
-            break;
-        case FLUSH_FIVE:
-            tte_printf("#{P:8,64;}FLUSH 5");
-            chips = 160;
-            mult = 16;
-            break;
-        default:
-            chips = 0;
-            mult = 0;
-            break;
-        }
-
-        if (chips < 10)
-        {
-            tte_printf("#{P:24,80;}%d", chips); // Chips
-        }
-        else if (chips < 100)
-        {
-            tte_printf("#{P:16,80;}%d", chips);
-        }
-        else
-        {
-            tte_printf("#{P:8,80;}%d", chips);
-        }
-
-        tte_printf("#{P:40,80;}%d", mult); // Mult
+        change_background(2);
     }
 
-    if (key_hit(KEY_B))
+    if (hand_get_state() == HAND_SELECT)
     {
-        hand_change_sort();
-    }
-
-    if (key_hit(KEY_SELECT))
-    {
-        if (discard > 0 && hand_discard())
+        if (key_hit(KEY_LEFT))
         {
+            hand_set_focus(hand_get_focus() + 1); // The reason why this adds 1 is because the hand is drawn from right to left. There is no particular reason for this, it's just how I did it.
+        }
+        else if (key_hit(KEY_RIGHT))
+        {
+            hand_set_focus(hand_get_focus() - 1);
+        }
+
+        if (key_hit(KEY_A))
+        {
+            hand_select();
+            set_hand();
+        }
+
+        if (key_hit(KEY_B))
+        {
+            hand_change_sort();
+        }
+
+        if (key_hit(KEY_SELECT) && discard > 0 && hand_discard())
+        {
+            set_hand();
             discard--;
             tte_printf("#{P:48,104; cx:0x3000}%d", discard);
-            tte_erase_rect(8, 64, 64, 72);
+            
         }
-    }
 
-    if (key_hit(KEY_START))
-    {
-        hand_play();
-        change_background(2);
+        if (key_hit(KEY_START) && hand > 0 && hand_play())
+        {
+            hand--;
+            tte_printf("#{P:16,104; cx:0x2000}%d", hand);
+        }
     }
 
     static int last_hand_size = 0;

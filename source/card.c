@@ -19,6 +19,7 @@ const static u16 card_sprite_lut[4][13] = {
 };
 
 static enum HandState hand_state = HAND_DRAW;
+static enum PlayState play_state = PLAY_PLAYING;
 
 static enum HandType hand_type = NONE;
 
@@ -147,6 +148,10 @@ CardObject *card_object_new(Card *card)
     card_object->y = 0;
     card_object->vx = 0;
     card_object->vy = 0;
+    card_object->scale = float2fx(1.0f);
+    card_object->vscale = float2fx(0.0f);
+    card_object->rotation = 0;
+    card_object->vrotation = 0;
     card_object->selected = false;
 
     return card_object;
@@ -232,6 +237,7 @@ void card_update() // This whole function is currently pretty unoptimized due to
     static bool sound_played = false;
     bool discarded_card = false;
 
+    // Cards in hand update loop
     for (int i = 0; i < MAX_HAND_SIZE; i++)
     {
         if (hand[i] != NULL)
@@ -465,12 +471,9 @@ void card_update() // This whole function is currently pretty unoptimized due to
                     }
 
                     break;
-                case HAND_PLAYING:
+                case HAND_PLAYING: // Don't need to do anything here, just wait for the player to select cards
                     hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
                     hand_y += (24 << FIX_SHIFT);
-
-                    // Method for switching back to drawn not thought of yet
-
                     break;
             }
 
@@ -496,16 +499,12 @@ void card_update() // This whole function is currently pretty unoptimized due to
                 hand[i]->y += hand[i]->vy;
             }
 
-            obj_aff_rotate(hand[i]->sprite->aff, -hand[i]->vx);
+            obj_aff_rotscale(hand[i]->sprite->aff, hand[i]->scale, hand[i]->scale, -hand[i]->vx + hand[i]->rotation); // Apply rotation and scale to the sprite
             sprite_position(hand[i]->sprite, fx2int(hand[i]->x), fx2int(hand[i]->y));
         }
     }
 
-    if (played_selections > 0 && (timer % update_frame == 0 || played[played_selections - 1]->selected == false))
-    {
-        played_selections--;
-    }
-
+    // Played cards update loop
     for (int i = 0; i < played_top + 1; i++)
     {
         if (played[i] != NULL)
@@ -517,18 +516,120 @@ void card_update() // This whole function is currently pretty unoptimized due to
 
             FIXED played_x = int2fx(120);
             FIXED played_y = int2fx(70);
+            FIXED played_scale = float2fx(1.0f);
+            FIXED played_rotation = int2fx(0.0f);
 
             played_x = played_x + (int2fx(i) - int2fx(played_top) / 2) * -27;
 
-            if (played[i]->selected && played_selections <= i)
+            switch (play_state)
             {
-                played_y -= (10 << FIX_SHIFT);
+                case PLAY_PLAYING:
+                    if (i == 0 && played_selections > 0 && (timer % update_frame == 0 || played[played_selections - 1]->selected == false) && timer > 40)
+                    {
+                        played_selections--;
+
+                        if (played_selections == 0)
+                        {
+                            play_state = PLAY_SCORING;
+                            timer = 1;
+                        }
+                    }
+
+                    if (played[i]->selected && played_selections <= i)
+                    {
+                        played_y -= (10 << FIX_SHIFT);
+                    }
+                    break;
+                case PLAY_SCORING:
+                    if (i == 0 && (timer % 30 == 0) && timer > 40)
+                    {
+                        // So pretend "played_selections" is now called "scored_cards" and it counts the number of cards that have been scored
+                        int scored_cards = 0;
+                        for (int j = played_top; j >= 0; j--)
+                        {
+                            if (played[j]->selected)
+                            {
+                                scored_cards++;
+                                if (scored_cards > played_selections)
+                                {
+                                    played_selections = scored_cards;
+                                    //played[j]->vy -= (3 << FIX_SHIFT);
+                                    played[j]->vscale = float2fx(0.3f); // Scale down the card when it's scored
+                                    played[j]->vrotation = float2fx(8.0f); // Rotate the card when it's scored
+
+                                    mm_sound_effect sfx_select = {{SFX_CARD_SELECT}, 1024, 0, 255, 128,};
+                                    mmEffectEx(&sfx_select);
+                                    break;
+                                }
+                            }
+
+                            if (j == 0 && scored_cards == played_selections) // Check if it's the last card 
+                            {
+                                play_state = PLAY_END;
+                                timer = 1;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (played[i]->selected)
+                    {
+                        played_y -= (10 << FIX_SHIFT);
+                    }
+                    break;
+                case PLAY_END: // Basically a copy of HAND_DISCARD
+                    if (!discarded_card && played[i] != NULL && timer > 40)
+                    {
+                        played_x = int2fx(240);
+                        played_y = int2fx(70);
+
+                        if (!sound_played)
+                        {
+                            const int pitch_lut[MAX_SELECTION_SIZE] = {1024, 960, 896, 832, 768};
+                            mm_sound_effect sfx_draw = {{SFX_CARD_DRAW}, pitch_lut[cards_drawn], 0, 255, 128,};
+                            mmEffectEx(&sfx_draw);
+                            sound_played = true;
+                        }
+
+                        if (played[i]->x >= played_x)
+                        {
+                            card_object_destroy(&played[i]);
+                            played[i] = NULL;
+
+                            //played_top--; 
+                            cards_drawn++; // This technically isn't drawing cards, I'm just reusing the variable
+                            sound_played = false;
+
+                            if (i == played_top)
+                            {
+                                hand_state = HAND_DRAW;
+                                play_state = PLAY_PLAYING;
+                                cards_drawn = 0;
+                                hand_selections = 0;
+                                played_selections = 0;
+                                played_top = -1; // Reset the played stack
+                                break; // Break out of the loop to avoid accessing an invalid index
+                            }
+                        }
+
+                        discarded_card = true;
+                    }
+                    else if (played[i]->selected)
+                    {
+                        played_y -= (10 << FIX_SHIFT);
+                    }
+
+                    break;
             }
 
             played[i]->vx += (played_x - played[i]->x) / 8;
             played[i]->vy += (played_y - played[i]->y) / 8;
 
-            // set velocity to 0 if it's close enough to the target
+            played[i]->vscale += (played_scale - played[i]->scale) / 8; // Scale up the card when it's played
+
+            played[i]->vrotation += (played_rotation - played[i]->rotation) / 8; // Rotate the card when it's played
+
+            // Set velocity to 0 if it's close enough to the target
             const float epsilon = float2fx(0.01f);
             if (played[i]->vx < epsilon && played[i]->vx > -epsilon && played[i]->vy < epsilon && played[i]->vy > -epsilon)
             {
@@ -547,10 +648,35 @@ void card_update() // This whole function is currently pretty unoptimized due to
                 played[i]->y += played[i]->vy;
             }
 
-            obj_aff_rotate(played[i]->sprite->aff, -played[i]->vx);
+            // Set scale to 0 if it's close enough to the target
+            if (played[i]->vscale < epsilon && played[i]->vscale > -epsilon)
+            {
+                played[i]->vscale = 0;
+                played[i]->scale = played_scale;
+            }
+            else
+            {
+                played[i]->vscale = (played[i]->vscale * 7) / 10;
+                played[i]->scale += played[i]->vscale;
+            }
+
+            // Set rotation to 0 if it's close enough to the target
+            if (played[i]->vrotation < epsilon && played[i]->vrotation > -epsilon)
+            {
+                played[i]->vrotation = 0;
+                played[i]->rotation = played_rotation;
+            }
+            else
+            {
+                played[i]->vrotation = (played[i]->vrotation * 7) / 10;
+                played[i]->rotation += played[i]->vrotation;
+            }
+        
+            obj_aff_rotscale(played[i]->sprite->aff, played[i]->scale, played[i]->scale, -played[i]->vx + played[i]->rotation);
             sprite_position(played[i]->sprite, fx2int(played[i]->x), fx2int(played[i]->y));
         }
     }
+
 }
 
 // Hand functions
@@ -609,7 +735,7 @@ int hand_get_max_size()
 enum HandType hand_get_type()
 {
     // Idk if this is how Balatro does it but this is how I'm doing it
-    if (hand_selections == 0)
+    if (hand_selections == 0 || hand_state == HAND_DISCARD)
     {
         hand_type = NONE;
         return hand_type;
@@ -727,6 +853,11 @@ enum HandType hand_get_type()
     }
 
     return hand_type;
+}
+
+enum HandState hand_get_state()
+{
+    return hand_state;
 }
 
 bool hand_discard()
