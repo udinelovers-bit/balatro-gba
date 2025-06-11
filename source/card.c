@@ -525,7 +525,7 @@ void card_update() // This whole function is currently pretty unoptimized due to
             switch (play_state)
             {
                 case PLAY_PLAYING:
-                    if (i == played_top && (timer % 10 == 0 || played[played_selections - 1]->selected == false) && timer > 40)
+                    if (i == 0 && (timer % 10 == 0 || played[played_top - played_selections]->selected == false) && timer > 40)
                     {
                         played_selections--;
 
@@ -553,6 +553,10 @@ void card_update() // This whole function is currently pretty unoptimized due to
                                 scored_cards++;
                                 if (scored_cards > played_selections)
                                 {
+                                    tte_erase_rect(72, 48, 240, 56);
+                                    tte_set_pos(fx2int(played[played_top - j]->x), 48);
+                                    tte_write("#{cx:0x2000} 10");
+
                                     played_selections = scored_cards;
                                     //played[j]->vy += (3 << FIX_SHIFT);
                                     played[played_top - j]->vscale = float2fx(0.3f); // Scale down the card when it's scored
@@ -566,6 +570,7 @@ void card_update() // This whole function is currently pretty unoptimized due to
 
                             if (j == 0 && scored_cards == played_selections) // Check if it's the last card 
                             {
+                                tte_erase_rect(72, 48, 240, 56);
                                 play_state = PLAY_ENDING;
                                 timer = 1;
                                 played_selections = played_top + 1; // Reset the played selections to the top of the played stack
@@ -580,7 +585,7 @@ void card_update() // This whole function is currently pretty unoptimized due to
                     }
                     break;
                 case PLAY_ENDING: // This is the reverse of PLAY_PLAYING. The cards get reset back to their neutral position sequentially
-                    if (i == played_top && (timer % 10 == 0 || played[played_selections - 1]->selected == false) && timer > 40)
+                    if (i == 0 && (timer % 10 == 0 || played[played_top - played_selections]->selected == false) && timer > 40)
                     {
                         played_selections--;
 
