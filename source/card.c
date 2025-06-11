@@ -213,14 +213,12 @@ void card_init()
 
 void card_update() // This whole function is currently pretty unoptimized due to the fixed point math, but that can be fixed later with a LUT
 {
-    const int update_frame = 10; // This is the number of frames between each card event
-
     static int timer = 1;
     timer++;
 
     if (hand_state == HAND_DRAW && cards_drawn < hand_size)
     {
-        if (timer % update_frame == 0) // Draw a card every 10 frames
+        if (timer % 10 == 0) // Draw a card every 10 frames
         {
             cards_drawn++;
             card_draw();
@@ -238,7 +236,7 @@ void card_update() // This whole function is currently pretty unoptimized due to
     bool discarded_card = false;
 
     // Cards in hand update loop
-    for (int i = 0; i < MAX_HAND_SIZE; i++)
+    for (int i = hand_top + 1; i >= 0; i--) // Start from the end of the hand and work backwards because that's how Balatro does it
     {
         if (hand[i] != NULL)
         {
@@ -293,12 +291,15 @@ void card_update() // This whole function is currently pretty unoptimized due to
                             if (hand[i]->x >= hand_x)
                             {
                                 card_object_destroy(&hand[i]);
-                                sort_cards();                    
+                                sort_cards();
 
                                 hand_top--;
                                 cards_drawn++; // This technically isn't drawing cards, I'm just reusing the variable
                                 sound_played = false;
-                                timer = 1;
+                                //timer = 1;
+
+                                hand_y = hand[i]->y;
+                                hand_x = hand[i]->x; 
                             }
 
                             discarded_card = true;
@@ -314,7 +315,7 @@ void card_update() // This whole function is currently pretty unoptimized due to
                         hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
                     }
 
-                    if (i == hand_top && discarded_card == false && timer % update_frame == 0)
+                    if (i == 0 && discarded_card == false && timer % 10 == 0)
                     {
                         hand_state = HAND_DRAW;
                         sound_played = false;
@@ -329,7 +330,7 @@ void card_update() // This whole function is currently pretty unoptimized due to
                     hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
                     hand_y += (24 << FIX_SHIFT);
 
-                    if (hand[i]->selected && timer % update_frame == 0)
+                    if (hand[i]->selected && timer % 10 == 0)
                     {
                         hand[i]->selected = false;
                         played_push(hand[i]);
@@ -348,7 +349,7 @@ void card_update() // This whole function is currently pretty unoptimized due to
                         timer = 1;
                     }
 
-                    if (i == hand_top && timer % update_frame == 0)
+                    if (i == 0 && timer % 10 == 0)
                     {
                         hand_state = HAND_PLAYING;
                         cards_drawn = 0;
@@ -505,7 +506,7 @@ void card_update() // This whole function is currently pretty unoptimized due to
     }
 
     // Played cards update loop
-    for (int i = 0; i < played_top + 1; i++)
+    for (int i = 0; i <= played_top; i++) // So this one is a bit fucking weird because I have to work kinda backwards for everything because of the order of the pushed cards from the hand to the play stack (also crazy that the company that published Balatro is called "Playstack" and this is a play stack, but I digress)
     {
         if (played[i] != NULL)
         {
@@ -519,12 +520,12 @@ void card_update() // This whole function is currently pretty unoptimized due to
             FIXED played_scale = float2fx(1.0f);
             FIXED played_rotation = int2fx(0.0f);
 
-            played_x = played_x + (int2fx(i) - int2fx(played_top) / 2) * -27;
+            played_x = played_x + (int2fx(played_top - i) - int2fx(played_top) / 2) * -27;
 
             switch (play_state)
             {
                 case PLAY_PLAYING:
-                    if (i == 0 && played_selections > 0 && (timer % update_frame == 0 || played[played_selections - 1]->selected == false) && timer > 40)
+                    if (i == played_top && (timer % 10 == 0 || played[played_selections - 1]->selected == false) && timer > 40)
                     {
                         played_selections--;
 
@@ -535,7 +536,7 @@ void card_update() // This whole function is currently pretty unoptimized due to
                         }
                     }
 
-                    if (played[i]->selected && played_selections <= i)
+                    if (played[i]->selected && played_top - i >= played_selections)
                     {
                         played_y -= (10 << FIX_SHIFT);
                     }
@@ -547,15 +548,15 @@ void card_update() // This whole function is currently pretty unoptimized due to
                         int scored_cards = 0;
                         for (int j = played_top; j >= 0; j--)
                         {
-                            if (played[j]->selected)
+                            if (played[played_top - j]->selected)
                             {
                                 scored_cards++;
                                 if (scored_cards > played_selections)
                                 {
                                     played_selections = scored_cards;
-                                    //played[j]->vy -= (3 << FIX_SHIFT);
-                                    played[j]->vscale = float2fx(0.3f); // Scale down the card when it's scored
-                                    played[j]->vrotation = float2fx(8.0f); // Rotate the card when it's scored
+                                    //played[j]->vy += (3 << FIX_SHIFT);
+                                    played[played_top - j]->vscale = float2fx(0.3f); // Scale down the card when it's scored
+                                    played[played_top - j]->vrotation = float2fx(8.0f); // Rotate the card when it's scored
 
                                     mm_sound_effect sfx_select = {{SFX_CARD_SELECT}, 1024, 0, 255, 128,};
                                     mmEffectEx(&sfx_select);
@@ -565,8 +566,9 @@ void card_update() // This whole function is currently pretty unoptimized due to
 
                             if (j == 0 && scored_cards == played_selections) // Check if it's the last card 
                             {
-                                play_state = PLAY_END;
+                                play_state = PLAY_ENDING;
                                 timer = 1;
+                                played_selections = played_top + 1; // Reset the played selections to the top of the played stack
                                 break;
                             }
                         }
@@ -577,7 +579,24 @@ void card_update() // This whole function is currently pretty unoptimized due to
                         played_y -= (10 << FIX_SHIFT);
                     }
                     break;
-                case PLAY_END: // Basically a copy of HAND_DISCARD
+                case PLAY_ENDING: // This is the reverse of PLAY_PLAYING. The cards get reset back to their neutral position sequentially
+                    if (i == played_top && (timer % 10 == 0 || played[played_selections - 1]->selected == false) && timer > 40)
+                    {
+                        played_selections--;
+
+                        if (played_selections == 0)
+                        {
+                            play_state = PLAY_ENDED;
+                            timer = 1;
+                        }
+                    }
+
+                    if (played[i]->selected && played_top - i <= played_selections - 1)
+                    {
+                        played_y -= (10 << FIX_SHIFT);
+                    }
+                    break;
+                case PLAY_ENDED: // Basically a copy of HAND_DISCARD
                     if (!discarded_card && played[i] != NULL && timer > 40)
                     {
                         played_x = int2fx(240);
@@ -594,7 +613,6 @@ void card_update() // This whole function is currently pretty unoptimized due to
                         if (played[i]->x >= played_x)
                         {
                             card_object_destroy(&played[i]);
-                            played[i] = NULL;
 
                             //played_top--; 
                             cards_drawn++; // This technically isn't drawing cards, I'm just reusing the variable
@@ -613,10 +631,6 @@ void card_update() // This whole function is currently pretty unoptimized due to
                         }
 
                         discarded_card = true;
-                    }
-                    else if (played[i]->selected)
-                    {
-                        played_y -= (10 << FIX_SHIFT);
                     }
 
                     break;

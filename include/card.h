@@ -59,7 +59,8 @@ enum PlayState
 {
     PLAY_PLAYING,
     PLAY_SCORING,
-    PLAY_END
+    PLAY_ENDING,
+    PLAY_ENDED
 };
 
 // Card types
