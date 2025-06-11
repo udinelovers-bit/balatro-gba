@@ -137,6 +137,24 @@ void card_destroy(Card **card)
     *card = NULL;
 }
 
+u8 card_get_value(Card *card)
+{
+    if (card->rank == JACK || card->rank == QUEEN || card->rank == KING)
+    {
+        return 10; // Face cards are worth 10
+    }
+    else if (card->rank == ACE)
+    {
+        return 11; // Ace is worth 11
+    }
+    else
+    {
+        return card->rank + 2; // 2-10 are worth their rank + 2 (because rank starts at 0)
+    }
+
+    return 0; // Should never reach here, but just in case
+}
+
 // CardObject methods
 CardObject *card_object_new(Card *card)
 {
@@ -554,9 +572,14 @@ void card_update() // This whole function is currently pretty unoptimized due to
                                 if (scored_cards > played_selections)
                                 {
                                     tte_erase_rect(72, 48, 240, 56);
-                                    tte_set_pos(fx2int(played[played_top - j]->x), 48);
-                                    tte_write("#{cx:0x2000} 10");
-
+                                    tte_set_pos(fx2int(played[played_top - j]->x) + 16, 48); // Offset of 16 pixels to center the text on the card
+                                    tte_set_special(0x2000); // Set text color to blue from background memory
+ 
+                                    // Write the score to a character buffer variable
+                                    char score_buffer[4]; // Assuming the maximum score is 99, we need 4 characters (2 digits + null terminator)
+                                    snprintf(score_buffer, sizeof(score_buffer), "%d", card_get_value(played[played_top - j]->card));
+                                    tte_write(score_buffer);
+                                    
                                     played_selections = scored_cards;
                                     //played[j]->vy += (3 << FIX_SHIFT);
                                     played[played_top - j]->vscale = float2fx(0.3f); // Scale down the card when it's scored
