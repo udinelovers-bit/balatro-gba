@@ -14,6 +14,8 @@
 static int hand = 4;
 static int discard = 4;
 
+static int score = 0;
+static int temp_score = 0; // This is the score that shows in the same spot as the hand type.
 static int chips = 0;
 static int mult = 0;
 
@@ -29,43 +31,11 @@ void change_background(int id)
     {
         memcpy(&se_mem[30][0], background_gfxMap, background_gfxMapLen);
 
-        // tte_printf("#{P:128,128; cx:0}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
-        // tte_printf("#{P:200,152}%d/%d", deck_get_size(), deck_get_max_size()); // Deck size/max size
-
-        // tte_printf("#{P:32,48;}*%d", 0); // Score
-
-        // tte_printf("#{P:24,80;}%d", 0); // Chips
-        // tte_printf("#{P:40,80;}%d", 0); // Mult
-
-        // tte_printf("#{P:16,104; cx:0x2000}%d", hand); // Hand
-        // tte_printf("#{P:48,104; cx:0x3000}%d", discard); // Discard
-
-        // tte_printf("#{P:24,120; cx:0x1000}$%d", 4); // Money
-
-        // tte_printf("#{P:48,144}%d", 1); // Round
-        // tte_printf("#{P:8,144}%d#{cx:0}/%d", 1, 8); // Ante
-
         tte_erase_rect(128, 152, 152, 160);
     }
     else if (id == 2) // playing
     {
         memcpy(&se_mem[30][0], background_play_gfxMap, background_play_gfxMapLen);
-
-        // tte_printf("#{P:128,128; cx:0}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
-        // tte_printf("#{P:200,152}%d/%d", deck_get_size(), deck_get_max_size()); // Deck size/max size
-
-        // tte_printf("#{P:32,48;}*%d", 0); // Score
-
-        // tte_printf("#{P:24,80;}%d", 0); // Chips
-        // tte_printf("#{P:40,80;}%d", 0); // Mult
-
-        // tte_printf("#{P:16,104; cx:0x2000}%d", hand); // Hand
-        // tte_printf("#{P:48,104; cx:0x3000}%d", discard); // Discard
-
-        // tte_printf("#{P:24,120; cx:0x1000}$%d", 4); // Money
-
-        // tte_printf("#{P:48,144}%d", 1); // Round
-        // tte_printf("#{P:8,144}%d#{cx:0}/%d", 1, 8); // Ante
 
         tte_erase_rect(128, 128, 152, 136);
     }
@@ -73,12 +43,34 @@ void change_background(int id)
     background = id;
 }
 
+
+void set_chips()
+{
+    tte_erase_rect(8, 80, 32, 88);
+
+    if (chips < 10)
+    {
+        tte_printf("#{cx:0; P:24,80;}%d", chips); // Chips
+    }
+    else if (chips < 100)
+    {
+        tte_printf("#{cx:0; P:16,80;}%d", chips);
+    }
+    else
+    {
+        tte_printf("#{cx:0; P:8,80;}%d", chips);
+    }
+}
+
+void set_mult()
+{
+    tte_erase_rect(40, 80, 64, 88);
+    tte_printf("#{cx:0; P:40,80;}%d", mult); // Mult
+}
+
 void set_hand()
 {
-    tte_erase_rect(8, 64, 64, 72);
-
-    tte_erase_rect(8, 80, 32, 88);
-    tte_erase_rect(40, 80, 64, 88);
+    tte_erase_rect(8, 64, 64, 72); // Hand type
 
     switch (hand_get_type())
     {
@@ -153,20 +145,8 @@ void set_hand()
         break;
     }
 
-    if (chips < 10)
-    {
-        tte_printf("#{P:24,80;}%d", chips); // Chips
-    }
-    else if (chips < 100)
-    {
-        tte_printf("#{P:16,80;}%d", chips);
-    }
-    else
-    {
-        tte_printf("#{P:8,80;}%d", chips);
-    }
-
-    tte_printf("#{P:40,80;}%d", mult); // Mult
+    set_chips();
+    set_mult();
 }
 
 void game_init()
@@ -228,13 +208,55 @@ void game_update()
             set_hand();
             discard--;
             tte_printf("#{P:48,104; cx:0x3000}%d", discard);
-            
         }
 
         if (key_hit(KEY_START) && hand > 0 && hand_play())
         {
             hand--;
             tte_printf("#{P:16,104; cx:0x2000}%d", hand);
+        }
+    }
+    else if (play_get_state() == PLAY_SCORING)
+    {
+        Card *scored_card = play_get_scored_card();
+        if (scored_card != NULL)
+        {
+            chips += card_get_value(scored_card);
+            set_chips();
+        }
+    }
+    else if (play_get_state() == PLAY_ENDING)
+    {
+        if (mult > 0)
+        {
+            temp_score = chips * mult;
+            
+            tte_erase_rect(8, 64, 64, 72);
+            tte_printf("#{P:8,64;}%d", temp_score); // Score
+
+            chips = 0;
+            mult = 0;
+            set_mult();
+            set_chips();
+        }
+    }
+    else if (play_get_state() == PLAY_ENDED)
+    {
+        if (temp_score > 0)
+        {
+            score += temp_score;
+            temp_score = 0;
+
+            tte_erase_rect(8, 64, 64, 72);
+            tte_printf("#{P:8,64;}%d", temp_score); // Score
+            
+            tte_erase_rect(32, 48, 64, 56);
+            tte_printf("#{P:32,48;}%d", score); // Score
+
+            if (temp_score <= 0)
+            {
+                tte_erase_rect(8, 64, 64, 72);
+            }
         }
     }
 

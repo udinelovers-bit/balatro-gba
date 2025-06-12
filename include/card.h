@@ -86,6 +86,7 @@ typedef struct
 // Card methods
 Card *card_new(u8 suit, u8 rank);
 void card_destroy(Card **card);
+u8 card_get_value(Card *card);
 
 // CardObject methods
 CardObject *card_object_new(Card *card);
@@ -106,6 +107,10 @@ enum HandType hand_get_type(); // This gets the type of the hand
 enum HandState hand_get_state(); // This gets the current state of the hand
 bool hand_discard(); // This discards the selected cards
 bool hand_play(); // This plays the selected cards
+
+// Play functions
+enum PlayState play_get_state(); // This gets the current state of the play
+Card *play_get_scored_card(); // This gets the card that was scored in the last play
 
 // Deck functions
 int deck_get_size(); // This gets the size of the deck

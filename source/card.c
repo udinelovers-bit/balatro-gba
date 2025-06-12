@@ -26,6 +26,7 @@ static enum HandType hand_type = NONE;
 static CardObject *played[MAX_SELECTION_SIZE] = {NULL};
 static CardObject *hand[MAX_HAND_SIZE] = {NULL};
 static Card *deck[MAX_DECK_SIZE] = {NULL};
+static Card *scored_card = NULL;
 
 static int played_top = -1;
 static int hand_top = -1;
@@ -587,6 +588,8 @@ void card_update() // This whole function is currently pretty unoptimized due to
 
                                     mm_sound_effect sfx_select = {{SFX_CARD_SELECT}, 1024, 0, 255, 128,};
                                     mmEffectEx(&sfx_select);
+
+                                    scored_card = played[played_top - j]->card; // Set the scored card to the one that was just scored. This allows us to get the value of the card later in game.c
                                     break;
                                 }
                             }
@@ -597,6 +600,7 @@ void card_update() // This whole function is currently pretty unoptimized due to
                                 play_state = PLAY_ENDING;
                                 timer = 1;
                                 played_selections = played_top + 1; // Reset the played selections to the top of the played stack
+                                scored_card = NULL; // Reset the scored card
                                 break;
                             }
                         }
@@ -916,6 +920,20 @@ bool hand_play()
     hand_state = HAND_PLAY;
     card_focused = 0;
     return true;
+}
+
+// Play functions
+enum PlayState play_get_state()
+{
+    return play_state;
+}
+
+Card *play_get_scored_card()
+{
+    // Return value and set old reference to NULL
+    Card *scored_card_temp = scored_card;
+    scored_card = NULL; // Reset the scored card so it doesn't get returned again
+    return scored_card_temp;
 }
 
 // Deck functions
