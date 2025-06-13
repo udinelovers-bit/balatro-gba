@@ -37,13 +37,13 @@ void init()
     memcpy(pal_obj_mem, deck_gfxPal, deck_gfxPalLen);
 
     // Initialize text engine
-    tte_init_se(1, BG_CBB(1) | BG_SBB(31), 0, CLR_WHITE, 11, NULL, NULL);
+    tte_init_se(1, BG_CBB(1) | BG_SBB(31), 0, CLR_WHITE, 14, NULL, NULL);
     tte_erase_screen();
     tte_init_con();
 
-    pal_bg_bank[1][12] = 0x029F; // honestly fuck libtonc because i cannot figure out how you're supposed to select a color from the palette index so i'm doing it like this
-    pal_bg_bank[2][12] = pal_bg_bank[0][11];
-    pal_bg_bank[3][12] = pal_bg_bank[0][2];
+    pal_bg_bank[1][15] = 0x029F; // Yellow. honestly fuck libtonc because i cannot figure out how you're supposed to select a color from the palette index so i'm doing it like this
+    pal_bg_bank[2][15] = 0x7E40; // Blue
+    pal_bg_bank[3][15] = 0x213F; // Red
 
     // Initialize subsystems
     sprite_init();

@@ -16,6 +16,9 @@ static int discard = 4;
 
 static int score = 0;
 static int temp_score = 0; // This is the score that shows in the same spot as the hand type.
+static FIXED lerped_score = 0;
+static FIXED lerped_temp_score = 0;
+
 static int chips = 0;
 static int mult = 0;
 
@@ -156,7 +159,10 @@ void game_init()
     tte_printf("#{P:128,128; cx:0}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
     tte_printf("#{P:200,152}%d/%d", deck_get_size(), deck_get_max_size()); // Deck size/max size
 
-    tte_printf("#{P:32,48;}*%d", 0); // Score
+    tte_printf("#{P:40,24; cx:0x3000}%d", 300); // Blind requirement
+    tte_printf("#{P:40,32; cx:0x1000}$3"); // Blind reward
+
+    tte_printf("#{P:32,48; cx:0}%d", 0); // Score
 
     tte_printf("#{P:24,80;}%d", 0); // Chips
     tte_printf("#{P:40,80;}%d", 0); // Mult
@@ -230,6 +236,8 @@ void game_update()
         if (mult > 0)
         {
             temp_score = chips * mult;
+            lerped_temp_score = int2fx(temp_score);
+            lerped_score = int2fx(score);
             
             tte_erase_rect(8, 64, 64, 72);
             tte_printf("#{P:8,64;}%d", temp_score); // Score
@@ -242,21 +250,32 @@ void game_update()
     }
     else if (play_get_state() == PLAY_ENDED)
     {
-        if (temp_score > 0)
-        {
-            score += temp_score;
-            temp_score = 0;
+        lerped_temp_score -= int2fx(temp_score) / 40;
+        lerped_score += int2fx(temp_score) / 40;
 
+        if (lerped_temp_score > 0)
+        {
             tte_erase_rect(8, 64, 64, 72);
-            tte_printf("#{P:8,64;}%d", temp_score); // Score
+            tte_printf("#{P:8,64;}%d", fx2int(lerped_temp_score)); // Temp Score
             
-            tte_erase_rect(32, 48, 64, 56);
-            tte_printf("#{P:32,48;}%d", score); // Score
+            // We actually don't need to erase this because the score only increases
+            tte_printf("#{P:32,48;}%d", fx2int(lerped_score)); // Score
 
             if (temp_score <= 0)
             {
                 tte_erase_rect(8, 64, 64, 72);
             }
+        }
+        else
+        {
+            score += temp_score;
+            temp_score = 0;
+            lerped_temp_score = 0;
+            lerped_score = 0;
+
+            tte_erase_rect(8, 64, 64, 72); // Just erase the temp score
+            
+            tte_printf("#{P:32,48;}%d", score); // Score
         }
     }
 
