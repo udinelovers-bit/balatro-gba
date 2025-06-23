@@ -501,7 +501,7 @@ void card_update() // This whole function is currently pretty unoptimized due to
                         timer = 1;
                         played_selections = played_top + 1;
                         
-                        switch (hand_type) // select the cards that apply to the hand type
+                        switch (hand_type) // select the cards that apply to the hand type (This whole thing has GOT to be reworked. it only works if the hand sort is by rank)
                         {
                             case NONE:
                                 break;
