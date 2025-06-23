@@ -11,9 +11,12 @@
 #include "background_gfx.h"
 #include "background_play_gfx.h"
 
+static enum GameState game_state = GAME_PLAYING;
+
 static int hand = 4;
 static int discard = 4;
 
+static int blind_requirement = 300; // Hard coded for now
 static int score = 0;
 static int temp_score = 0; // This is the score that shows in the same spot as the hand type.
 static FIXED lerped_score = 0;
@@ -45,7 +48,6 @@ void change_background(int id)
 
     background = id;
 }
-
 
 void set_chips()
 {
@@ -159,7 +161,7 @@ void game_init()
     tte_printf("#{P:128,128; cx:0}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
     tte_printf("#{P:200,152}%d/%d", deck_get_size(), deck_get_max_size()); // Deck size/max size
 
-    tte_printf("#{P:40,24; cx:0x3000}%d", 300); // Blind requirement
+    tte_printf("#{P:40,24; cx:0x3000}%d", blind_requirement); // Blind requirement
     tte_printf("#{P:40,32; cx:0x1000}$3"); // Blind reward
 
     tte_printf("#{P:32,48; cx:0}%d", 0); // Score
@@ -176,7 +178,7 @@ void game_init()
     tte_printf("#{P:8,144}%d#{cx:0}/%d", 1, 8); // Ante
 }
 
-void game_update()
+void game_playing()
 {
     if (hand_get_state() == HAND_DRAW || hand_get_state() == HAND_DISCARD || hand_get_state() == HAND_SELECT)
     {
@@ -221,6 +223,10 @@ void game_update()
             hand--;
             tte_printf("#{P:16,104; cx:0x2000}%d", hand);
         }
+    }
+    else if (hand_get_state() == HAND_DRAW && score >= blind_requirement)
+    {
+        deck_shuffle();
     }
     else if (play_get_state() == PLAY_SCORING)
     {
@@ -298,4 +304,12 @@ void game_update()
         last_hand_size = hand_get_size();
         last_deck_size = deck_get_size();
     }
+}
+
+void game_update()
+{
+    if (game_state == GAME_PLAYING)
+    {
+        game_playing();
+    }   
 }

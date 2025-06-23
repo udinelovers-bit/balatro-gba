@@ -74,10 +74,13 @@ typedef struct
 {
     Card *card;
     Sprite *sprite;
+    FIXED tx, ty; // target position
     FIXED x, y; // position
     FIXED vx, vy; // velocity
+    FIXED tscale;
     FIXED scale;
     FIXED vscale;
+    FIXED trotation; // this never gets used so i might remove it later
     FIXED rotation;
     FIXED vrotation;
     bool selected;
@@ -91,6 +94,7 @@ u8 card_get_value(Card *card);
 // CardObject methods
 CardObject *card_object_new(Card *card);
 void card_object_destroy(CardObject **card_object);
+void card_object_update(CardObject *card_object); // Update the card object position and scale
 
 // Card functions
 void card_init();
@@ -106,6 +110,7 @@ int hand_get_max_size(); // This gets the maximum size of the hand (this doesn't
 enum HandType hand_get_type(); // This gets the type of the hand
 enum HandState hand_get_state(); // This gets the current state of the hand
 bool hand_discard(); // This discards the selected cards
+bool hand_discard_all(); // This discards all cards in the hand (used at the end of the round)
 bool hand_play(); // This plays the selected cards
 
 // Play functions
@@ -115,5 +120,6 @@ Card *play_get_scored_card(); // This gets the card that was scored in the last 
 // Deck functions
 int deck_get_size(); // This gets the size of the deck
 int deck_get_max_size(); // This gets the maximum size of the deck (this doesn't get the array max, it gets the total amount of cards that you have)
+void deck_shuffle(); // This shuffles the deck
 
 #endif // CARD_H

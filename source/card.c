@@ -26,11 +26,13 @@ static enum HandType hand_type = NONE;
 static CardObject *played[MAX_SELECTION_SIZE] = {NULL};
 static CardObject *hand[MAX_HAND_SIZE] = {NULL};
 static Card *deck[MAX_DECK_SIZE] = {NULL};
+static Card *discard[MAX_DECK_SIZE] = {NULL};
 static Card *scored_card = NULL;
 
 static int played_top = -1;
 static int hand_top = -1;
 static int deck_top = -1;
+static int discard_top = -1;
 
 static int hand_size = 8; // Default hand size is 8
 static int cards_drawn = 0;
@@ -39,6 +41,8 @@ static int hand_selections = 0;
 static int card_focused = 0;
 
 static bool sort_by_suit = false;
+
+static bool shuffling = false;
 
 // General functions
 static inline void sort_cards()
@@ -120,6 +124,19 @@ static inline Card *deck_pop()
     return deck[deck_top--];
 }
 
+// Discard stack
+static inline void discard_push(Card *card)
+{
+    if (discard_top >= MAX_DECK_SIZE - 1) return;
+    discard[++discard_top] = card;
+}
+
+static inline Card *discard_pop()
+{
+    if (discard_top < 0) return NULL;
+    return discard[discard_top--];
+}
+
 // Card methods
 Card *card_new(u8 suit, u8 rank)
 {
@@ -163,12 +180,16 @@ CardObject *card_object_new(Card *card)
 
     card_object->card = card;
     card_object->sprite = NULL;
+    card_object->tx = 0; // Target position
+    card_object->ty = 0;
     card_object->x = 0;
     card_object->y = 0;
     card_object->vx = 0;
     card_object->vy = 0;
+    card_object->tscale = float2fx(1.0f); // Target scale
     card_object->scale = float2fx(1.0f);
     card_object->vscale = float2fx(0.0f);
+    card_object->trotation = 0; // Target rotation
     card_object->rotation = 0;
     card_object->vrotation = 0;
     card_object->selected = false;
@@ -180,9 +201,65 @@ void card_object_destroy(CardObject **card_object)
 {
     if (*card_object == NULL) return;
     sprite_destroy(&(*card_object)->sprite);
-    card_destroy(&(*card_object)->card);
+    //card_destroy(&(*card_object)->card); // In practice, this is unnecessary because the card will be inserted into the discard pile and then back into the deck. If you need to destroy the card, you can do it manually before calling this function.
     free(*card_object);
     *card_object = NULL;
+}
+
+void card_object_update(CardObject *card_object)
+{
+    card_object->vx += (card_object->tx - card_object->x) / 8;
+    card_object->vy += (card_object->ty - card_object->y) / 8;
+
+    card_object->vscale += (card_object->tscale - card_object->scale) / 8; // Scale up the card when it's played
+
+    card_object->vrotation += (card_object->trotation - card_object->rotation) / 8; // Rotate the card when it's played
+
+    // set velocity to 0 if it's close enough to the target
+    const float epsilon = float2fx(0.01f);
+    if (card_object->vx < epsilon && card_object->vx > -epsilon && card_object->vy < epsilon && card_object->vy > -epsilon)
+    {
+        card_object->vx = 0;
+        card_object->vy = 0;
+
+        card_object->x = card_object->tx;
+        card_object->y = card_object->ty;
+    }
+    else
+    {
+        card_object->vx = (card_object->vx * 7) / 10;
+        card_object->vy = (card_object->vy * 7) / 10;
+
+        card_object->x += card_object->vx;
+        card_object->y += card_object->vy;
+    }
+
+     // Set scale to 0 if it's close enough to the target
+    if (card_object->vscale < epsilon && card_object->vscale > -epsilon)
+    {
+        card_object->vscale = 0;
+        card_object->scale = card_object->tscale; // Set the scale to the target scale
+    }
+    else
+    {
+        card_object->vscale = (card_object->vscale * 7) / 10;
+        card_object->scale += card_object->vscale;
+    }
+
+    // Set rotation to 0 if it's close enough to the target
+    if (card_object->vrotation < epsilon && card_object->vrotation > -epsilon)
+    {
+        card_object->vrotation = 0;
+        card_object->rotation = card_object->trotation; // Set the rotation to the target rotation
+    }
+    else
+    {
+        card_object->vrotation = (card_object->vrotation * 7) / 10;
+        card_object->rotation += card_object->vrotation;
+    }
+
+    obj_aff_rotscale(card_object->sprite->aff, card_object->scale, card_object->scale, -card_object->vx + card_object->rotation); // Apply rotation and scale to the sprite
+    sprite_position(card_object->sprite, fx2int(card_object->x), fx2int(card_object->y));
 }
 
 void card_draw()
@@ -254,6 +331,50 @@ void card_update() // This whole function is currently pretty unoptimized due to
     static bool sound_played = false;
     bool discarded_card = false;
 
+    // Discarded cards loop (mainly for shuffling)
+    if (hand_get_size() == 0 && shuffling && discard_top >= -1 && timer > 10)
+    {
+        // We take each discarded card and put it back into the deck with a short animation
+        static CardObject *discarded_card_object = NULL;
+        if (discarded_card_object == NULL)
+        {
+            discarded_card_object = card_object_new(discard_pop());
+            discarded_card_object->sprite = sprite_new(ATTR0_SQUARE | ATTR0_4BPP | ATTR0_AFF, ATTR1_SIZE_32, card_sprite_lut[discarded_card_object->card->suit][discarded_card_object->card->rank], 0, 0);
+            discarded_card_object->tx = int2fx(204);
+            discarded_card_object->ty = int2fx(112);
+            discarded_card_object->x = int2fx(240);
+            discarded_card_object->y = int2fx(80);
+            discarded_card_object->vx = 0;
+            discarded_card_object->vy = 0;
+            discarded_card_object->scale = float2fx(1.0f);
+            discarded_card_object->vscale = float2fx(0.0f);
+            discarded_card_object->rotation = 0;
+            discarded_card_object->vrotation = 0;
+
+            card_object_update(discarded_card_object);
+        }
+        else
+        {
+            card_object_update(discarded_card_object);
+
+            if (discarded_card_object->y >= discarded_card_object->ty)
+            {
+                deck_push(discarded_card_object->card); // Put the card back into the deck
+                card_object_destroy(&discarded_card_object);
+                
+                // play draw sound
+                const int pitch_lut[MAX_HAND_SIZE] = {1024, 1048, 1072, 1096, 1120, 1144, 1168, 1192, 1216, 1240, 1264, 1288, 1312, 1336, 1360, 1384};
+                mm_sound_effect sfx_draw = {{SFX_CARD_DRAW}, pitch_lut[2], 0, 255, 128,};
+                mmEffectEx(&sfx_draw);
+            }
+        }
+
+        if (discard_top == -1 && discarded_card_object == NULL) // If there are no more discarded cards, stop shuffling
+        {
+            shuffling = false; // Stop shuffling if there are no cards to shuffle
+        }
+    }
+
     // Cards in hand update loop
     for (int i = hand_top + 1; i >= 0; i--) // Start from the end of the hand and work backwards because that's how Balatro does it
     {
@@ -309,13 +430,14 @@ void card_update() // This whole function is currently pretty unoptimized due to
 
                             if (hand[i]->x >= hand_x)
                             {
+                                discard_push(hand[i]->card);
                                 card_object_destroy(&hand[i]);
                                 sort_cards();
 
                                 hand_top--;
                                 cards_drawn++; // This technically isn't drawing cards, I'm just reusing the variable
                                 sound_played = false;
-                                //timer = 1;
+                                timer = 1;
 
                                 hand_y = hand[i]->y;
                                 hand_x = hand[i]->x; 
@@ -325,7 +447,10 @@ void card_update() // This whole function is currently pretty unoptimized due to
                         }
                         else
                         {
-                            hand_y -= (15 << FIX_SHIFT);
+                            if (!shuffling)
+                            {
+                                hand_y -= (15 << FIX_SHIFT); // Don't raise the card if we're mass discarding, it looks stupid.
+                            }
                             hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
                         }
                     }
@@ -497,30 +622,9 @@ void card_update() // This whole function is currently pretty unoptimized due to
                     break;
             }
 
-            hand[i]->vx += (hand_x - hand[i]->x) / 8;
-            hand[i]->vy += (hand_y - hand[i]->y) / 8;
-
-            // set velocity to 0 if it's close enough to the target
-            const float epsilon = float2fx(0.01f);
-            if (hand[i]->vx < epsilon && hand[i]->vx > -epsilon && hand[i]->vy < epsilon && hand[i]->vy > -epsilon)
-            {
-                hand[i]->vx = 0;
-                hand[i]->vy = 0;
-
-                hand[i]->x = hand_x;
-                hand[i]->y = hand_y;
-            }
-            else
-            {
-                hand[i]->vx = (hand[i]->vx * 7) / 10;
-                hand[i]->vy = (hand[i]->vy * 7) / 10;
-
-                hand[i]->x += hand[i]->vx;
-                hand[i]->y += hand[i]->vy;
-            }
-
-            obj_aff_rotscale(hand[i]->sprite->aff, hand[i]->scale, hand[i]->scale, -hand[i]->vx + hand[i]->rotation); // Apply rotation and scale to the sprite
-            sprite_position(hand[i]->sprite, fx2int(hand[i]->x), fx2int(hand[i]->y));
+            hand[i]->tx = hand_x;
+            hand[i]->ty = hand_y;
+            card_object_update(hand[i]);
         }
     }
 
@@ -537,7 +641,6 @@ void card_update() // This whole function is currently pretty unoptimized due to
             FIXED played_x = int2fx(120);
             FIXED played_y = int2fx(70);
             FIXED played_scale = float2fx(1.0f);
-            FIXED played_rotation = int2fx(0.0f);
 
             played_x = played_x + (int2fx(played_top - i) - int2fx(played_top) / 2) * -27;
 
@@ -573,12 +676,12 @@ void card_update() // This whole function is currently pretty unoptimized due to
                                 if (scored_cards > played_selections)
                                 {
                                     tte_erase_rect(72, 48, 240, 56);
-                                    tte_set_pos(fx2int(played[played_top - j]->x) + 16, 48); // Offset of 16 pixels to center the text on the card
+                                    tte_set_pos(fx2int(played[played_top - j]->x) + 8, 48); // Offset of 16 pixels to center the text on the card
                                     tte_set_special(0x2000); // Set text color to blue from background memory
  
                                     // Write the score to a character buffer variable
-                                    char score_buffer[4]; // Assuming the maximum score is 99, we need 4 characters (2 digits + null terminator)
-                                    snprintf(score_buffer, sizeof(score_buffer), "%d", card_get_value(played[played_top - j]->card));
+                                    char score_buffer[5]; // Assuming the maximum score is 99, we need 4 characters (2 digits + null terminator)
+                                    snprintf(score_buffer, sizeof(score_buffer), "+%d", card_get_value(played[played_top - j]->card));
                                     tte_write(score_buffer);
                                     
                                     played_selections = scored_cards;
@@ -644,6 +747,7 @@ void card_update() // This whole function is currently pretty unoptimized due to
 
                         if (played[i]->x >= played_x)
                         {
+                            discard_push(played[i]->card); // Push the card to the discard pile
                             card_object_destroy(&played[i]);
 
                             //played_top--; 
@@ -668,58 +772,10 @@ void card_update() // This whole function is currently pretty unoptimized due to
                     break;
             }
 
-            played[i]->vx += (played_x - played[i]->x) / 8;
-            played[i]->vy += (played_y - played[i]->y) / 8;
-
-            played[i]->vscale += (played_scale - played[i]->scale) / 8; // Scale up the card when it's played
-
-            played[i]->vrotation += (played_rotation - played[i]->rotation) / 8; // Rotate the card when it's played
-
-            // Set velocity to 0 if it's close enough to the target
-            const float epsilon = float2fx(0.01f);
-            if (played[i]->vx < epsilon && played[i]->vx > -epsilon && played[i]->vy < epsilon && played[i]->vy > -epsilon)
-            {
-                played[i]->vx = 0;
-                played[i]->vy = 0;
-
-                played[i]->x = played_x;
-                played[i]->y = played_y;
-            }
-            else
-            {
-                played[i]->vx = (played[i]->vx * 7) / 10;
-                played[i]->vy = (played[i]->vy * 7) / 10;
-
-                played[i]->x += played[i]->vx;
-                played[i]->y += played[i]->vy;
-            }
-
-            // Set scale to 0 if it's close enough to the target
-            if (played[i]->vscale < epsilon && played[i]->vscale > -epsilon)
-            {
-                played[i]->vscale = 0;
-                played[i]->scale = played_scale;
-            }
-            else
-            {
-                played[i]->vscale = (played[i]->vscale * 7) / 10;
-                played[i]->scale += played[i]->vscale;
-            }
-
-            // Set rotation to 0 if it's close enough to the target
-            if (played[i]->vrotation < epsilon && played[i]->vrotation > -epsilon)
-            {
-                played[i]->vrotation = 0;
-                played[i]->rotation = played_rotation;
-            }
-            else
-            {
-                played[i]->vrotation = (played[i]->vrotation * 7) / 10;
-                played[i]->rotation += played[i]->vrotation;
-            }
-        
-            obj_aff_rotscale(played[i]->sprite->aff, played[i]->scale, played[i]->scale, -played[i]->vx + played[i]->rotation);
-            sprite_position(played[i]->sprite, fx2int(played[i]->x), fx2int(played[i]->y));
+            played[i]->tx = played_x;
+            played[i]->ty = played_y;
+            played[i]->tscale = played_scale;
+            card_object_update(played[i]);
         }
     }
 
@@ -914,6 +970,22 @@ bool hand_discard()
     return true;
 }
 
+bool hand_discard_all()
+{
+    hand_state = HAND_DISCARD;
+    card_focused = 0;
+
+    for (int i = 0; i <= hand_top; i++)
+    {
+        if (hand[i] != NULL)
+        {
+            hand[i]->selected = true; // Select all cards to discard them
+        }
+    }
+
+    return true;
+}
+
 bool hand_play()
 {
     if (hand_state != HAND_SELECT || hand_selections == 0) return false;
@@ -945,4 +1017,12 @@ int deck_get_size()
 int deck_get_max_size()
 {
     return MAX_DECK_SIZE; // This shouldn't be the array max size, it should be the total amount of cards that you have but I can't do that until I implement a way for discarded cards to still be stored in ram
+}
+
+void deck_shuffle()
+{
+    if (shuffling) return; // Prevent multiple shuffles at the same time
+    shuffling = true;
+
+    hand_discard_all(); // Discard all cards in the hand
 }
