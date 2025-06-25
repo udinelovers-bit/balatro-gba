@@ -189,6 +189,18 @@ void game_playing()
         change_background(2);
     }
 
+    if (score >= blind_requirement) // This is for wrapping everything up at the end of the round
+    {
+        if (hand_get_state() == HAND_DRAW)
+        {
+            deck_shuffle();
+        }
+        else if (hand_get_state() == HAND_SELECT)
+        {
+            game_state = GAME_ROUND_END;
+        }
+    }
+
     if (hand_get_state() == HAND_SELECT)
     {
         if (key_hit(KEY_LEFT))
@@ -223,10 +235,6 @@ void game_playing()
             hand--;
             tte_printf("#{P:16,104; cx:0x2000}%d", hand);
         }
-    }
-    else if (hand_get_state() == HAND_DRAW && score >= blind_requirement)
-    {
-        deck_shuffle();
     }
     else if (play_get_state() == PLAY_SCORING)
     {
@@ -306,10 +314,28 @@ void game_playing()
     }
 }
 
+void game_round_end()
+{
+    // Handle round end logic here
+    // This could include resetting the game state, updating scores, etc.
+}
+
 void game_update()
 {
     if (game_state == GAME_PLAYING)
     {
         game_playing();
-    }   
+    }
+    else if (game_state == GAME_ROUND_END)
+    {
+        // Handle round end logic here
+    }
+    else if (game_state == GAME_SHOP)
+    {
+        // Handle shop logic here
+    }
+    else if (game_state == GAME_BLIND_SELECT)
+    {
+        // Handle blind select logic here
+    }
 }

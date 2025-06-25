@@ -110,7 +110,6 @@ int hand_get_max_size(); // This gets the maximum size of the hand (this doesn't
 enum HandType hand_get_type(); // This gets the type of the hand
 enum HandState hand_get_state(); // This gets the current state of the hand
 bool hand_discard(); // This discards the selected cards
-bool hand_discard_all(); // This discards all cards in the hand (used at the end of the round)
 bool hand_play(); // This plays the selected cards
 
 // Play functions

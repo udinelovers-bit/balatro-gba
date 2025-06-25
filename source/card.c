@@ -372,6 +372,7 @@ void card_update() // This whole function is currently pretty unoptimized due to
         if (discard_top == -1 && discarded_card_object == NULL) // If there are no more discarded cards, stop shuffling
         {
             shuffling = false; // Stop shuffling if there are no cards to shuffle
+            hand_state = HAND_SELECT; // This is stupid and I should've built all of this into the 'game.c' file but I didn't so i have to set the hand state back so i can check it from an if statement later to properly end the round
         }
     }
 
@@ -970,21 +971,6 @@ bool hand_discard()
     return true;
 }
 
-bool hand_discard_all()
-{
-    hand_state = HAND_DISCARD;
-    card_focused = 0;
-
-    for (int i = 0; i <= hand_top; i++)
-    {
-        if (hand[i] != NULL)
-        {
-            hand[i]->selected = true; // Select all cards to discard them
-        }
-    }
-
-    return true;
-}
 
 bool hand_play()
 {
@@ -1024,5 +1010,14 @@ void deck_shuffle()
     if (shuffling) return; // Prevent multiple shuffles at the same time
     shuffling = true;
 
-    hand_discard_all(); // Discard all cards in the hand
+    hand_state = HAND_DISCARD;  // Discard all cards in the hand
+    card_focused = 0;
+
+    for (int i = 0; i <= hand_top; i++)
+    {
+        if (hand[i] != NULL)
+        {
+            hand[i]->selected = true; // Select all cards to discard them
+        }
+    }
 }
