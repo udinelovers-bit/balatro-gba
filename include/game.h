@@ -1,12 +1,52 @@
 #ifndef GAME_H
 #define GAME_H
 
+#define MAX_HAND_SIZE 16
+#define MAX_DECK_SIZE 52
+#define MAX_SELECTION_SIZE 5
+
 enum GameState
 {
     GAME_PLAYING,
     GAME_ROUND_END,
     GAME_SHOP,
     GAME_BLIND_SELECT
+};
+
+enum HandState
+{
+    HAND_DRAW,
+    HAND_SELECT,
+    HAND_DISCARD,
+    HAND_PLAY,
+    HAND_PLAYING
+};
+
+enum PlayState
+{
+    PLAY_PLAYING,
+    PLAY_SCORING,
+    PLAY_ENDING,
+    PLAY_ENDED
+};
+
+// Hand types
+enum HandType
+{
+    NONE,
+    HIGH_CARD,
+    PAIR,
+    TWO_PAIR,
+    THREE_OF_A_KIND,
+    STRAIGHT,
+    FLUSH,
+    FULL_HOUSE,
+    FOUR_OF_A_KIND,
+    STRAIGHT_FLUSH,
+    ROYAL_FLUSH,
+    FIVE_OF_A_KIND,
+    FLUSH_HOUSE,
+    FLUSH_FIVE
 };
 
 // Game functions

@@ -47,14 +47,12 @@ void init()
 
     // Initialize subsystems
     sprite_init();
-    card_init();
     game_init();
 }
 
 void update()
 {
     game_update();
-    card_update();
 }
 
 void draw()

@@ -26,43 +26,6 @@
 #define KING 11
 #define ACE 12
 
-// Hand types
-enum HandType
-{
-    NONE,
-    HIGH_CARD,
-    PAIR,
-    TWO_PAIR,
-    THREE_OF_A_KIND,
-    STRAIGHT,
-    FLUSH,
-    FULL_HOUSE,
-    FOUR_OF_A_KIND,
-    STRAIGHT_FLUSH,
-    ROYAL_FLUSH,
-    FIVE_OF_A_KIND,
-    FLUSH_HOUSE,
-    FLUSH_FIVE
-};
-
-// Hand states
-enum HandState
-{
-    HAND_DRAW,
-    HAND_SELECT,
-    HAND_DISCARD,
-    HAND_PLAY,
-    HAND_PLAYING
-};
-
-enum PlayState
-{
-    PLAY_PLAYING,
-    PLAY_SCORING,
-    PLAY_ENDING,
-    PLAY_ENDED
-};
-
 // Card types
 typedef struct
 {
@@ -95,30 +58,6 @@ u8 card_get_value(Card *card);
 CardObject *card_object_new(Card *card);
 void card_object_destroy(CardObject **card_object);
 void card_object_update(CardObject *card_object); // Update the card object position and scale
-
-// Card functions
-void card_init();
-void card_update();
-
-// Hand functions
-void hand_set_focus(int index); // This makes the card at the given index the one that's being looked at
-int hand_get_focus(); // This gets the index of the card that's being looked at
-void hand_select(); // This lets the player select the card they're looking at for the next action
-void hand_change_sort(); // This sorts the hand by suit or rank
-int hand_get_size(); // This gets the size of the hand
-int hand_get_max_size(); // This gets the maximum size of the hand (this doesn't get the array max, it gets the total amount of cards that you have)
-enum HandType hand_get_type(); // This gets the type of the hand
-enum HandState hand_get_state(); // This gets the current state of the hand
-bool hand_discard(); // This discards the selected cards
-bool hand_play(); // This plays the selected cards
-
-// Play functions
-enum PlayState play_get_state(); // This gets the current state of the play
-Card *play_get_scored_card(); // This gets the card that was scored in the last play
-
-// Deck functions
-int deck_get_size(); // This gets the size of the deck
-int deck_get_max_size(); // This gets the maximum size of the deck (this doesn't get the array max, it gets the total amount of cards that you have)
-void deck_shuffle(); // This shuffles the deck
+void card_object_set_sprite(CardObject *card_object, int layer);
 
 #endif // CARD_H
