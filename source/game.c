@@ -13,6 +13,8 @@
 
 #include "soundbank.h"
 
+static int background = 0;
+
 static enum GameState game_state = GAME_PLAYING;
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
@@ -22,7 +24,7 @@ static enum HandType hand_type = NONE;
 static int hands = 4;
 static int discards = 4;
 
-static int blind_requirement = 300; // Hard coded for now
+static int blind_requirement = 300; // Hard coded for now. This will be read from some sort of header file later.
 static int score = 0;
 static int temp_score = 0; // This is the score that shows in the same spot as the hand type.
 static FIXED lerped_score = 0;
@@ -31,8 +33,6 @@ static FIXED lerped_temp_score = 0;
 static int chips = 0;
 static int mult = 0;
 
-static int background = 0;
-
 static int hand_size = 8; // Default hand size is 8
 static int cards_drawn = 0;
 static int hand_selections = 0;
@@ -40,10 +40,6 @@ static int hand_selections = 0;
 static int card_focused = 0;
 
 static bool sort_by_suit = false;
-
-static bool shuffling = false;
-
-static Card *scored_card = NULL; // This will be removed soon, so don't go getting too comfortable LOL!
 
 // Stacks
 static CardObject *played[MAX_SELECTION_SIZE] = {NULL};
@@ -99,6 +95,60 @@ static inline Card *discard_pop()
 
 
 // General functions
+void sort_cards()
+{
+    if (sort_by_suit)
+    {
+        for (int a = 0; a < hand_top; a++)
+        {
+            for (int b = a + 1; b <= hand_top; b++)
+            {
+                if (hand[a] == NULL || (hand[b] != NULL && (hand[a]->card->suit > hand[b]->card->suit || (hand[a]->card->suit == hand[b]->card->suit && hand[a]->card->rank > hand[b]->card->rank))))
+                {
+                    CardObject *temp = hand[a];
+                    hand[a] = hand[b];
+                    hand[b] = temp;
+                }
+            }
+        }
+    }
+    else
+    {
+        for (int a = 0; a < hand_top; a++)
+        {
+            for (int b = a + 1; b <= hand_top; b++)
+            {
+                if (hand[a] == NULL || (hand[b] != NULL && hand[a]->card->rank > hand[b]->card->rank))
+                {
+                    CardObject *temp = hand[a];
+                    hand[a] = hand[b];
+                    hand[b] = temp;
+                }
+            }
+        }
+    }
+
+    // Update the sprites in the hand by destroying them and creating new ones in the correct order
+    // (This is feels like a diabolical solution but like literally how else would you do this)
+    for (int i = 0; i <= hand_top; i++)
+    {
+        if (hand[i] != NULL)
+        {
+            sprite_destroy(&hand[i]->sprite);
+        }
+    }
+
+    for (int i = 0; i <= hand_top; i++)
+    {
+        if (hand[i] != NULL)
+        {
+            //hand[i]->sprite = sprite_new(ATTR0_SQUARE | ATTR0_4BPP | ATTR0_AFF, ATTR1_SIZE_32, card_sprite_lut[hand[i]->card->suit][hand[i]->card->rank], 0, i);
+            card_object_set_sprite(hand[i], i); // Set the sprite for the card object
+            sprite_position(hand[i]->sprite, fx2int(hand[i]->x), fx2int(hand[i]->y));
+        }
+    }
+}
+
 enum HandType hand_get_type()
 {
     // Idk if this is how Balatro does it but this is how I'm doing it
@@ -349,60 +399,6 @@ void set_hand()
     set_mult();
 }
 
-static inline void sort_cards()
-{
-    if (sort_by_suit)
-    {
-        for (int a = 0; a < hand_top; a++)
-        {
-            for (int b = a + 1; b <= hand_top; b++)
-            {
-                if (hand[a] == NULL || (hand[b] != NULL && (hand[a]->card->suit > hand[b]->card->suit || (hand[a]->card->suit == hand[b]->card->suit && hand[a]->card->rank > hand[b]->card->rank))))
-                {
-                    CardObject *temp = hand[a];
-                    hand[a] = hand[b];
-                    hand[b] = temp;
-                }
-            }
-        }
-    }
-    else
-    {
-        for (int a = 0; a < hand_top; a++)
-        {
-            for (int b = a + 1; b <= hand_top; b++)
-            {
-                if (hand[a] == NULL || (hand[b] != NULL && hand[a]->card->rank > hand[b]->card->rank))
-                {
-                    CardObject *temp = hand[a];
-                    hand[a] = hand[b];
-                    hand[b] = temp;
-                }
-            }
-        }
-    }
-
-    // Update the sprites in the hand by destroying them and creating new ones in the correct order
-    // (This is feels like a diabolical solution but like literally how else would you do this)
-    for (int i = 0; i <= hand_top; i++)
-    {
-        if (hand[i] != NULL)
-        {
-            sprite_destroy(&hand[i]->sprite);
-        }
-    }
-
-    for (int i = 0; i <= hand_top; i++)
-    {
-        if (hand[i] != NULL)
-        {
-            //hand[i]->sprite = sprite_new(ATTR0_SQUARE | ATTR0_4BPP | ATTR0_AFF, ATTR1_SIZE_32, card_sprite_lut[hand[i]->card->suit][hand[i]->card->rank], 0, i);
-            card_object_set_sprite(hand[i], i); // Set the sprite for the card object
-            sprite_position(hand[i]->sprite, fx2int(hand[i]->x), fx2int(hand[i]->y));
-        }
-    }
-}
-
 void card_draw()
 {
     if (deck_top < 0 || hand_top >= hand_size - 1 || hand_top >= MAX_HAND_SIZE - 1) return;
@@ -425,7 +421,6 @@ void card_draw()
     mmEffectEx(&sfx_draw);
 }
 
-// Hand functions
 void hand_set_focus(int index)
 {
     if (index < 0 || index > hand_top || hand_state != HAND_SELECT) return;
@@ -478,11 +473,6 @@ int hand_get_max_size()
     return hand_size;
 }
 
-enum HandState hand_get_state()
-{
-    return hand_state;
-}
-
 bool hand_discard()
 {
     if (hand_state != HAND_SELECT || hand_selections == 0) return false;
@@ -490,7 +480,6 @@ bool hand_discard()
     card_focused = 0;
     return true;
 }
-
 
 bool hand_play()
 {
@@ -500,21 +489,6 @@ bool hand_play()
     return true;
 }
 
-// Play functions
-enum PlayState play_get_state()
-{
-    return play_state;
-}
-
-Card *play_get_scored_card()
-{
-    // Return value and set old reference to NULL
-    Card *scored_card_temp = scored_card;
-    scored_card = NULL; // Reset the scored card so it doesn't get returned again
-    return scored_card_temp;
-}
-
-// Deck functions
 int deck_get_size()
 {
     return deck_top + 1;
@@ -527,24 +501,15 @@ int deck_get_max_size()
 
 void deck_shuffle()
 {
-    if (shuffling) return; // Prevent multiple shuffles at the same time
-    shuffling = true;
-
-    hand_state = HAND_DISCARD;  // Discard all cards in the hand
+    if (hand_state == HAND_SHUFFLING) return; // Prevent multiple shuffles at the same time
+    hand_state = HAND_SHUFFLING;
     card_focused = 0;
-
-    for (int i = 0; i <= hand_top; i++)
-    {
-        if (hand[i] != NULL)
-        {
-            hand[i]->selected = true; // Select all cards to discard them
-        }
-    }
 }
 
+// Game functions
 void game_init()
 {
-    // Fill the deck with all the cards
+    // Fill the deck with all the cards. Later on this can be replaced with a more dynamic system that allows for different decks and card types.
     for (int suit = 0; suit < 4; suit++)
     {
         for (int rank = 0; rank < 13; rank++)
@@ -587,7 +552,8 @@ void game_init()
 
 void game_playing()
 {
-    if (hand_get_state() == HAND_DRAW || hand_get_state() == HAND_DISCARD || hand_get_state() == HAND_SELECT)
+    // Background logic (thissss might be moved to the card'ssss logic later. I'm a sssssnake)
+    if (hand_state == HAND_DRAW || hand_state == HAND_SHUFFLING || hand_state == HAND_DISCARD || hand_state == HAND_SELECT)
     {
         change_background(1);
     }
@@ -596,19 +562,20 @@ void game_playing()
         change_background(2);
     }
 
+    // Input and state related logic
     if (score >= blind_requirement) // This is for wrapping everything up at the end of the round
     {
-        if (hand_get_state() == HAND_DRAW)
+        if (hand_state == HAND_DRAW)
         {
             deck_shuffle();
         }
-        else if (hand_get_state() == HAND_SELECT)
+        else if (hand_state == HAND_SELECT)
         {
             game_state = GAME_ROUND_END;
         }
     }
 
-    if (hand_get_state() == HAND_SELECT)
+    if (hand_state == HAND_SELECT)
     {
         if (key_hit(KEY_LEFT))
         {
@@ -643,16 +610,7 @@ void game_playing()
             tte_printf("#{P:16,104; cx:0x2000}%d", hands);
         }
     }
-    else if (play_get_state() == PLAY_SCORING)
-    {
-        Card *scored_card = play_get_scored_card();
-        if (scored_card != NULL)
-        {
-            chips += card_get_value(scored_card);
-            set_chips();
-        }
-    }
-    else if (play_get_state() == PLAY_ENDING)
+    else if (play_state == PLAY_ENDING)
     {
         if (mult > 0)
         {
@@ -669,7 +627,7 @@ void game_playing()
             set_chips();
         }
     }
-    else if (play_get_state() == PLAY_ENDED)
+    else if (play_state == PLAY_ENDED)
     {
         lerped_temp_score -= int2fx(temp_score) / 40;
         lerped_score += int2fx(temp_score) / 40;
@@ -700,6 +658,7 @@ void game_playing()
         }
     }
 
+    // Card logic
     static int last_hand_size = 0;
     static int last_deck_size = 0;
 
@@ -743,7 +702,7 @@ void game_playing()
     bool discarded_card = false;
 
     // Discarded cards loop (mainly for shuffling)
-    if (hand_get_size() == 0 && shuffling && discard_top >= -1 && timer > 10)
+    if (hand_get_size() == 0 && hand_state == HAND_SHUFFLING && discard_top >= -1 && timer > 10)
     {
         // We take each discarded card and put it back into the deck with a short animation
         static CardObject *discarded_card_object = NULL;
@@ -783,7 +742,6 @@ void game_playing()
 
         if (discard_top == -1 && discarded_card_object == NULL) // If there are no more discarded cards, stop shuffling
         {
-            shuffling = false; // Stop shuffling if there are no cards to shuffle
             hand_state = HAND_SELECT; // This is stupid and I should've built all of this into the 'game.c' file but I didn't so i have to set the hand state back so i can check it from an if statement later to properly end the round
         }
     }
@@ -825,8 +783,10 @@ void game_playing()
 
                     hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top]; // TODO: Change this later to reference a 2D LUT of positions
                     break;
+                case HAND_SHUFFLING:
+                    /* FALL THROUGH */
                 case HAND_DISCARD: // TODO: Add sound
-                    if (hand[i]->selected)
+                    if (hand[i]->selected || hand_state == HAND_SHUFFLING)
                     {
                         if (!discarded_card)
                         {
@@ -860,7 +820,7 @@ void game_playing()
                         }
                         else
                         {
-                            if (!shuffling)
+                            if (hand_state == HAND_DISCARD)
                             {
                                 hand_y -= (15 << FIX_SHIFT); // Don't raise the card if we're mass discarding, it looks stupid.
                             }
@@ -918,10 +878,10 @@ void game_playing()
                         {
                             case NONE:
                                 break;
-                            case HIGH_CARD:
+                            case HIGH_CARD: // find the card with the highest rank in the hand
                                 int highest_rank_index = 0;
 
-                                for (int i = 0; i <= played_top; i++) // find the card with the highest rank in the hand
+                                for (int i = 0; i <= played_top; i++)
                                 {                                    
                                     if (played[i]->card->rank > played[highest_rank_index]->card->rank)
                                     {
@@ -931,98 +891,128 @@ void game_playing()
 
                                 played[highest_rank_index]->selected = true;
                                 break;
-                            case PAIR:
-                                for (int i = 0; i <= played_top - 1; i++) // find two cards with the same rank
+                            case PAIR: // find two cards with the same rank (Requires recursion)
+                                for (int i = 0; i <= played_top - 1; i++)
                                 {
-                                    if (played[i]->card->rank == played[i + 1]->card->rank)
+                                    for (int j = i + 1; j <= played_top; j++)
                                     {
-                                        played[i]->selected = true;
-                                        played[i + 1]->selected = true;
-                                        break;
+                                        if (played[i]->card->rank == played[j]->card->rank)
+                                        {
+                                            played[i]->selected = true;
+                                            played[j]->selected = true;
+                                            break;
+                                        }
+                                    }
+
+                                    if (played[i]->selected) break;
+                                }
+                                break;
+                            case TWO_PAIR: // find two pairs of cards with the same rank (Requires recursion)
+                                int i;
+
+                                for (i = 0; i <= played_top - 1; i++) 
+                                {
+                                    for (int j = i + 1; j <= played_top; j++)
+                                    {
+                                        if (played[i]->card->rank == played[j]->card->rank)
+                                        {
+                                            played[i]->selected = true;
+                                            played[j]->selected = true;
+                                            
+                                            break;
+                                        }
+                                    }
+
+                                    if (played[i]->selected) break;
+                                }
+
+                                for (; i <= played_top - 1; i++) // Find second pair
+                                {
+                                    for (int j = i + 1; j <= played_top; j++)
+                                    {
+                                        if (played[i]->card->rank == played[j]->card->rank && played[i]->selected == false && played[j]->selected == false)
+                                        {
+                                            played[i]->selected = true;
+                                            played[j]->selected = true;
+                                            break;
+                                        }
                                     }
                                 }
                                 break;
-                            case TWO_PAIR:
-                                for (int i = 0; i <= played_top - 1; i++) // find two pairs of cards with the same rank
+                            case THREE_OF_A_KIND: // find three cards with the same rank (requires recursion)
+                                for (int i = 0; i <= played_top - 1; i++)
                                 {
-                                    if (played[i]->card->rank == played[i + 1]->card->rank)
+                                    for (int j = i + 1; j <= played_top; j++)
                                     {
-                                        played[i]->selected = true;
-                                        played[i + 1]->selected = true;
+                                        if (played[i]->card->rank == played[j]->card->rank)
+                                        {
+                                            played[i]->selected = true;
+                                            played[j]->selected = true;
+
+                                            for (int k = j + 1; k <= played_top; k++)
+                                            {
+                                                if (played[i]->card->rank == played[k]->card->rank && played[k]->selected == false)
+                                                {
+                                                    played[k]->selected = true;
+                                                    break;
+                                                }
+                                            }
+
+                                            break;
+                                        }
                                     }
+
+                                    if (played[i]->selected) break;
                                 }
                                 break;
-                            case THREE_OF_A_KIND:
-                                for (int i = 0; i <= played_top - 2; i++) // find three cards with the same rank
+                            case FOUR_OF_A_KIND: // find four cards with the same rank (requires recursion)
+                                if (played_top >= 3) // If there are 5 cards selected we just need to find the one card that doesn't match, and select the others
                                 {
-                                    if (played[i]->card->rank == played[i + 1]->card->rank && played[i]->card->rank == played[i + 2]->card->rank)
+                                    int unmatched_index = -1;
+
+                                    for (int i = 0; i <= played_top; i++)
+                                    {
+                                        if (played[i]->card->rank != played[(i + 1) % played_top]->card->rank && played[i]->card->rank != played[(i + 2) % played_top]->card->rank)
+                                        {
+                                            unmatched_index = i;
+                                            break;
+                                        }
+                                    }
+
+                                    for (int i = 0; i <= played_top; i++)
+                                    {
+                                        if (i != unmatched_index)
+                                        {
+                                            played[i]->selected = true;
+                                        }
+                                    }
+                                }
+                                else // If there are only 4 cards selected we know they match
+                                {
+                                    for (int i = 0; i <= played_top; i++)
                                     {
                                         played[i]->selected = true;
-                                        played[i + 1]->selected = true;
-                                        played[i + 2]->selected = true;
-                                        break;
                                     }
                                 }
                                 break;
                             case STRAIGHT:
-                                for (int i = 0; i <= played_top; i++) // find five cards in a row
-                                {
-                                    played[i]->selected = true; // we don't have to check if cards are being played because a straight needs 5 cards which is the max selection size
-                                }
-                                break;
+                                /* FALL THROUGH */
                             case FLUSH:
-                                for (int i = 0; i <= played_top; i++) // find five cards with the same suit
-                                {
-                                    played[i]->selected = true; // flush functions the same as straight
-                                }
-                                break;
+                                /* FALL THROUGH */
                             case FULL_HOUSE:
-                                for (int i = 0; i <= played_top; i++) // find three cards with the same rank and two cards with the same rank
-                                {
-                                    played[i]->selected = true; // full house functions the same as straight
-                                }
-                                break;
-                            case FOUR_OF_A_KIND:
-                                for (int i = 0; i <= played_top - 3; i++) // find four cards with the same rank
-                                {
-                                    if (played[i]->card->rank == played[i + 1]->card->rank && played[i]->card->rank == played[i + 2]->card->rank && played[i]->card->rank == played[i + 3]->card->rank)
-                                    {
-                                        played[i]->selected = true;
-                                        played[i + 1]->selected = true;
-                                        played[i + 2]->selected = true;
-                                        played[i + 3]->selected = true;
-                                        break;
-                                    }
-                                }
-                                break;
+                                /* FALL THROUGH */
                             case STRAIGHT_FLUSH:
-                                for (int i = 0; i <= played_top; i++) // find five cards in a row with the same suit
-                                {
-                                    played[i]->selected = true; // straight flush functions the same as straight
-                                }
-                                break;
+                                /* FALL THROUGH */
                             case ROYAL_FLUSH:
-                                for (int i = 0; i <= played_top; i++) // find five cards in a row with the same suit starting with a 10
-                                {
-                                    played[i]->selected = true; // royal flush functions the same as straight
-                                }
-                                break;
+                                /* FALL THROUGH */
                             case FIVE_OF_A_KIND:
-                                for (int i = 0; i <= played_top; i++) // find five cards with the same rank
-                                {
-                                    played[i]->selected = true; // five of a kind functions the same as straight
-                                }
-                                break;
+                                /* FALL THROUGH */
                             case FLUSH_HOUSE:
-                                for (int i = 0; i <= played_top; i++) // find three cards with the same rank and two cards with the same suit
+                                /* FALL THROUGH */
+                            case FLUSH_FIVE: // Select all played cards in the hand (This is functionally identical as the above hand types)
+                                for (int i = 0; i <= played_top; i++)
                                 {
-                                    played[i]->selected = true; // flush house functions the same as straight
-                                }
-                                break;
-                            case FLUSH_FIVE:
-                                for (int i = 0; i <= played_top; i++) // find five cards with the same suit
-                                {
-                                    played[i]->selected = true; // flush five functions the same as straight
+                                    played[i]->selected = true;
                                 }
                                 break;
                         }
@@ -1106,7 +1096,9 @@ void game_playing()
                                     mm_sound_effect sfx_select = {{SFX_CARD_SELECT}, 1024, 0, 255, 128,};
                                     mmEffectEx(&sfx_select);
 
-                                    scored_card = played[played_top - j]->card; // Set the scored card to the one that was just scored. This allows us to get the value of the card later in game.c
+                                    // Relocated card scoring logic here
+                                    chips += card_get_value(played[played_top - j]->card);
+                                    set_chips();
                                     break;
                                 }
                             }
@@ -1117,7 +1109,6 @@ void game_playing()
                                 play_state = PLAY_ENDING;
                                 timer = 1;
                                 played_selections = played_top + 1; // Reset the played selections to the top of the played stack
-                                scored_card = NULL; // Reset the scored card
                                 break;
                             }
                         }

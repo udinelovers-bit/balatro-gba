@@ -17,6 +17,7 @@ enum HandState
 {
     HAND_DRAW,
     HAND_SELECT,
+    HAND_SHUFFLING, // This is actually a misnomer because it's used for the deck, but it mechanically makes sense to be a state of the hand
     HAND_DISCARD,
     HAND_PLAY,
     HAND_PLAYING
@@ -38,10 +39,10 @@ enum HandType
     PAIR,
     TWO_PAIR,
     THREE_OF_A_KIND,
+    FOUR_OF_A_KIND,
     STRAIGHT,
     FLUSH,
     FULL_HOUSE,
-    FOUR_OF_A_KIND,
     STRAIGHT_FLUSH,
     ROYAL_FLUSH,
     FIVE_OF_A_KIND,
