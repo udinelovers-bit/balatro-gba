@@ -10,9 +10,11 @@
 
 #include "background_gfx.h"
 #include "background_play_gfx.h"
+#include "background_round_end_gfx.h"
 
 #include "soundbank.h"
 
+static int timer = 1; // This might already exist in libtonc but idk so i'm just making my own
 static int background = 0;
 
 static enum GameState game_state = GAME_PLAYING;
@@ -92,7 +94,6 @@ static inline Card *discard_pop()
     if (discard_top < 0) return NULL;
     return discard_pile[discard_top--];
 }
-
 
 // General functions
 void sort_cards()
@@ -290,6 +291,21 @@ void change_background(int id)
 
         tte_erase_rect(128, 128, 152, 136);
     }
+    else if (id == 3) // round end
+    {
+        memcpy(pal_bg_mem, background_round_end_gfxPal, 64);
+        memcpy(&tile_mem[0][0], background_round_end_gfxTiles, background_round_end_gfxTilesLen);
+        memcpy(&se_mem[30][0], background_round_end_gfxMap, background_round_end_gfxMapLen);
+
+        tte_erase_rect(0, 0, 64, 64); // Clear top left corner where the blind stats are displayed
+        tte_erase_rect(128, 152, 152, 160); // Clear the hand size/max size display
+
+        tte_printf("#{P:88,72; cx:0xF000}Cash Out: $5"); // Hardcoded example
+    }
+    else
+    {
+        return; // Invalid background ID
+    }
 
     background = id;
 }
@@ -300,22 +316,22 @@ void set_chips()
 
     if (chips < 10)
     {
-        tte_printf("#{cx:0; P:24,80;}%d", chips); // Chips
+        tte_printf("#{P:24,80; cx:0xF000;}%d", chips); // Chips
     }
     else if (chips < 100)
     {
-        tte_printf("#{cx:0; P:16,80;}%d", chips);
+        tte_printf("#{P:16,80; cx:0xF000;}%d", chips);
     }
     else
     {
-        tte_printf("#{cx:0; P:8,80;}%d", chips);
+        tte_printf("#{P:8,80; cx:0xF000}%d", chips);
     }
 }
 
 void set_mult()
 {
     tte_erase_rect(40, 80, 64, 88);
-    tte_printf("#{cx:0; P:40,80;}%d", mult); // Mult
+    tte_printf("#{P:40,80; cx:0xF000;}%d", mult); // Mult
 }
 
 void set_hand()
@@ -496,7 +512,7 @@ int deck_get_size()
 
 int deck_get_max_size()
 {
-    return MAX_DECK_SIZE; // This shouldn't be the array max size, it should be the total amount of cards that you have but I can't do that until I implement a way for discarded cards to still be stored in ram
+    return hand_top + played_top + deck_top + discard_top + 4; // This is the max amount of cards that the player currently has in their possession
 }
 
 void deck_shuffle()
@@ -530,30 +546,30 @@ void game_init()
 
     change_background(1);
 
-    tte_printf("#{P:128,128; cx:0}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
-    tte_printf("#{P:200,152}%d/%d", deck_get_size(), deck_get_max_size()); // Deck size/max size
+    tte_printf("#{P:128,128; cx:0xF000}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
+    tte_printf("#{P:200,152; cx:0xF000}%d/%d", deck_get_size(), deck_get_max_size()); // Deck size/max size
 
-    tte_printf("#{P:40,24; cx:0x3000}%d", blind_requirement); // Blind requirement
-    tte_printf("#{P:40,32; cx:0x1000}$3"); // Blind reward
+    tte_printf("#{P:40,24; cx:0xE000}%d", blind_requirement); // Blind requirement
+    tte_printf("#{P:40,32; cx:0xC000}$3"); // Blind reward
 
-    tte_printf("#{P:32,48; cx:0}%d", 0); // Score
+    tte_printf("#{P:32,48; cx:0xF000}%d", 0); // Score
 
-    tte_printf("#{P:24,80;}%d", 0); // Chips
-    tte_printf("#{P:40,80;}%d", 0); // Mult
+    tte_printf("#{P:24,80; cx:0xF000}%d", 0); // Chips
+    tte_printf("#{P:40,80; cx:0xF000}%d", 0); // Mult
 
-    tte_printf("#{P:16,104; cx:0x2000}%d", hands); // Hand
-    tte_printf("#{P:48,104; cx:0x3000}%d", discards); // Discard
+    tte_printf("#{P:16,104; cx:0xD000}%d", hands); // Hand
+    tte_printf("#{P:48,104; cx:0xE000}%d", discards); // Discard
 
-    tte_printf("#{P:24,120; cx:0x1000}$%d", 4); // Money
+    tte_printf("#{P:24,120; cx:0xC000}$%d", 4); // Money
 
-    tte_printf("#{P:48,144}%d", 1); // Round
-    tte_printf("#{P:8,144}%d#{cx:0}/%d", 1, 8); // Ante
+    tte_printf("#{P:48,144; cx:0xC000}%d", 1); // Round
+    tte_printf("#{P:8,144; cx:0xC000}%d#{cx:0xF000}/%d", 1, 8); // Ante
 }
 
 void game_playing()
 {
     // Background logic (thissss might be moved to the card'ssss logic later. I'm a sssssnake)
-    if (hand_state == HAND_DRAW || hand_state == HAND_SHUFFLING || hand_state == HAND_DISCARD || hand_state == HAND_SELECT)
+    if (hand_state == HAND_DRAW || hand_state == HAND_DISCARD || hand_state == HAND_SELECT)
     {
         change_background(1);
     }
@@ -563,18 +579,6 @@ void game_playing()
     }
 
     // Input and state related logic
-    if (score >= blind_requirement) // This is for wrapping everything up at the end of the round
-    {
-        if (hand_state == HAND_DRAW)
-        {
-            deck_shuffle();
-        }
-        else if (hand_state == HAND_SELECT)
-        {
-            game_state = GAME_ROUND_END;
-        }
-    }
-
     if (hand_state == HAND_SELECT)
     {
         if (key_hit(KEY_LEFT))
@@ -601,13 +605,13 @@ void game_playing()
         {
             set_hand();
             discards--;
-            tte_printf("#{P:48,104; cx:0x3000}%d", discards);
+            tte_printf("#{P:48,104; cx:0xE000}%d", discards);
         }
 
         if (key_hit(KEY_START) && hands > 0 && hand_play())
         {
             hands--;
-            tte_printf("#{P:16,104; cx:0x2000}%d", hands);
+            tte_printf("#{P:16,104; cx:0xD000}%d", hands);
         }
     }
     else if (play_state == PLAY_ENDING)
@@ -619,7 +623,7 @@ void game_playing()
             lerped_score = int2fx(score);
             
             tte_erase_rect(8, 64, 64, 72);
-            tte_printf("#{P:8,64;}%d", temp_score); // Score
+            tte_printf("#{P:8,64; cx:0xF000}%d", temp_score); // Score
 
             chips = 0;
             mult = 0;
@@ -635,10 +639,10 @@ void game_playing()
         if (lerped_temp_score > 0)
         {
             tte_erase_rect(8, 64, 64, 72);
-            tte_printf("#{P:8,64;}%d", fx2int(lerped_temp_score)); // Temp Score
+            tte_printf("#{P:8,64; cx:0xF000}%d", fx2int(lerped_temp_score)); // Temp Score
             
             // We actually don't need to erase this because the score only increases
-            tte_printf("#{P:32,48;}%d", fx2int(lerped_score)); // Score
+            tte_printf("#{P:32,48; cx:0xF000}%d", fx2int(lerped_score)); // Score
 
             if (temp_score <= 0)
             {
@@ -654,34 +658,11 @@ void game_playing()
 
             tte_erase_rect(8, 64, 64, 72); // Just erase the temp score
             
-            tte_printf("#{P:32,48;}%d", score); // Score
+            tte_printf("#{P:32,48; cx:0xF000}%d", score); // Score
         }
     }
 
     // Card logic
-    static int last_hand_size = 0;
-    static int last_deck_size = 0;
-
-    if (last_hand_size != hand_get_size() || last_deck_size != deck_get_size())
-    {
-        if (background == 1)
-        {
-            tte_printf("#{P:128,128; cx:0}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
-        }
-        else if (background == 2)
-        {
-            tte_printf("#{P:128,152; cx:0}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
-        }
-
-        tte_printf("#{P:200,152}%d/%d", deck_get_size(), deck_get_max_size()); // Deck size/max size
-
-        last_hand_size = hand_get_size();
-        last_deck_size = deck_get_size();
-    }
-
-    static int timer = 1;
-    timer++;
-
     if (hand_state == HAND_DRAW && cards_drawn < hand_size)
     {
         if (timer % 10 == 0) // Draw a card every 10 frames
@@ -742,7 +723,9 @@ void game_playing()
 
         if (discard_top == -1 && discarded_card_object == NULL) // If there are no more discarded cards, stop shuffling
         {
-            hand_state = HAND_SELECT; // This is stupid and I should've built all of this into the 'game.c' file but I didn't so i have to set the hand state back so i can check it from an if statement later to properly end the round
+            hand_state = HAND_SELECT; // Reset the hand state to the functional default
+            game_state = GAME_ROUND_END; // Set the game state back to playing
+            timer = 1; // Reset the timer
         }
     }
 
@@ -824,6 +807,10 @@ void game_playing()
                             {
                                 hand_y -= (15 << FIX_SHIFT); // Don't raise the card if we're mass discarding, it looks stupid.
                             }
+                            else
+                            {
+                                hand_y += (24 << FIX_SHIFT);
+                            }
                             hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
                         }
                     }
@@ -834,7 +821,7 @@ void game_playing()
 
                     if (i == 0 && discarded_card == false && timer % 10 == 0)
                     {
-                        hand_state = HAND_DRAW;
+                        hand_state = HAND_DRAW;  
                         sound_played = false;
                         cards_drawn = 0;
                         hand_selections = 0;
@@ -874,7 +861,7 @@ void game_playing()
                         timer = 1;
                         played_selections = played_top + 1;
                         
-                        switch (hand_type) // select the cards that apply to the hand type (This whole thing has GOT to be reworked. it only works if the hand sort is by rank)
+                        switch (hand_type) // select the cards that apply to the hand type
                         {
                             case NONE:
                                 break;
@@ -1081,7 +1068,7 @@ void game_playing()
                                 {
                                     tte_erase_rect(72, 48, 240, 56);
                                     tte_set_pos(fx2int(played[played_top - j]->x) + 8, 48); // Offset of 16 pixels to center the text on the card
-                                    tte_set_special(0x2000); // Set text color to blue from background memory
+                                    tte_set_special(0xD000); // Set text color to blue from background memory
  
                                     // Write the score to a character buffer variable
                                     char score_buffer[5]; // Assuming the maximum score is 99, we need 4 characters (2 digits + null terminator)
@@ -1161,12 +1148,21 @@ void game_playing()
 
                             if (i == played_top)
                             {
-                                hand_state = HAND_DRAW;
+                                if (score >= blind_requirement)
+                                {
+                                    hand_state = HAND_SHUFFLING;
+                                }
+                                else
+                                {
+                                    hand_state = HAND_DRAW;
+                                }
+                                
                                 play_state = PLAY_PLAYING;
                                 cards_drawn = 0;
                                 hand_selections = 0;
                                 played_selections = 0;
                                 played_top = -1; // Reset the played stack
+                                timer = 1;
                                 break; // Break out of the loop to avoid accessing an invalid index
                             }
                         }
@@ -1183,30 +1179,54 @@ void game_playing()
             card_object_update(played[i]);
         }
     }
+
+    // UI Text update
+    static int last_hand_size = 0;
+    static int last_deck_size = 0;
+
+    if (last_hand_size != hand_get_size() || last_deck_size != deck_get_size())
+    {
+        if (background == 1)
+        {
+            tte_printf("#{P:128,128; cx:0xF000}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
+        }
+        else if (background == 2)
+        {
+            tte_printf("#{P:128,152; cx:0xF000}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
+        }
+
+        tte_printf("#{P:200,152; cx:0xF000}%d/%d", deck_get_size(), deck_get_max_size()); // Deck size/max size
+
+        last_hand_size = hand_get_size();
+        last_deck_size = deck_get_size();
+    }
 }
 
 void game_round_end()
 {
-    // Handle round end logic here
-    // This could include resetting the game state, updating scores, etc.
+    if (timer > 30)
+    {
+        change_background(3); // Change to the round end background
+    }
 }
 
 void game_update()
 {
-    if (game_state == GAME_PLAYING)
+    timer++;
+
+    switch (game_state)
     {
-        game_playing();
-    }
-    else if (game_state == GAME_ROUND_END)
-    {
-        // Handle round end logic here
-    }
-    else if (game_state == GAME_SHOP)
-    {
-        // Handle shop logic here
-    }
-    else if (game_state == GAME_BLIND_SELECT)
-    {
-        // Handle blind select logic here
+        case GAME_PLAYING:
+            game_playing();
+            break;
+        case GAME_ROUND_END:
+            game_round_end();
+            break;
+        case GAME_SHOP:
+            // Handle shop logic here
+            break;
+        case GAME_BLIND_SELECT:
+            // Handle blind select logic here
+            break;
     }
 }
