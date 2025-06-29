@@ -15,6 +15,7 @@
 #include "soundbank.h"
 
 static int timer = 1; // This might already exist in libtonc but idk so i'm just making my own
+static int game_speed = 1;
 static int background = 0;
 
 static enum GameState game_state = GAME_PLAYING;
@@ -677,7 +678,7 @@ void game_playing()
     // Card logic
     if (hand_state == HAND_DRAW && cards_drawn < hand_size)
     {
-        if (timer % 10 == 0) // Draw a card every 10 frames
+        if (timer % FRAMES(10) == 0) // Draw a card every 10 frames
         {
             cards_drawn++;
             card_draw();
@@ -695,7 +696,7 @@ void game_playing()
     bool discarded_card = false;
 
     // Discarded cards loop (mainly for shuffling)
-    if (hand_get_size() == 0 && hand_state == HAND_SHUFFLING && discard_top >= -1 && timer > 10)
+    if (hand_get_size() == 0 && hand_state == HAND_SHUFFLING && discard_top >= -1 && timer >= FRAMES(10))
     {
         // We take each discarded card and put it back into the deck with a short animation
         static CardObject *discarded_card_object = NULL;
@@ -831,7 +832,7 @@ void game_playing()
                         hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
                     }
 
-                    if (i == 0 && discarded_card == false && timer % 10 == 0)
+                    if (i == 0 && discarded_card == false && timer % FRAMES(10) == 0)
                     {
                         hand_state = HAND_DRAW;  
                         sound_played = false;
@@ -846,7 +847,7 @@ void game_playing()
                     hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
                     hand_y += (24 << FIX_SHIFT);
 
-                    if (hand[i]->selected && timer % 10 == 0)
+                    if (hand[i]->selected && timer % FRAMES(10) == 0)
                     {
                         hand[i]->selected = false;
                         played_push(hand[i]);
@@ -865,7 +866,7 @@ void game_playing()
                         timer = 1;
                     }
 
-                    if (i == 0 && timer % 10 == 0)
+                    if (i == 0 && timer % FRAMES(10) == 0)
                     {
                         hand_state = HAND_PLAYING;
                         cards_drawn = 0;
@@ -1050,7 +1051,7 @@ void game_playing()
             switch (play_state)
             {
                 case PLAY_PLAYING:
-                    if (i == 0 && (timer % 10 == 0 || played[played_top - played_selections]->selected == false) && timer > 40)
+                    if (i == 0 && (timer % FRAMES(10) == 0 || played[played_top - played_selections]->selected == false) && timer > FRAMES(40))
                     {
                         played_selections--;
 
@@ -1067,7 +1068,7 @@ void game_playing()
                     }
                     break;
                 case PLAY_SCORING:
-                    if (i == 0 && (timer % 30 == 0) && timer > 40)
+                    if (i == 0 && (timer % FRAMES(30) == 0) && timer > FRAMES(40))
                     {
                         // So pretend "played_selections" is now called "scored_cards" and it counts the number of cards that have been scored
                         int scored_cards = 0;
@@ -1119,7 +1120,7 @@ void game_playing()
                     }
                     break;
                 case PLAY_ENDING: // This is the reverse of PLAY_PLAYING. The cards get reset back to their neutral position sequentially
-                    if (i == 0 && (timer % 10 == 0 || played[played_top - played_selections]->selected == false) && timer > 40)
+                    if (i == 0 && (timer % FRAMES(10) == 0 || played[played_top - played_selections]->selected == false) && timer > FRAMES(40))
                     {
                         played_selections--;
 
@@ -1136,7 +1137,7 @@ void game_playing()
                     }
                     break;
                 case PLAY_ENDED: // Basically a copy of HAND_DISCARD
-                    if (!discarded_card && played[i] != NULL && timer > 40)
+                    if (!discarded_card && played[i] != NULL && timer > FRAMES(40))
                     {
                         played_x = int2fx(240);
                         played_y = int2fx(70);
@@ -1216,7 +1217,7 @@ void game_playing()
 
 void game_round_end()
 {
-    const int timer_delay = 30; // 30 frames = 500ms
+    const int timer_delay = FRAMES(30); // 30 frames = 500ms
 
     if (timer > timer_delay)
     {

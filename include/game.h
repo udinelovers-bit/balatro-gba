@@ -4,6 +4,7 @@
 #define MAX_HAND_SIZE 16
 #define MAX_DECK_SIZE 52
 #define MAX_SELECTION_SIZE 5
+#define FRAMES(x) ((x) / game_speed)
 
 enum GameState
 {
