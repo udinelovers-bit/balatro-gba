@@ -4,6 +4,7 @@
 #define MAX_HAND_SIZE 16
 #define MAX_DECK_SIZE 52
 #define MAX_SELECTION_SIZE 5
+#define FRAMES(x) (((x) + game_speed - 1) / game_speed)
 
 // TODO: Turn into enum?
 #define BG_ID_CARD_SELECTING 1
