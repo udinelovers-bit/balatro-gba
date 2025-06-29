@@ -15,7 +15,7 @@
 #include "soundbank.h"
 
 static int timer = 1; // This might already exist in libtonc but idk so i'm just making my own
-static int game_speed = 4;
+static int game_speed = 1;
 static int background = 0;
 
 static enum GameState game_state = GAME_PLAYING;
