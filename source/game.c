@@ -96,37 +96,48 @@ static inline Card *discard_pop()
 }
 
 // General functions
+void sort_hand_by_suit()
+{
+    for (int a = 0; a < hand_top; a++)
+    {
+        for (int b = a + 1; b <= hand_top; b++)
+        {
+            if (hand[a] == NULL || (hand[b] != NULL && (hand[a]->card->suit > hand[b]->card->suit || (hand[a]->card->suit == hand[b]->card->suit && hand[a]->card->rank > hand[b]->card->rank))))
+            {
+                CardObject* temp = hand[a];
+                hand[a] = hand[b];
+                hand[b] = temp;
+            }
+        }
+    }
+}
+
+void sort_hand_by_rank()
+{
+    for (int a = 0; a < hand_top; a++)
+    {
+        for (int b = a + 1; b <= hand_top; b++)
+        {
+            if (hand[a] == NULL || (hand[b] != NULL && hand[a]->card->rank > hand[b]->card->rank))
+            {
+                CardObject* temp = hand[a];
+                hand[a] = hand[b];
+                hand[b] = temp;
+            }
+        }
+    }
+}
+
+
 void sort_cards()
 {
     if (sort_by_suit)
     {
-        for (int a = 0; a < hand_top; a++)
-        {
-            for (int b = a + 1; b <= hand_top; b++)
-            {
-                if (hand[a] == NULL || (hand[b] != NULL && (hand[a]->card->suit > hand[b]->card->suit || (hand[a]->card->suit == hand[b]->card->suit && hand[a]->card->rank > hand[b]->card->rank))))
-                {
-                    CardObject *temp = hand[a];
-                    hand[a] = hand[b];
-                    hand[b] = temp;
-                }
-            }
-        }
+        sort_hand_by_suit();
     }
     else
     {
-        for (int a = 0; a < hand_top; a++)
-        {
-            for (int b = a + 1; b <= hand_top; b++)
-            {
-                if (hand[a] == NULL || (hand[b] != NULL && hand[a]->card->rank > hand[b]->card->rank))
-                {
-                    CardObject *temp = hand[a];
-                    hand[a] = hand[b];
-                    hand[b] = temp;
-                }
-            }
-        }
+        sort_hand_by_rank();
     }
 
     // Update the sprites in the hand by destroying them and creating new ones in the correct order
@@ -578,19 +589,8 @@ void game_init()
     tte_printf("#{P:8,144; cx:0xC000}%d#{cx:0xF000}/%d", 1, 8); // Ante
 }
 
-void game_playing()
+static void game_playing_process_input_and_state()
 {
-    // Background logic (thissss might be moved to the card'ssss logic later. I'm a sssssnake)
-    if (hand_state == HAND_DRAW || hand_state == HAND_DISCARD || hand_state == HAND_SELECT)
-    {
-        change_background(BG_ID_CARD_SELECTING);
-    }
-    else
-    {
-        change_background(BG_ID_CARD_PLAYING);
-    }
-
-    // Input and state related logic
     if (hand_state == HAND_SELECT)
     {
         if (key_hit(KEY_LEFT))
@@ -633,7 +633,7 @@ void game_playing()
             temp_score = chips * mult;
             lerped_temp_score = int2fx(temp_score);
             lerped_score = int2fx(score);
-            
+
             tte_erase_rect(8, 64, 64, 72);
             tte_printf("#{P:8,64; cx:0xF000}%d", temp_score); // Score
 
@@ -652,7 +652,7 @@ void game_playing()
         {
             tte_erase_rect(8, 64, 64, 72);
             tte_printf("#{P:8,64; cx:0xF000}%d", fx2int(lerped_temp_score)); // Temp Score
-            
+
             // We actually don't need to erase this because the score only increases
             tte_printf("#{P:32,48; cx:0xF000}%d", fx2int(lerped_score)); // Score
 
@@ -669,12 +669,14 @@ void game_playing()
             lerped_score = 0;
 
             tte_erase_rect(8, 64, 64, 72); // Just erase the temp score
-            
+
             tte_printf("#{P:32,48; cx:0xF000}%d", score); // Score
         }
     }
+}
 
-    // Card logic
+static void game_playing_process_card_draw()
+{
     if (hand_state == HAND_DRAW && cards_drawn < hand_size)
     {
         if (timer % 10 == 0) // Draw a card every 10 frames
@@ -689,16 +691,14 @@ void game_playing()
         cards_drawn = 0;
         timer = 1;
     }
+}
 
-    static int played_selections = 0;
-    static bool sound_played = false;
-    bool discarded_card = false;
-
-    // Discarded cards loop (mainly for shuffling)
+static void game_playing_discarded_cards_loop()
+{
     if (hand_get_size() == 0 && hand_state == HAND_SHUFFLING && discard_top >= -1 && timer > 10)
     {
         // We take each discarded card and put it back into the deck with a short animation
-        static CardObject *discarded_card_object = NULL;
+        static CardObject* discarded_card_object = NULL;
         if (discarded_card_object == NULL)
         {
             discarded_card_object = card_object_new(discard_pop());
@@ -725,10 +725,10 @@ void game_playing()
             {
                 deck_push(discarded_card_object->card); // Put the card back into the deck
                 card_object_destroy(&discarded_card_object);
-                
+
                 // play draw sound
-                const int pitch_lut[MAX_HAND_SIZE] = {1024, 1048, 1072, 1096, 1120, 1144, 1168, 1192, 1216, 1240, 1264, 1288, 1312, 1336, 1360, 1384};
-                mm_sound_effect sfx_draw = {{SFX_CARD_DRAW}, pitch_lut[2], 0, 255, 128,};
+                const int pitch_lut[MAX_HAND_SIZE] = { 1024, 1048, 1072, 1096, 1120, 1144, 1168, 1192, 1216, 1240, 1264, 1288, 1312, 1336, 1360, 1384 };
+                mm_sound_effect sfx_draw = { {SFX_CARD_DRAW}, pitch_lut[2], 0, 255, 128, };
                 mmEffectEx(&sfx_draw);
             }
         }
@@ -740,288 +740,290 @@ void game_playing()
             timer = 1; // Reset the timer
         }
     }
+}
 
-    // Cards in hand update loop
+static void cards_in_hand_update_loop(bool* discarded_card, int* played_selections, bool* sound_played)
+{
     for (int i = hand_top + 1; i >= 0; i--) // Start from the end of the hand and work backwards because that's how Balatro does it
     {
         if (hand[i] != NULL)
         {
-            const int spacing_lut[MAX_HAND_SIZE] = {28, 28, 28, 28, 27, 21, 18, 15, 13, 12, 10, 9, 9, 8, 8, 7}; // This is a stupid way to do this but I don't care
-            
+            const int spacing_lut[MAX_HAND_SIZE] = { 28, 28, 28, 28, 27, 21, 18, 15, 13, 12, 10, 9, 9, 8, 8, 7 }; // This is a stupid way to do this but I don't care
+
             FIXED hand_x = int2fx(120);
             FIXED hand_y = int2fx(90);
 
             switch (hand_state)
             {
-                case HAND_DRAW:
-                    hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
-                    break;
-                case HAND_SELECT:
-                    if (i == card_focused && !hand[i]->selected)
-                    {
-                        hand_y -= (10 << FIX_SHIFT);
-                    }
-                    else if (i != card_focused && hand[i]->selected)
-                    {
-                        hand_y -= (15 << FIX_SHIFT);
-                    }
-                    else if (i == card_focused && hand[i]->selected)
-                    {
-                        hand_y -= (20 << FIX_SHIFT);
-                    }
+            case HAND_DRAW:
+                hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
+                break;
+            case HAND_SELECT:
+                if (i == card_focused && !hand[i]->selected)
+                {
+                    hand_y -= (10 << FIX_SHIFT);
+                }
+                else if (i != card_focused && hand[i]->selected)
+                {
+                    hand_y -= (15 << FIX_SHIFT);
+                }
+                else if (i == card_focused && hand[i]->selected)
+                {
+                    hand_y -= (20 << FIX_SHIFT);
+                }
 
-                    if (i != card_focused && hand[i]->y > hand_y)
-                    {
-                        hand[i]->y = hand_y;
-                        hand[i]->vy = 0;
-                    }
+                if (i != card_focused && hand[i]->y > hand_y)
+                {
+                    hand[i]->y = hand_y;
+                    hand[i]->vy = 0;
+                }
 
-                    hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top]; // TODO: Change this later to reference a 2D LUT of positions
-                    break;
-                case HAND_SHUFFLING:
-                    /* FALL THROUGH */
-                case HAND_DISCARD: // TODO: Add sound
-                    if (hand[i]->selected || hand_state == HAND_SHUFFLING)
+                hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top]; // TODO: Change this later to reference a 2D LUT of positions
+                break;
+            case HAND_SHUFFLING:
+                /* FALL THROUGH */
+            case HAND_DISCARD: // TODO: Add sound
+                if (hand[i]->selected || hand_state == HAND_SHUFFLING)
+                {
+                    if (!*discarded_card)
                     {
-                        if (!discarded_card)
+                        hand_x = int2fx(240);
+                        hand_y = int2fx(70);
+
+                        if (!*sound_played)
                         {
-                            hand_x = int2fx(240);
-                            hand_y = int2fx(70);
-
-                            if (!sound_played)
-                            {
-                                const int pitch_lut[MAX_SELECTION_SIZE] = {1024, 960, 896, 832, 768};
-                                mm_sound_effect sfx_draw = {{SFX_CARD_DRAW}, pitch_lut[cards_drawn], 0, 255, 128,};
-                                mmEffectEx(&sfx_draw);
-                                sound_played = true;
-                            }
-
-                            if (hand[i]->x >= hand_x)
-                            {
-                                discard_push(hand[i]->card);
-                                card_object_destroy(&hand[i]);
-                                sort_cards();
-
-                                hand_top--;
-                                cards_drawn++; // This technically isn't drawing cards, I'm just reusing the variable
-                                sound_played = false;
-                                timer = 1;
-
-                                hand_y = hand[i]->y;
-                                hand_x = hand[i]->x; 
-                            }
-
-                            discarded_card = true;
+                            const int pitch_lut[MAX_SELECTION_SIZE] = { 1024, 960, 896, 832, 768 };
+                            mm_sound_effect sfx_draw = { {SFX_CARD_DRAW}, pitch_lut[cards_drawn], 0, 255, 128, };
+                            mmEffectEx(&sfx_draw);
+                            *sound_played = true;
                         }
-                        else
+
+                        if (hand[i]->x >= hand_x)
                         {
-                            if (hand_state == HAND_DISCARD)
-                            {
-                                hand_y -= (15 << FIX_SHIFT); // Don't raise the card if we're mass discarding, it looks stupid.
-                            }
-                            else
-                            {
-                                hand_y += (24 << FIX_SHIFT);
-                            }
-                            hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
+                            discard_push(hand[i]->card);
+                            card_object_destroy(&hand[i]);
+                            sort_cards();
+
+                            hand_top--;
+                            cards_drawn++; // This technically isn't drawing cards, I'm just reusing the variable
+                            *sound_played = false;
+                            timer = 1;
+
+                            hand_y = hand[i]->y;
+                            hand_x = hand[i]->x;
                         }
+
+                        *discarded_card = true;
                     }
                     else
                     {
+                        if (hand_state == HAND_DISCARD)
+                        {
+                            hand_y -= (15 << FIX_SHIFT); // Don't raise the card if we're mass discarding, it looks stupid.
+                        }
+                        else
+                        {
+                            hand_y += (24 << FIX_SHIFT);
+                        }
                         hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
                     }
-
-                    if (i == 0 && discarded_card == false && timer % 10 == 0)
-                    {
-                        hand_state = HAND_DRAW;  
-                        sound_played = false;
-                        cards_drawn = 0;
-                        hand_selections = 0;
-                        timer = 1;
-                        break;
-                    }
-
-                    break;
-                case HAND_PLAY:
+                }
+                else
+                {
                     hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
-                    hand_y += (24 << FIX_SHIFT);
+                }
 
-                    if (hand[i]->selected && timer % 10 == 0)
+                if (i == 0 && *discarded_card == false && timer % 10 == 0)
+                {
+                    hand_state = HAND_DRAW;
+                    *sound_played = false;
+                    cards_drawn = 0;
+                    hand_selections = 0;
+                    timer = 1;
+                    break;
+                }
+
+                break;
+            case HAND_PLAY:
+                hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
+                hand_y += (24 << FIX_SHIFT);
+
+                if (hand[i]->selected && timer % 10 == 0)
+                {
+                    hand[i]->selected = false;
+                    played_push(hand[i]);
+                    sprite_destroy(&hand[i]->sprite);
+                    hand[i] = NULL;
+                    sort_cards();
+
+                    const int pitch_lut[MAX_SELECTION_SIZE] = { 1024, 960, 896, 832, 768 };
+                    mm_sound_effect sfx_draw = { {SFX_CARD_DRAW}, pitch_lut[cards_drawn], 0, 255, 128, };
+                    mmEffectEx(&sfx_draw);
+
+                    hand_top--;
+                    hand_selections--;
+                    cards_drawn++;
+
+                    timer = 1;
+                }
+
+                if (i == 0 && timer % 10 == 0)
+                {
+                    hand_state = HAND_PLAYING;
+                    cards_drawn = 0;
+                    hand_selections = 0;
+                    timer = 1;
+                    *played_selections = played_top + 1;
+
+                    switch (hand_type) // select the cards that apply to the hand type
                     {
-                        hand[i]->selected = false;
-                        played_push(hand[i]);
-                        sprite_destroy(&hand[i]->sprite);
-                        hand[i] = NULL;
-                        sort_cards();
+                    case NONE:
+                        break;
+                    case HIGH_CARD: // find the card with the highest rank in the hand
+                        int highest_rank_index = 0;
 
-                        const int pitch_lut[MAX_SELECTION_SIZE] = {1024, 960, 896, 832, 768};
-                        mm_sound_effect sfx_draw = {{SFX_CARD_DRAW}, pitch_lut[cards_drawn], 0, 255, 128,};
-                        mmEffectEx(&sfx_draw);
-
-                        hand_top--;
-                        hand_selections--;
-                        cards_drawn++;
-
-                        timer = 1;
-                    }
-
-                    if (i == 0 && timer % 10 == 0)
-                    {
-                        hand_state = HAND_PLAYING;
-                        cards_drawn = 0;
-                        hand_selections = 0;
-                        timer = 1;
-                        played_selections = played_top + 1;
-                        
-                        switch (hand_type) // select the cards that apply to the hand type
+                        for (int i = 0; i <= played_top; i++)
                         {
-                            case NONE:
-                                break;
-                            case HIGH_CARD: // find the card with the highest rank in the hand
-                                int highest_rank_index = 0;
+                            if (played[i]->card->rank > played[highest_rank_index]->card->rank)
+                            {
+                                highest_rank_index = i;
+                            }
+                        }
 
-                                for (int i = 0; i <= played_top; i++)
-                                {                                    
-                                    if (played[i]->card->rank > played[highest_rank_index]->card->rank)
-                                    {
-                                        highest_rank_index = i;
-                                    }
-                                }
-
-                                played[highest_rank_index]->selected = true;
-                                break;
-                            case PAIR: // find two cards with the same rank (Requires recursion)
-                                for (int i = 0; i <= played_top - 1; i++)
+                        played[highest_rank_index]->selected = true;
+                        break;
+                    case PAIR: // find two cards with the same rank (Requires recursion)
+                        for (int i = 0; i <= played_top - 1; i++)
+                        {
+                            for (int j = i + 1; j <= played_top; j++)
+                            {
+                                if (played[i]->card->rank == played[j]->card->rank)
                                 {
-                                    for (int j = i + 1; j <= played_top; j++)
+                                    played[i]->selected = true;
+                                    played[j]->selected = true;
+                                    break;
+                                }
+                            }
+
+                            if (played[i]->selected) break;
+                        }
+                        break;
+                    case TWO_PAIR: // find two pairs of cards with the same rank (Requires recursion)
+                        int i;
+
+                        for (i = 0; i <= played_top - 1; i++)
+                        {
+                            for (int j = i + 1; j <= played_top; j++)
+                            {
+                                if (played[i]->card->rank == played[j]->card->rank)
+                                {
+                                    played[i]->selected = true;
+                                    played[j]->selected = true;
+
+                                    break;
+                                }
+                            }
+
+                            if (played[i]->selected) break;
+                        }
+
+                        for (; i <= played_top - 1; i++) // Find second pair
+                        {
+                            for (int j = i + 1; j <= played_top; j++)
+                            {
+                                if (played[i]->card->rank == played[j]->card->rank && played[i]->selected == false && played[j]->selected == false)
+                                {
+                                    played[i]->selected = true;
+                                    played[j]->selected = true;
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                    case THREE_OF_A_KIND: // find three cards with the same rank (requires recursion)
+                        for (int i = 0; i <= played_top - 1; i++)
+                        {
+                            for (int j = i + 1; j <= played_top; j++)
+                            {
+                                if (played[i]->card->rank == played[j]->card->rank)
+                                {
+                                    played[i]->selected = true;
+                                    played[j]->selected = true;
+
+                                    for (int k = j + 1; k <= played_top; k++)
                                     {
-                                        if (played[i]->card->rank == played[j]->card->rank)
+                                        if (played[i]->card->rank == played[k]->card->rank && played[k]->selected == false)
                                         {
-                                            played[i]->selected = true;
-                                            played[j]->selected = true;
+                                            played[k]->selected = true;
                                             break;
                                         }
                                     }
 
-                                    if (played[i]->selected) break;
+                                    break;
                                 }
-                                break;
-                            case TWO_PAIR: // find two pairs of cards with the same rank (Requires recursion)
-                                int i;
+                            }
 
-                                for (i = 0; i <= played_top - 1; i++) 
+                            if (played[i]->selected) break;
+                        }
+                        break;
+                    case FOUR_OF_A_KIND: // find four cards with the same rank (requires recursion)
+                        if (played_top >= 3) // If there are 5 cards selected we just need to find the one card that doesn't match, and select the others
+                        {
+                            int unmatched_index = -1;
+
+                            for (int i = 0; i <= played_top; i++)
+                            {
+                                if (played[i]->card->rank != played[(i + 1) % played_top]->card->rank && played[i]->card->rank != played[(i + 2) % played_top]->card->rank)
                                 {
-                                    for (int j = i + 1; j <= played_top; j++)
-                                    {
-                                        if (played[i]->card->rank == played[j]->card->rank)
-                                        {
-                                            played[i]->selected = true;
-                                            played[j]->selected = true;
-                                            
-                                            break;
-                                        }
-                                    }
-
-                                    if (played[i]->selected) break;
+                                    unmatched_index = i;
+                                    break;
                                 }
+                            }
 
-                                for (; i <= played_top - 1; i++) // Find second pair
-                                {
-                                    for (int j = i + 1; j <= played_top; j++)
-                                    {
-                                        if (played[i]->card->rank == played[j]->card->rank && played[i]->selected == false && played[j]->selected == false)
-                                        {
-                                            played[i]->selected = true;
-                                            played[j]->selected = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                break;
-                            case THREE_OF_A_KIND: // find three cards with the same rank (requires recursion)
-                                for (int i = 0; i <= played_top - 1; i++)
-                                {
-                                    for (int j = i + 1; j <= played_top; j++)
-                                    {
-                                        if (played[i]->card->rank == played[j]->card->rank)
-                                        {
-                                            played[i]->selected = true;
-                                            played[j]->selected = true;
-
-                                            for (int k = j + 1; k <= played_top; k++)
-                                            {
-                                                if (played[i]->card->rank == played[k]->card->rank && played[k]->selected == false)
-                                                {
-                                                    played[k]->selected = true;
-                                                    break;
-                                                }
-                                            }
-
-                                            break;
-                                        }
-                                    }
-
-                                    if (played[i]->selected) break;
-                                }
-                                break;
-                            case FOUR_OF_A_KIND: // find four cards with the same rank (requires recursion)
-                                if (played_top >= 3) // If there are 5 cards selected we just need to find the one card that doesn't match, and select the others
-                                {
-                                    int unmatched_index = -1;
-
-                                    for (int i = 0; i <= played_top; i++)
-                                    {
-                                        if (played[i]->card->rank != played[(i + 1) % played_top]->card->rank && played[i]->card->rank != played[(i + 2) % played_top]->card->rank)
-                                        {
-                                            unmatched_index = i;
-                                            break;
-                                        }
-                                    }
-
-                                    for (int i = 0; i <= played_top; i++)
-                                    {
-                                        if (i != unmatched_index)
-                                        {
-                                            played[i]->selected = true;
-                                        }
-                                    }
-                                }
-                                else // If there are only 4 cards selected we know they match
-                                {
-                                    for (int i = 0; i <= played_top; i++)
-                                    {
-                                        played[i]->selected = true;
-                                    }
-                                }
-                                break;
-                            case STRAIGHT:
-                                /* FALL THROUGH */
-                            case FLUSH:
-                                /* FALL THROUGH */
-                            case FULL_HOUSE:
-                                /* FALL THROUGH */
-                            case STRAIGHT_FLUSH:
-                                /* FALL THROUGH */
-                            case ROYAL_FLUSH:
-                                /* FALL THROUGH */
-                            case FIVE_OF_A_KIND:
-                                /* FALL THROUGH */
-                            case FLUSH_HOUSE:
-                                /* FALL THROUGH */
-                            case FLUSH_FIVE: // Select all played cards in the hand (This is functionally identical as the above hand types)
-                                for (int i = 0; i <= played_top; i++)
+                            for (int i = 0; i <= played_top; i++)
+                            {
+                                if (i != unmatched_index)
                                 {
                                     played[i]->selected = true;
                                 }
-                                break;
+                            }
                         }
+                        else // If there are only 4 cards selected we know they match
+                        {
+                            for (int i = 0; i <= played_top; i++)
+                            {
+                                played[i]->selected = true;
+                            }
+                        }
+                        break;
+                    case STRAIGHT:
+                        /* FALL THROUGH */
+                    case FLUSH:
+                        /* FALL THROUGH */
+                    case FULL_HOUSE:
+                        /* FALL THROUGH */
+                    case STRAIGHT_FLUSH:
+                        /* FALL THROUGH */
+                    case ROYAL_FLUSH:
+                        /* FALL THROUGH */
+                    case FIVE_OF_A_KIND:
+                        /* FALL THROUGH */
+                    case FLUSH_HOUSE:
+                        /* FALL THROUGH */
+                    case FLUSH_FIVE: // Select all played cards in the hand (This is functionally identical as the above hand types)
+                        for (int i = 0; i <= played_top; i++)
+                        {
+                            played[i]->selected = true;
+                        }
+                        break;
                     }
+                }
 
-                    break;
-                case HAND_PLAYING: // Don't need to do anything here, just wait for the player to select cards
-                    hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
-                    hand_y += (24 << FIX_SHIFT);
-                    break;
+                break;
+            case HAND_PLAYING: // Don't need to do anything here, just wait for the player to select cards
+                hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
+                hand_y += (24 << FIX_SHIFT);
+                break;
             }
 
             hand[i]->tx = hand_x;
@@ -1029,9 +1031,13 @@ void game_playing()
             card_object_update(hand[i]);
         }
     }
+}
 
-    // Played cards update loop
-    for (int i = 0; i <= played_top; i++) // So this one is a bit fucking weird because I have to work kinda backwards for everything because of the order of the pushed cards from the hand to the play stack (also crazy that the company that published Balatro is called "Playstack" and this is a play stack, but I digress)
+static void played_cards_update_loop(bool* discarded_card, int* played_selections, bool* sound_played)
+{
+    // So this one is a bit fucking weird because I have to work kinda backwards for everything because of the order of the pushed cards from the hand to the play stack
+    // (also crazy that the company that published Balatro is called "Playstack" and this is a play stack, but I digress)
+    for (int i = 0; i <= played_top; i++)
     {
         if (played[i] != NULL)
         {
@@ -1050,18 +1056,18 @@ void game_playing()
             switch (play_state)
             {
                 case PLAY_PLAYING:
-                    if (i == 0 && (timer % 10 == 0 || played[played_top - played_selections]->selected == false) && timer > 40)
+                    if (i == 0 && (timer % 10 == 0 || played[played_top - *played_selections]->selected == false) && timer > 40)
                     {
-                        played_selections--;
+                        (*played_selections)--;
 
-                        if (played_selections == 0)
+                        if (*played_selections == 0)
                         {
                             play_state = PLAY_SCORING;
                             timer = 1;
                         }
                     }
 
-                    if (played[i]->selected && played_top - i >= played_selections)
+                    if (played[i]->selected && played_top - i >= *played_selections)
                     {
                         played_y -= (10 << FIX_SHIFT);
                     }
@@ -1076,18 +1082,18 @@ void game_playing()
                             if (played[played_top - j]->selected)
                             {
                                 scored_cards++;
-                                if (scored_cards > played_selections)
+                                if (scored_cards > *played_selections)
                                 {
                                     tte_erase_rect(72, 48, 240, 56);
                                     tte_set_pos(fx2int(played[played_top - j]->x) + 8, 48); // Offset of 16 pixels to center the text on the card
                                     tte_set_special(0xD000); // Set text color to blue from background memory
- 
+
                                     // Write the score to a character buffer variable
                                     char score_buffer[5]; // Assuming the maximum score is 99, we need 4 characters (2 digits + null terminator)
                                     snprintf(score_buffer, sizeof(score_buffer), "+%d", card_get_value(played[played_top - j]->card));
                                     tte_write(score_buffer);
-                                    
-                                    played_selections = scored_cards;
+
+                                    *played_selections = scored_cards;
                                     //played[j]->vy += (3 << FIX_SHIFT);
                                     played[played_top - j]->vscale = float2fx(0.3f); // Scale down the card when it's scored
                                     played[played_top - j]->vrotation = float2fx(8.0f); // Rotate the card when it's scored
@@ -1102,12 +1108,12 @@ void game_playing()
                                 }
                             }
 
-                            if (j == 0 && scored_cards == played_selections) // Check if it's the last card 
+                            if (j == 0 && scored_cards == *played_selections) // Check if it's the last card 
                             {
                                 tte_erase_rect(72, 48, 240, 56);
                                 play_state = PLAY_ENDING;
                                 timer = 1;
-                                played_selections = played_top + 1; // Reset the played selections to the top of the played stack
+                                *played_selections = played_top + 1; // Reset the played selections to the top of the played stack
                                 break;
                             }
                         }
@@ -1119,34 +1125,34 @@ void game_playing()
                     }
                     break;
                 case PLAY_ENDING: // This is the reverse of PLAY_PLAYING. The cards get reset back to their neutral position sequentially
-                    if (i == 0 && (timer % 10 == 0 || played[played_top - played_selections]->selected == false) && timer > 40)
+                    if (i == 0 && (timer % 10 == 0 || played[played_top - *played_selections]->selected == false) && timer > 40)
                     {
-                        played_selections--;
+                        (*played_selections)--;
 
-                        if (played_selections == 0)
+                        if (*played_selections == 0)
                         {
                             play_state = PLAY_ENDED;
                             timer = 1;
                         }
                     }
 
-                    if (played[i]->selected && played_top - i <= played_selections - 1)
+                    if (played[i]->selected && played_top - i <= *played_selections - 1)
                     {
                         played_y -= (10 << FIX_SHIFT);
                     }
                     break;
                 case PLAY_ENDED: // Basically a copy of HAND_DISCARD
-                    if (!discarded_card && played[i] != NULL && timer > 40)
+                    if (!*discarded_card && played[i] != NULL && timer > 40)
                     {
                         played_x = int2fx(240);
                         played_y = int2fx(70);
 
-                        if (!sound_played)
+                        if (!*sound_played)
                         {
                             const int pitch_lut[MAX_SELECTION_SIZE] = {1024, 960, 896, 832, 768};
                             mm_sound_effect sfx_draw = {{SFX_CARD_DRAW}, pitch_lut[cards_drawn], 0, 255, 128,};
                             mmEffectEx(&sfx_draw);
-                            sound_played = true;
+                            *sound_played = true;
                         }
 
                         if (played[i]->x >= played_x)
@@ -1156,7 +1162,7 @@ void game_playing()
 
                             //played_top--; 
                             cards_drawn++; // This technically isn't drawing cards, I'm just reusing the variable
-                            sound_played = false;
+                            *sound_played = false;
 
                             if (i == played_top)
                             {
@@ -1168,18 +1174,18 @@ void game_playing()
                                 {
                                     hand_state = HAND_DRAW;
                                 }
-                                
+
                                 play_state = PLAY_PLAYING;
                                 cards_drawn = 0;
                                 hand_selections = 0;
-                                played_selections = 0;
+                                *played_selections = 0;
                                 played_top = -1; // Reset the played stack
                                 timer = 1;
                                 break; // Break out of the loop to avoid accessing an invalid index
                             }
                         }
 
-                        discarded_card = true;
+                        *discarded_card = true;
                     }
 
                     break;
@@ -1191,8 +1197,10 @@ void game_playing()
             card_object_update(played[i]);
         }
     }
+}
 
-    // UI Text update
+static void game_playing_ui_text_update()
+{
     static int last_hand_size = 0;
     static int last_deck_size = 0;
 
@@ -1212,6 +1220,37 @@ void game_playing()
         last_hand_size = hand_get_size();
         last_deck_size = deck_get_size();
     }
+}
+
+void game_playing()
+{
+    // Background logic (thissss might be moved to the card'ssss logic later. I'm a sssssnake)
+    if (hand_state == HAND_DRAW || hand_state == HAND_DISCARD || hand_state == HAND_SELECT)
+    {
+        change_background(BG_ID_CARD_SELECTING);
+    }
+    else
+    {
+        change_background(BG_ID_CARD_PLAYING);
+    }
+
+    game_playing_process_input_and_state();
+
+    // Card logic
+
+    game_playing_process_card_draw();
+
+    // Discarded cards loop (mainly for shuffling)
+    game_playing_discarded_cards_loop();
+
+    static int played_selections = 0;
+    static bool sound_played = false;
+    bool discarded_card = false;
+
+    cards_in_hand_update_loop(&discarded_card, &played_selections, &sound_played);
+	played_cards_update_loop(&discarded_card, &played_selections, &sound_played);
+    
+    game_playing_ui_text_update();
 }
 
 void game_round_end()
