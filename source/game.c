@@ -161,8 +161,8 @@ enum HandType hand_get_type()
 
     hand_type = HIGH_CARD;
 
-    u8 suits[4] = {0};
-    u8 ranks[13] = {0};
+    u8 suits[NUM_SUITS] = {0};
+    u8 ranks[NUM_RANKS] = {0};
 
     for (int i = 0; i <= hand_top; i++)
     {
@@ -174,7 +174,7 @@ enum HandType hand_get_type()
     }
 
     // Check for flush
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < NUM_SUITS; i++)
     {
         if (suits[i] >= MAX_SELECTION_SIZE) // if i add jokers just MAX_SELECTION_SIZE - 1 for four fingers
         {
@@ -232,7 +232,7 @@ enum HandType hand_get_type()
     }
     
     // Check for for of a kind
-    for (int i = 0; i < 13; i++)
+    for (int i = 0; i < NUM_RANKS; i++)
     {
         if (ranks[i] >= 4)
         {
@@ -279,19 +279,19 @@ void change_background(int id)
     {
         return;
     }
-    else if (id == 1) // selecting
+    else if (id == BG_ID_CARD_SELECTING)
     {
         memcpy(&se_mem[31], background_gfxMap, background_gfxMapLen);
 
         tte_erase_rect(128, 152, 152, 160);
     }
-    else if (id == 2) // playing
+    else if (id == BG_ID_CARD_PLAYING)
     {
         memcpy(&se_mem[31], background_play_gfxMap, background_play_gfxMapLen);
 
         tte_erase_rect(128, 128, 152, 136);
     }
-    else if (id == 3) // round end
+    else if (id == BG_ID_ROUND_END)
     {
         REG_DISPCNT &= ~DCNT_WIN0; // Disable window 0 so it doesn't make the cashout menu transparent
 
@@ -538,9 +538,9 @@ void deck_shuffle()
 void game_init()
 {
     // Fill the deck with all the cards. Later on this can be replaced with a more dynamic system that allows for different decks and card types.
-    for (int suit = 0; suit < 4; suit++)
+    for (int suit = 0; suit < NUM_SUITS; suit++)
     {
-        for (int rank = 0; rank < 13; rank++)
+        for (int rank = 0; rank < NUM_RANKS; rank++)
         {
             Card *card = card_new(suit, rank);
             deck_push(card);
@@ -556,7 +556,7 @@ void game_init()
         deck[j] = temp;
     }
 
-    change_background(1);
+    change_background(BG_ID_CARD_SELECTING);
 
     tte_printf("#{P:128,128; cx:0xF000}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
     tte_printf("#{P:200,152; cx:0xF000}%d/%d", deck_get_size(), deck_get_max_size()); // Deck size/max size
@@ -583,11 +583,11 @@ void game_playing()
     // Background logic (thissss might be moved to the card'ssss logic later. I'm a sssssnake)
     if (hand_state == HAND_DRAW || hand_state == HAND_DISCARD || hand_state == HAND_SELECT)
     {
-        change_background(1);
+        change_background(BG_ID_CARD_SELECTING);
     }
     else
     {
-        change_background(2);
+        change_background(BG_ID_CARD_PLAYING);
     }
 
     // Input and state related logic
@@ -1198,11 +1198,11 @@ void game_playing()
 
     if (last_hand_size != hand_get_size() || last_deck_size != deck_get_size())
     {
-        if (background == 1)
+        if (background == BG_ID_CARD_SELECTING)
         {
             tte_printf("#{P:128,128; cx:0xF000}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
         }
-        else if (background == 2)
+        else if (background == BG_ID_CARD_PLAYING)
         {
             tte_printf("#{P:128,152; cx:0xF000}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
         }
@@ -1220,7 +1220,7 @@ void game_round_end()
 
     if (timer > timer_delay)
     {
-        change_background(3); // Change to the round end background
+        change_background(BG_ID_ROUND_END);
 
         int timer_offset = (timer - timer_delay); // Offset the timer to start at 0
         if (timer_offset <= 12)

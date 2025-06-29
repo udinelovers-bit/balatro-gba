@@ -5,6 +5,11 @@
 #define MAX_DECK_SIZE 52
 #define MAX_SELECTION_SIZE 5
 
+// TODO: Turn into enum?
+#define BG_ID_CARD_SELECTING 1
+#define BG_ID_CARD_PLAYING 2
+#define BG_ID_ROUND_END 3
+
 enum GameState
 {
     GAME_PLAYING,
