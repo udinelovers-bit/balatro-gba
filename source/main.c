@@ -10,10 +10,34 @@
 #include "deck_gfx.h"
 #include "background_gfx.h"
 #include "background_play_gfx.h"
+#include "nums.h"
 
 // Audio
 #include "soundbank.h"
 #include "soundbank_bin.h"
+
+#define MAP_AFF_SIZE 0x0100
+BG_AFFINE bgaff;
+AFF_SRC_EX asx = {32<<8, 64<<8, 120, 80, 0x0100, 0x0100, 0};
+
+
+void init_map() // Temp function ripped from libtonc example
+{   
+    // Grit is fucking garbage and doesn't allow you to have a palette offset, they all get loaded at 0x0000. I have no manually change each tile's palette bank
+
+    unsigned int correctedTiles[numsTilesLen / 4];
+    for (int i = 0; i < numsTilesLen / 4; i++)
+    {   
+        correctedTiles[i] = numsTiles[i] | 0xF0F0F0F0; // I brute forced this. I have no idea how this would and does work, but it does. We'll just leave this here for now.
+        // Actually for future reference, each number seems to equate to an XY on the palette, so 0xF0F0F0F0 would just push everything down 15 colors, since the second number isn't set.
+    }
+
+	memcpy(&tile8_mem[2], correctedTiles, numsTilesLen);
+    GRIT_CPY(&se_mem[2], numsMap);
+    memcpy16(&pal_bg_mem[16 * 15], numsPal, 5);
+
+	bgaff = bg_aff_default;
+}
 
 void init()
 {
@@ -24,35 +48,82 @@ void init()
     mmInitDefault((mm_addr)soundbank_bin, 12);
     mmStart(MOD_MAIN_THEME, MM_PLAY_LOOP);
 
-    // Set up the video mode
-    REG_DISPCNT = DCNT_MODE0 | DCNT_OBJ_1D | DCNT_BG0 | DCNT_BG1 | DCNT_OBJ;
-    REG_BG0CNT = BG_PRIO(1) | BG_CBB(0) | BG_SBB(30) | BG_8BPP | BG_REG_64x32;
-    REG_BG1CNT = BG_PRIO(0) | BG_CBB(1) | BG_SBB(31) | BG_4BPP;
-
     // Initialize text engine
-    tte_init_se(1, BG_CBB(1) | BG_SBB(31), 0, CLR_WHITE, 14, NULL, NULL);
+    tte_init_se(0, BG_CBB(0) | BG_SBB(30), 0, CLR_WHITE, 14, NULL, NULL);
     tte_erase_screen();
     tte_init_con();
 
+    // TTE palette setup
     pal_bg_bank[12][15] = 0x029F; // Yellow. honestly fuck libtonc because i cannot figure out how you're supposed to select a color from the palette index so i'm doing it like this
     pal_bg_bank[13][15] = 0x7E40; // Blue
     pal_bg_bank[14][15] = 0x213F; // Red
     pal_bg_bank[15][15] = CLR_WHITE;
 
     // Load the tiles and palette
+    // Background
     memcpy(pal_bg_mem, background_gfxPal, 64); // This '64" isn't a specific number, I'm just using it to prevent the text colors from being overridden
-    memcpy(&tile_mem[0][0], background_gfxTiles, background_gfxTilesLen);   
+    memcpy(&tile8_mem[1], background_gfxTiles, background_gfxTilesLen); // Deadass i have no clue how any of these memory things work but I just messed with them until stuff worked
+    memcpy(&se_mem[31], background_gfxMap, background_gfxMapLen);
 
-    memcpy(&tile_mem[4][0], deck_gfxTiles, deck_gfxTilesLen);
+    // Deck graphics
+    memcpy(&tile_mem[4], deck_gfxTiles, deck_gfxTilesLen);
     memcpy(pal_obj_mem, deck_gfxPal, deck_gfxPalLen);
+
+    // Set up the video mode
+    REG_BG0CNT = BG_PRIO(0) | BG_CBB(0) | BG_SBB(30) | BG_4BPP;
+    REG_BG1CNT = BG_PRIO(1) | BG_CBB(1) | BG_SBB(31) | BG_8BPP;
+    REG_BG2CNT = BG_PRIO(2) | BG_CBB(2) | BG_SBB(2) | BG_8BPP | BG_WRAP | BG_AFF_32x32;
+
+    int win1_left = 72;
+    int win1_top = 44;
+    int win1_right = 200;
+    int win1_bottom = 160;
+
+    int win2_left = 72;
+    int win2_top = 0;
+    int win2_right = 232;
+    int win2_bottom = 44;
+
+	REG_WIN0H = win1_left<<8 | win1_right;
+	REG_WIN0V =  win1_top<<8 | win1_bottom;
+	REG_WIN0CNT = WIN_ALL | WIN_BLD;
+	REG_WINOUTCNT = WIN_ALL;
+
+    REG_WIN1H = win2_left<<8 | win2_right;
+    REG_WIN1V =  win2_top<<8 | win2_bottom;
+    REG_WIN1CNT = WIN_ALL | WIN_BLD;
+
+    REG_BLDCNT = BLD_BUILD(BLD_BG1, BLD_BG2, 1);
+
+    REG_BLDALPHA = BLDA_BUILD(0, 13);
+
+    REG_DISPCNT = DCNT_MODE1 | DCNT_OBJ_1D | DCNT_BG0 | DCNT_BG1 | DCNT_BG2 | DCNT_OBJ | DCNT_WIN0 | DCNT_WIN1;
+
+    init_map(); // Initialize the map for the background
 
     // Initialize subsystems
     sprite_init();
     game_init();
 }
 
+void background_update() // This needs to be called before update() and draw() because setting REG_BG_AFFINE during an HBlank can cause issues
+{
+    static uint timer = 0;
+    timer++;
+    asx.alpha += 30;
+    asx.tex_x += 78;
+    asx.tex_y += 12;
+    asx.sx = (lu_sin(timer * 100) * 4 ) >> 8; // Scale the sine value to fit in a s16
+    asx.sx += 256; // Add 256 to the sine value to make it positive
+    asx.sy = (lu_sin(timer * 100 + 0x4000) * 4 ) >> 8; // Scale the sine value to fit in a s16
+    asx.sy += 256; // Add 256 to the sine value to make it positive
+    bg_rotscale_ex(&bgaff, &asx);
+	REG_BG_AFFINE[2]= bgaff;
+}
+
 void update()
 {
+
     game_update();
 }
 
@@ -70,6 +141,7 @@ int main()
         vid_vsync();
         mmFrame();
 		key_poll();
+        background_update();
         update();
         draw();
     }

@@ -281,26 +281,38 @@ void change_background(int id)
     }
     else if (id == 1) // selecting
     {
-        memcpy(&se_mem[30][0], background_gfxMap, background_gfxMapLen);
+        memcpy(&se_mem[31], background_gfxMap, background_gfxMapLen);
 
         tte_erase_rect(128, 152, 152, 160);
     }
     else if (id == 2) // playing
     {
-        memcpy(&se_mem[30][0], background_play_gfxMap, background_play_gfxMapLen);
+        memcpy(&se_mem[31], background_play_gfxMap, background_play_gfxMapLen);
 
         tte_erase_rect(128, 128, 152, 136);
     }
     else if (id == 3) // round end
     {
+        REG_DISPCNT &= ~DCNT_WIN0; // Disable window 0 so it doesn't make the cashout menu transparent
+
         memcpy(pal_bg_mem, background_round_end_gfxPal, 64);
-        memcpy(&tile_mem[0][0], background_round_end_gfxTiles, background_round_end_gfxTilesLen);
-        memcpy(&se_mem[30][0], background_round_end_gfxMap, background_round_end_gfxMapLen);
+        memcpy(&tile_mem[1], background_round_end_gfxTiles, background_round_end_gfxTilesLen);
+        memcpy(&se_mem[31], background_round_end_gfxMap, background_round_end_gfxMapLen);
 
-        tte_erase_rect(0, 0, 64, 64); // Clear top left corner where the blind stats are displayed
-        tte_erase_rect(128, 152, 152, 160); // Clear the hand size/max size display
+        // 1024 0x0400 is when sprites are flipped horizontally, 2048 0x0800 is when they are flipped vertically, 3072 0x0C00 is when they are flipped both horizontally and vertically
 
-        tte_printf("#{P:88,72; cx:0xF000}Cash Out: $5"); // Hardcoded example
+        // Incoming hack! this just clears the cash out menu thing so that we can slowly display it with an animation later. The reason this isn't optimal is because the full background is already loaded into the vram at this point.
+        // I'm just doing it this way because it's easier than doing some weird shit with Grit in order to get a proper tilemap. I'm not the biggest fan of Grit.
+        for (int y = 19; y >= 7; y--)
+        {
+            const unsigned short tile_map[17] = {se_mem[31][8 + 32 * y], 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000};
+            memcpy(&se_mem[31][8 + 32 * y], tile_map, sizeof(tile_map));
+        }
+        
+        //tte_erase_rect(0, 0, 64, 48); // Clear top left corner where the blind stats are displayed
+        tte_erase_rect(128, 128, 152, 160); // Clear the hand size/max size display
+
+        //tte_printf("#{P:88,72; cx:0xF000}Cash Out: $5"); // Hardcoded example
     }
     else
     {
@@ -1204,9 +1216,54 @@ void game_playing()
 
 void game_round_end()
 {
-    if (timer > 30)
+    const int timer_delay = 30; // 30 frames = 500ms
+
+    if (timer > timer_delay)
     {
         change_background(3); // Change to the round end background
+
+        int timer_offset = (timer - timer_delay); // Offset the timer to start at 0
+        if (timer_offset <= 12)
+        {
+            const int bottom_of_screen = 19;
+            int y = bottom_of_screen - timer_offset;
+
+            // Tbh idk why it has to be like this because I'm not a true GBA™️ programmer, but it seems you cant copy to an odd address with more than one tile.
+
+            // 1st row
+            const unsigned short tile_map1[17] = {se_mem[31][8 + 32 * y], 0x0027, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0427};
+            memcpy(&se_mem[31][8 + 32 * y], tile_map1, sizeof(tile_map1));
+
+            // 2nd row
+            y += 1;
+            if (y > bottom_of_screen) return; // Prevent out of bounds access
+            const unsigned short tile_map2[17] = {se_mem[31][8 + 32 * y], 0x0001, 0x042D, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x002D, 0x0401};
+            memcpy(&se_mem[31][8 + 32 * y], tile_map2, sizeof(tile_map2));
+
+            // 3rd row
+            y += 1;
+            if (y > bottom_of_screen) return; // Prevent out of bounds access
+            unsigned short tile_map3[17] = {se_mem[31][8 + 32 * y], 0x0001, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0401};
+            memcpy(&se_mem[31][8 + 32 * y], tile_map3, sizeof(tile_map3));
+
+            // 4th row
+            y += 1;
+            if (y > bottom_of_screen) return; // Prevent out of bounds access
+            tile_map3[0] = se_mem[31][8 + 32 * y]; // Copy the first tile from the previous row
+            memcpy(&se_mem[31][8 + 32 * y], tile_map3, sizeof(tile_map3));
+
+            //5th row
+            y += 1;
+            if (y > bottom_of_screen) return; // Prevent out of bounds access
+            const unsigned short tile_map4[17] = {se_mem[31][8 + 32 * y], 0x0001, 0x0054, 0x0055, 0x0055, 0x0055, 0x0055, 0x0055, 0x0055, 0x0055, 0x0055, 0x0055, 0x0055, 0x0055, 0x0055, 0x0454, 0x0401};
+            memcpy(&se_mem[31][8 + 32 * y], tile_map4, sizeof(tile_map4));
+
+            // 6th row
+            y += 1;
+            if (y > bottom_of_screen) return; // Prevent out of bounds access
+            const unsigned short tile_map5[17] = {se_mem[31][8 + 32 * y], 0x0001, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0401};
+            memcpy(&se_mem[31][8 + 32 * y], tile_map5, sizeof(tile_map5));
+        }
     }
 }
 
