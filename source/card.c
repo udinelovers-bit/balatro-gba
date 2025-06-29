@@ -44,7 +44,7 @@ u8 card_get_value(Card *card)
     }
     else
     {
-        return card->rank + 2; // 2-10 are worth their rank + 2 (because rank starts at 0)
+        return card->rank + RANK_OFFSET; // 2-10 are worth their rank + RANK_OFFSET
     }
 
     return 0; // Should never reach here, but just in case
