@@ -7,6 +7,7 @@
 
 #include "sprite.h"
 #include "card.h"
+#include "blind.h"
 
 #include "background_gfx.h"
 #include "background_play_gfx.h"
@@ -18,11 +19,14 @@ static int timer = 1; // This might already exist in libtonc but idk so i'm just
 static int game_speed = 1;
 static int background = 0;
 
-static enum GameState game_state = GAME_PLAYING;
+static enum GameState game_state = GAME_ROUND_END;
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
 
 static enum HandType hand_type = NONE;
+
+static Sprite *playing_blind_token = NULL; // The sprite that displays the blind when in "GAME_PLAYING/GAME_ROUND_END" state
+static Sprite *round_end_blind_token = NULL; // The sprite that displays the blind when in "GAME_ROUND_END" state
 
 static int hands = 4;
 static int discards = 4;
@@ -549,6 +553,10 @@ void deck_shuffle()
 // Game functions
 void game_init()
 {
+    playing_blind_token = blind_token_new(SMALL_BLIND, 8, 18, 33); // Create the blind token sprite at the top left corner
+    round_end_blind_token = blind_token_new(SMALL_BLIND, 82, 78, 34); // Create the blind token sprite for round end
+    obj_hide(round_end_blind_token->obj); // Hide the blind token sprite for now
+
     // Fill the deck with all the cards. Later on this can be replaced with a more dynamic system that allows for different decks and card types.
     for (int suit = 0; suit < NUM_SUITS; suit++)
     {
@@ -1303,6 +1311,19 @@ void game_round_end()
             if (y > bottom_of_screen) return; // Prevent out of bounds access
             const unsigned short tile_map5[17] = {se_mem[31][8 + 32 * y], 0x0001, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0401};
             memcpy(&se_mem[31][8 + 32 * y], tile_map5, sizeof(tile_map5));
+        }
+        else if (timer_offset == 30)
+        {
+            obj_unhide(round_end_blind_token->obj, 0);
+            tte_printf("#{P:112,88; cx:0xE000}%d", blind_requirement);
+
+            int y = 12;
+
+            unsigned short tile_map3[17] = {se_mem[31][8 + 32 * (y - 1)], 0x0001, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0015, 0x0401};
+            memcpy(&se_mem[31][8 + 32 * (y - 1)], tile_map3, sizeof(tile_map3));
+
+            const unsigned short tile_map4[17] = {se_mem[31][8 + 32 * y], 0x0001, 0x0054, 0x0055, 0x0055, 0x0055, 0x0055, 0x0055, 0x0055, 0x0055, 0x0055, 0x0055, 0x0055, 0x0055, 0x0055, 0x0454, 0x0401};
+            memcpy(&se_mem[31][8 + 32 * y], tile_map4, sizeof(tile_map4));
         }
     }
 }
