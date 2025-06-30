@@ -16,7 +16,8 @@ enum GameState
     GAME_PLAYING,
     GAME_ROUND_END,
     GAME_SHOP,
-    GAME_BLIND_SELECT
+    GAME_BLIND_SELECT,
+    GAME_LOSE,
 };
 
 enum HandState

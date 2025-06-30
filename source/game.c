@@ -19,7 +19,7 @@ static int timer = 1; // This might already exist in libtonc but idk so i'm just
 static int game_speed = 1;
 static int background = 0;
 
-static enum GameState game_state = GAME_ROUND_END;
+static enum GameState game_state = GAME_PLAYING;
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
 
@@ -1233,6 +1233,10 @@ static void game_playing_ui_text_update()
 
 void game_playing()
 {
+    if (hand_state == HAND_SELECT && hands == 0) {
+        game_state = GAME_LOSE;
+    }
+
     // Background logic (thissss might be moved to the card'ssss logic later. I'm a sssssnake)
     if (hand_state == HAND_DRAW || hand_state == HAND_DISCARD || hand_state == HAND_SELECT)
     {
@@ -1345,6 +1349,9 @@ void game_update()
             break;
         case GAME_BLIND_SELECT:
             // Handle blind select logic here
+            break;
+        case GAME_LOSE:
+            // Handle lose logic here
             break;
     }
 }
