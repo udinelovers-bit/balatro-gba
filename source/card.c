@@ -7,7 +7,7 @@
 #include "soundbank.h"
 
 // Card sprites lookup table. First index is the suit, second index is the rank. The value is the tile index.
-const static u16 card_sprite_lut[4][13] = {
+const static u16 card_sprite_lut[NUM_SUITS][NUM_RANKS] = {
     {0, 16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192},
     {208, 224, 240, 256, 272, 288, 304, 320, 336, 352, 368, 384, 400},
     {416, 432, 448, 464, 480, 496, 512, 528, 544, 560, 576, 592, 608},
