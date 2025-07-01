@@ -19,7 +19,7 @@ static int timer = 1; // This might already exist in libtonc but idk so i'm just
 static int game_speed = 1;
 static int background = 0;
 
-static enum GameState game_state = GAME_ROUND_END; // The current game state, this is used to determine what the game is doing at any given time
+static enum GameState game_state = GAME_PLAYING; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
 
@@ -1247,7 +1247,7 @@ void game_playing()
     {
         change_background(BG_ID_CARD_SELECTING);
     }
-    else
+    else if (hand_state != HAND_SHUFFLING)
     {
         change_background(BG_ID_CARD_PLAYING);
     }
@@ -1490,7 +1490,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             memcpy(&se_mem[31][32 * y], &tile_map6, sizeof(tile_map6));
         }
 
-        if (blind_panel_y == 5) // If the blind panel is fully animated
+        if (blind_panel_y == 6) // If the blind panel is fully animated
         {
             // Reset palette
             memset16(&pal_bg_mem[18], 0x1483, sizeof(pal_bg_mem));
