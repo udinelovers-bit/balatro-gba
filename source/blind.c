@@ -14,6 +14,41 @@ void blinds_init()
     memcpy16(&pal_obj_mem[17], &small_blind_token_palette, sizeof(small_blind_token_palette) / 2);
 }
 
+int blind_get_requirement(enum BlindType type, int ante)
+{
+    if (ante < 0 || ante > MAX_ANTE)
+    {
+        ante = 0; // Ensure ante is within valid range
+    }
+
+    switch (type)
+    {
+        case SMALL_BLIND:
+            return ante_lut[ante];
+        case BIG_BLIND:
+            return (ante_lut[ante] * 3) / 2; // X1.5
+        case BOSS_BLIND:
+            return ante_lut[ante] * 2; // X2
+        default:
+            return 0; // Invalid type
+    }
+}
+
+int blind_get_reward(enum BlindType type)
+{
+    switch (type)
+    {
+        case SMALL_BLIND:
+            return 3;
+        case BIG_BLIND:
+            return 4;
+        case BOSS_BLIND:
+            return 5;
+        default:
+            return 0; // Invalid type
+    }
+}
+
 Sprite *blind_token_new(enum BlindType type, int x, int y, int sprite_index)
 {
     Sprite *sprite = NULL;

@@ -19,7 +19,7 @@ static int timer = 1; // This might already exist in libtonc but idk so i'm just
 static int game_speed = 1;
 static int background = 0;
 
-static enum GameState game_state = GAME_PLAYING;
+static enum GameState game_state = GAME_ROUND_END; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
 
@@ -28,10 +28,13 @@ static enum HandType hand_type = NONE;
 static Sprite *playing_blind_token = NULL; // The sprite that displays the blind when in "GAME_PLAYING/GAME_ROUND_END" state
 static Sprite *round_end_blind_token = NULL; // The sprite that displays the blind when in "GAME_ROUND_END" state
 
+static enum BlindType current_blind = SMALL_BLIND;
+
 static int hands = 4;
 static int discards = 4;
 
-static int blind_requirement = 300; // Hard coded for now. This will be read from some sort of header file later.
+static int ante = 1;
+static int money = 4;
 static int score = 0;
 static int temp_score = 0; // This is the score that shows in the same spot as the hand type.
 static FIXED lerped_score = 0;
@@ -553,8 +556,8 @@ void deck_shuffle()
 // Game functions
 void game_init()
 {
-    playing_blind_token = blind_token_new(SMALL_BLIND, 8, 18, 33); // Create the blind token sprite at the top left corner
-    round_end_blind_token = blind_token_new(SMALL_BLIND, 82, 78, 34); // Create the blind token sprite for round end
+    playing_blind_token = blind_token_new(current_blind, 8, 18, 33); // Create the blind token sprite at the top left corner
+    round_end_blind_token = blind_token_new(current_blind, 82, 86, 34); // Create the blind token sprite for round end
     obj_hide(round_end_blind_token->obj); // Hide the blind token sprite for now
 
     // Fill the deck with all the cards. Later on this can be replaced with a more dynamic system that allows for different decks and card types.
@@ -581,8 +584,8 @@ void game_init()
     tte_printf("#{P:128,128; cx:0xF000}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
     tte_printf("#{P:200,152; cx:0xF000}%d/%d", deck_get_size(), deck_get_max_size()); // Deck size/max size
 
-    tte_printf("#{P:40,24; cx:0xE000}%d", blind_requirement); // Blind requirement
-    tte_printf("#{P:40,32; cx:0xC000}$3"); // Blind reward
+    tte_printf("#{P:40,24; cx:0xE000}%d", blind_get_requirement(current_blind, ante)); // Blind requirement
+    tte_printf("#{P:40,32; cx:0xC000}$%d", blind_get_reward(current_blind)); // Blind reward
 
     tte_printf("#{P:32,48; cx:0xF000}%d", 0); // Score
 
@@ -592,10 +595,10 @@ void game_init()
     tte_printf("#{P:16,104; cx:0xD000}%d", hands); // Hand
     tte_printf("#{P:48,104; cx:0xE000}%d", discards); // Discard
 
-    tte_printf("#{P:24,120; cx:0xC000}$%d", 4); // Money
+    tte_printf("#{P:24,120; cx:0xC000}$%d", money); // Money
 
     tte_printf("#{P:48,144; cx:0xC000}%d", 1); // Round
-    tte_printf("#{P:8,144; cx:0xC000}%d#{cx:0xF000}/%d", 1, 8); // Ante
+    tte_printf("#{P:8,144; cx:0xC000}%d#{cx:0xF000}/%d", ante, MAX_ANTE); // Ante
 }
 
 static void game_playing_process_input_and_state()
@@ -706,6 +709,8 @@ static void game_playing_discarded_cards_loop()
 {
     if (hand_get_size() == 0 && hand_state == HAND_SHUFFLING && discard_top >= -1 && timer > FRAMES(10))
     {
+        change_background(BG_ID_ROUND_END); // Change the background to the round end background. This is how it works in Balatro, so I'm doing it this way too.
+
         // We take each discarded card and put it back into the deck with a short animation
         static CardObject* discarded_card_object = NULL;
         if (discarded_card_object == NULL)
@@ -1175,7 +1180,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
                             if (i == played_top)
                             {
-                                if (score >= blind_requirement)
+                                if (score >= blind_get_requirement(current_blind, ante))
                                 {
                                     hand_state = HAND_SHUFFLING;
                                 }
@@ -1266,70 +1271,234 @@ void game_playing()
     game_playing_ui_text_update();
 }
 
-void game_round_end()
+void game_round_end() // Writing this kind a made me want to kms. If somewone wants to rewrite this, please do so.
 {
-    const int timer_delay = FRAMES(30); // 30 frames = 500ms
+    static int state = 0;
 
-    if (timer > timer_delay)
+    static int blind_reward = 0; // This is used just for animation purposes. it should get reset each time the round ends
+    static int hand_reward = 0; // This is used just for animation purposes. it should get reset each time the round ends
+    static int blind_panel_y = 0; // This is used to animate the blind panel up and down
+
+    if (background != BG_ID_ROUND_END)
     {
         change_background(BG_ID_ROUND_END);
+        blind_reward = 0;
+        hand_reward = 0;
+        blind_panel_y = 0;
+        state = 0;
+    }
+    else if (timer == 30 && state == 0)
+    {
+        state = 1; // Change the state to the next one
+        timer = 0; // Reset the timer
+    }
+    
+    if (state == 1) // This can be easily turned into a switch statement and I'll probably do it later
+    {
+        const int bottom_of_screen = 19;
+        int y = bottom_of_screen - timer;
 
-        int timer_offset = (timer - timer_delay); // Offset the timer to start at 0
-        if (timer_offset <= 12)
+        // Tbh idk why it has to be like this because I'm not a true GBA™️ programmer, but it seems you cant copy to an odd address with more than one tile.
+
+        // 1st row
+        const unsigned short tile_map1[17] = {se_mem[31][8 + 32 * y], 0x0026, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0426};
+        memcpy(&se_mem[31][8 + 32 * y], tile_map1, sizeof(tile_map1));
+
+        // 2nd row
+        y += 1;
+        if (y > bottom_of_screen) return; // Prevent out of bounds access
+        const unsigned short tile_map2[17] = {se_mem[31][8 + 32 * y], 0x002A, 0x042D, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x002D, 0x042A};
+        memcpy(&se_mem[31][8 + 32 * y], tile_map2, sizeof(tile_map2));
+
+        // 3rd row
+        y += 1;
+        if (y > bottom_of_screen) return; // Prevent out of bounds access
+        unsigned short tile_map3[17] = {se_mem[31][8 + 32 * y], 0x002A, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042A};
+        memcpy(&se_mem[31][8 + 32 * y], tile_map3, sizeof(tile_map3));
+
+        // 4th row
+        y += 1;
+        if (y > bottom_of_screen) return; // Prevent out of bounds access
+        tile_map3[0] = se_mem[31][8 + 32 * y]; // Copy the first tile from the previous row
+        memcpy(&se_mem[31][8 + 32 * y], tile_map3, sizeof(tile_map3));
+
+        // 5th row
+        y += 1;
+        if (y > bottom_of_screen) return; // Prevent out of bounds access
+        tile_map3[0] = se_mem[31][8 + 32 * y]; // Copy the first tile from the previous row
+        memcpy(&se_mem[31][8 + 32 * y], tile_map3, sizeof(tile_map3));
+
+        // 6th row
+        y += 1;
+        if (y > bottom_of_screen) return; // Prevent out of bounds access
+        const unsigned short tile_map4[17] = {se_mem[31][8 + 32 * y], 0x002A, 0x0055, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0455, 0x042A};
+        memcpy(&se_mem[31][8 + 32 * y], tile_map4, sizeof(tile_map4));
+
+        // 7th row
+        y += 1;
+        if (y > bottom_of_screen) return; // Prevent out of bounds access
+        const unsigned short tile_map5[17] = {se_mem[31][8 + 32 * y], 0x002A, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x042A};
+        memcpy(&se_mem[31][8 + 32 * y], tile_map5, sizeof(tile_map5));
+
+        if (timer >= 12)
         {
-            const int bottom_of_screen = 19;
-            int y = bottom_of_screen - timer_offset;
-
-            // Tbh idk why it has to be like this because I'm not a true GBA™️ programmer, but it seems you cant copy to an odd address with more than one tile.
-
-            // 1st row
-            const unsigned short tile_map1[17] = {se_mem[31][8 + 32 * y], 0x0027, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0427};
-            memcpy(&se_mem[31][8 + 32 * y], tile_map1, sizeof(tile_map1));
-
-            // 2nd row
-            y += 1;
-            if (y > bottom_of_screen) return; // Prevent out of bounds access
-            const unsigned short tile_map2[17] = {se_mem[31][8 + 32 * y], 0x002B, 0x042E, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x002E, 0x042B};
-            memcpy(&se_mem[31][8 + 32 * y], tile_map2, sizeof(tile_map2));
-
-            // 3rd row
-            y += 1;
-            if (y > bottom_of_screen) return; // Prevent out of bounds access
-            unsigned short tile_map3[17] = {se_mem[31][8 + 32 * y], 0x002B, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042B};
-            memcpy(&se_mem[31][8 + 32 * y], tile_map3, sizeof(tile_map3));
-
-            // 4th row
-            y += 1;
-            if (y > bottom_of_screen) return; // Prevent out of bounds access
-            tile_map3[0] = se_mem[31][8 + 32 * y]; // Copy the first tile from the previous row
-            memcpy(&se_mem[31][8 + 32 * y], tile_map3, sizeof(tile_map3));
-
-            //5th row
-            y += 1;
-            if (y > bottom_of_screen) return; // Prevent out of bounds access
-            const unsigned short tile_map4[17] = {se_mem[31][8 + 32 * y], 0x002B, 0x0056, 0x0057, 0x0057, 0x0057, 0x0057, 0x0057, 0x0057, 0x0057, 0x0057, 0x0057, 0x0057, 0x0057, 0x0057, 0x0456, 0x042B};
-            memcpy(&se_mem[31][8 + 32 * y], tile_map4, sizeof(tile_map4));
-
-            // 6th row
-            y += 1;
-            if (y > bottom_of_screen) return; // Prevent out of bounds access
-            const unsigned short tile_map5[17] = {se_mem[31][8 + 32 * y], 0x002B, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x042B};
-            memcpy(&se_mem[31][8 + 32 * y], tile_map5, sizeof(tile_map5));
-        }
-        else if (timer_offset == 30)
-        {
-            obj_unhide(round_end_blind_token->obj, 0);
-            tte_printf("#{P:112,88; cx:0xE000}%d", blind_requirement);
-
-            int y = 12;
-
-            const unsigned short tile_map3[17] = {se_mem[31][8 + 32 * (y - 1)], 0x002B, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042B};
-            memcpy(&se_mem[31][8 + 32 * (y - 1)], tile_map3, sizeof(tile_map3));
-
-            const unsigned short tile_map4[17] = {se_mem[31][8 + 32 * y], 0x002B, 0x0056, 0x0057, 0x0057, 0x0057, 0x0057, 0x0057, 0x0057, 0x0057, 0x0057, 0x0057, 0x0057, 0x0057, 0x0057, 0x0456, 0x042B};
-            memcpy(&se_mem[31][8 + 32 * y], tile_map4, sizeof(tile_map4));
+            state = 2; // Change the state to the next one
+            timer = 0; // Reset the timer
         }
     }
+    else if (state == 2)
+    {
+        obj_unhide(round_end_blind_token->obj, 0);
+        tte_printf("#{P:112,96; cx:0xE000}%d", blind_get_requirement(current_blind, ante));
+
+        int y = 13;
+
+        const unsigned short tile_map1[17] = {se_mem[31][8 + 32 * (y - 1)], 0x002A, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042A};
+        memcpy(&se_mem[31][8 + 32 * (y - 1)], tile_map1, sizeof(tile_map1));
+
+        const unsigned short tile_map2[17] = {se_mem[31][8 + 32 * y], 0x002A, 0x0055, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0455, 0x042A};
+        memcpy(&se_mem[31][8 + 32 * y], tile_map2, sizeof(tile_map2));
+
+        // Reset blind reward here since this code only runs once
+        blind_reward = blind_get_reward(current_blind);
+        hand_reward = 0;
+        blind_panel_y = 0; // Reset the blind panel y position
+
+        if (timer >= 30)
+        {
+            state = 3; // Change the state to the next one
+            timer = 0; // Reset the timer
+        }
+    }
+    else if (state == 3) // Animates the "Score Min" text over 4 frames
+    {
+        // "Score Min" text
+        const unsigned short tile_map3[4] = {0x003E, 0x003F, 0x0040, 0x0041};
+
+        int temp_offset = timer; // Offset the timer to start at 0
+        memcpy(&se_mem[31][12 + temp_offset + 32 * 11], &tile_map3[temp_offset - 1], sizeof(tile_map3[0]));
+
+        if (timer >= 4)
+        {
+            state = 4; // Change the state to the next one
+            timer = 0; // Reset the timer
+        }
+    }
+    else if (state == 4) // This animates the money transfer from the top left blind into the round end panel
+    {
+        if (timer % FRAMES(20) != 0) return;
+
+        // TODO: Add sound effect here
+
+        blind_reward--;
+        tte_printf("#{P:40,32; cx:0xC000}$%d", blind_reward); // Blind reward
+        tte_printf("#{P:168, 96; cx:0xC000}$%d", blind_get_reward(current_blind) - blind_reward); // Blind reward
+
+        if (blind_reward <= 0)
+        {
+            // This could be smoother maybe with affine transformations but it would be a very minor effect
+            tte_erase_rect(32, 16, 64, 40); // Erase the blind reward text
+            obj_hide(playing_blind_token->obj);
+            state = 5; // Change the state to the next one
+            timer = 0; // Reset the timer
+        }
+    }
+    else if (state == 5)
+    {
+        if (timer < FRAMES(20)) return;
+
+        blind_panel_y++;
+        int y = 5;
+
+        if (blind_panel_y == 1)
+        {
+            tte_erase_rect(40, 16, 64, 40); // Erase the blind reward text
+            obj_hide(playing_blind_token->obj);
+
+            const unsigned short tile_map1[10] = {0x0064, 0x0065, 0x0065, 0x0066, 0x0067, 0x0067, 0x0067, 0x0068, 0x0464, se_mem[31][32 * y + 9]};
+            memcpy(&se_mem[31][32 * y], &tile_map1, sizeof(tile_map1));
+
+            y -= 1;
+            const unsigned short tile_map2[10] = {0x006F, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x046F, se_mem[31][32 * y + 9]};
+            memcpy(&se_mem[31][32 * y], &tile_map2, sizeof(tile_map2));
+
+            y = 1;
+            const unsigned short tile_map3[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+            y -= 1;
+            memcpy(&se_mem[31][32 * y], &tile_map3, sizeof(tile_map3));
+
+            y = 2;
+            const unsigned short tile_map4[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+            y -= 1;
+            memcpy(&se_mem[31][32 * y], &tile_map4, sizeof(tile_map4));
+
+            y = 3;
+            const unsigned short tile_map5[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+            y -= 1;
+            memcpy(&se_mem[31][32 * y], &tile_map5, sizeof(tile_map5));
+        }
+        else if (blind_panel_y == 2)
+        {
+            const unsigned short tile_map1[10] = {0x0064, 0x0065, 0x0065, 0x0066, 0x0067, 0x0067, 0x0067, 0x0068, 0x0464, se_mem[31][32 * y + 9]};
+            memcpy(&se_mem[31][32 * y], &tile_map1, sizeof(tile_map1));
+            
+            y = 1;
+            const unsigned short tile_map3[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+            y -= 1;
+            memcpy(&se_mem[31][32 * y], &tile_map3, sizeof(tile_map3));
+            
+            y = 2;
+            const unsigned short tile_map4[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+            y -= 1;
+            memcpy(&se_mem[31][32 * y], &tile_map4, sizeof(tile_map4));
+
+            y = 3;
+            const unsigned short tile_map5[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+            y -= 1;
+            memcpy(&se_mem[31][32 * y], &tile_map5, sizeof(tile_map5));
+
+            y = 4;
+            const unsigned short tile_map6[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+            y -= 1;
+            memcpy(&se_mem[31][32 * y], &tile_map6, sizeof(tile_map6));
+
+            y = 4;
+            const unsigned short tile_map2[10] = {0x002A, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x042A, se_mem[31][32 * y + 9]};
+            memcpy(&se_mem[31][32 * y], &tile_map2, sizeof(tile_map2));
+
+        }
+        else
+        {
+            y = 1;
+            const unsigned short tile_map3[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+            y -= 1;
+            memcpy(&se_mem[31][32 * y], &tile_map3, sizeof(tile_map3));
+            
+            y = 2;
+            const unsigned short tile_map4[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+            y -= 1;
+            memcpy(&se_mem[31][32 * y], &tile_map4, sizeof(tile_map4));
+
+            y = 3;
+            const unsigned short tile_map5[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+            y -= 1;
+            memcpy(&se_mem[31][32 * y], &tile_map5, sizeof(tile_map5));
+
+            y = 4;
+            const unsigned short tile_map6[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+            y -= 1;
+            memcpy(&se_mem[31][32 * y], &tile_map6, sizeof(tile_map6));
+        }
+
+        if (blind_panel_y == 5) // If the blind panel is fully animated
+        {
+            // Reset palette
+            memset16(&pal_bg_mem[18], 0x1483, sizeof(pal_bg_mem));
+            state = 6; // Change the state to the next one
+            timer = 0; // Reset the timer
+        }
+    }
+    
 }
 
 void game_update()
