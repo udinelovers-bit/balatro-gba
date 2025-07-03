@@ -141,7 +141,7 @@ int main()
 
 	while(true)
     {
-        vid_vsync();
+        VBlankIntrWait();
         mmFrame();
 		key_poll();
         background_update();
