@@ -19,7 +19,7 @@ static int timer = 1; // This might already exist in libtonc but idk so i'm just
 static int game_speed = 1;
 static int background = 0;
 
-static enum GameState game_state = GAME_PLAYING; // The current game state, this is used to determine what the game is doing at any given time
+static enum GameState game_state = GAME_ROUND_END; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
 
@@ -1238,7 +1238,8 @@ static void game_playing_ui_text_update()
 
 void game_playing()
 {
-    if (hand_state == HAND_SELECT && hands == 0) {
+    if (hand_state == HAND_SELECT && hands == 0) 
+    {
         game_state = GAME_LOSE;
     }
 
@@ -1465,7 +1466,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
                     memcpy(&se_mem[31][32 * y], &tile_map6, sizeof(tile_map6));
 
                     y = 4;
-                    const unsigned short tile_map2[10] = {0x002A, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x042A, se_mem[31][32 * y + 9]};
+                    const unsigned short tile_map2[10] = {0x046B, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x006B, se_mem[31][32 * y + 9]};
                     memcpy(&se_mem[31][32 * y], &tile_map2, sizeof(tile_map2));
                 }
                 else
@@ -1590,8 +1591,6 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
 
                 tte_printf("#{P:88, 72; cx:0xF000}Cash Out: $%d", hands + blind_get_reward(current_blind)); // Print the cash out amount
             }
-
-
 
             break;
         }
