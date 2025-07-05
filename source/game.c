@@ -19,7 +19,7 @@ static int timer = 1; // This might already exist in libtonc but idk so i'm just
 static int game_speed = 1;
 static int background = 0;
 
-static enum GameState game_state = GAME_ROUND_END; // The current game state, this is used to determine what the game is doing at any given time
+static enum GameState game_state = GAME_PLAYING; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
 
