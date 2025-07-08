@@ -303,13 +303,13 @@ void change_background(int id)
     }
     else if (id == BG_ID_CARD_SELECTING)
     {
-        memcpy(&se_mem[31], background_gfxMap, background_gfxMapLen);
+        memcpy(&se_mem[MAIN_BG_SBB], background_gfxMap, background_gfxMapLen);
 
         tte_erase_rect(128, 152, 152, 160);
     }
     else if (id == BG_ID_CARD_PLAYING)
     {
-        memcpy(&se_mem[31], background_play_gfxMap, background_play_gfxMapLen);
+        memcpy(&se_mem[MAIN_BG_SBB], background_play_gfxMap, background_play_gfxMapLen);
 
         tte_erase_rect(128, 128, 152, 136);
     }
@@ -318,8 +318,8 @@ void change_background(int id)
         REG_DISPCNT &= ~DCNT_WIN0; // Disable window 0 so it doesn't make the cashout menu transparent
 
         memcpy(pal_bg_mem, background_round_end_gfxPal, 64);
-        memcpy(&tile_mem[1], background_round_end_gfxTiles, background_round_end_gfxTilesLen);
-        memcpy(&se_mem[31], background_round_end_gfxMap, background_round_end_gfxMapLen);
+        memcpy(&tile_mem[MAIN_BG_CBB], background_round_end_gfxTiles, background_round_end_gfxTilesLen);
+        memcpy(&se_mem[MAIN_BG_SBB], background_round_end_gfxMap, background_round_end_gfxMapLen);
 
         // 1024 0x0400 is when sprites are flipped horizontally, 2048 0x0800 is when they are flipped vertically, 3072 0x0C00 is when they are flipped both horizontally and vertically
 
@@ -327,8 +327,8 @@ void change_background(int id)
         // I'm just doing it this way because it's easier than doing some weird shit with Grit in order to get a proper tilemap. I'm not the biggest fan of Grit.
         for (int y = 19; y >= 7; y--)
         {
-            const unsigned short tile_map[17] = {se_mem[31][8 + 32 * y], 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000};
-            memcpy(&se_mem[31][8 + 32 * y], tile_map, sizeof(tile_map));
+            const unsigned short tile_map[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000};
+            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map, sizeof(tile_map));
         }
         
         //tte_erase_rect(0, 0, 64, 48); // Clear top left corner where the blind stats are displayed
@@ -341,8 +341,8 @@ void change_background(int id)
         REG_DISPCNT &= ~DCNT_WIN0;
 
         memcpy(pal_bg_mem, background_shop_gfxPal, 64);
-        GRIT_CPY(&tile_mem[1], background_shop_gfxTiles);
-        GRIT_CPY(&se_mem[31], background_shop_gfxMap);
+        GRIT_CPY(&tile_mem[MAIN_BG_CBB], background_shop_gfxTiles);
+        GRIT_CPY(&se_mem[MAIN_BG_SBB], background_shop_gfxMap);
 
         // Set the outline colors for the shop background
         memset16(&pal_bg_mem[27], 0x213D, 1);
@@ -1333,44 +1333,44 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             int y = bottom_of_screen - timer;
 
             // 1st row
-            const unsigned short tile_map1[17] = {se_mem[31][8 + 32 * y], 0x0026, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0426};
-            memcpy(&se_mem[31][8 + 32 * y], tile_map1, sizeof(tile_map1));
+            const unsigned short tile_map1[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x0026, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0426};
+            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map1, sizeof(tile_map1));
 
             // 2nd row
             y += 1;
             if (y > bottom_of_screen) break;
-            const unsigned short tile_map2[17] = {se_mem[31][8 + 32 * y], 0x002A, 0x042D, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x002D, 0x042A};
-            memcpy(&se_mem[31][8 + 32 * y], tile_map2, sizeof(tile_map2));
+            const unsigned short tile_map2[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x002A, 0x042D, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x002D, 0x042A};
+            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map2, sizeof(tile_map2));
 
             // 3rd row
             y += 1;
             if (y > bottom_of_screen) break;
-            unsigned short tile_map3[17] = {se_mem[31][8 + 32 * y], 0x002A, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042A};
-            memcpy(&se_mem[31][8 + 32 * y], tile_map3, sizeof(tile_map3));
+            unsigned short tile_map3[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x002A, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042A};
+            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map3, sizeof(tile_map3));
 
             // 4th row
             y += 1;
             if (y > bottom_of_screen) break;
-            tile_map3[0] = se_mem[31][8 + 32 * y];
-            memcpy(&se_mem[31][8 + 32 * y], tile_map3, sizeof(tile_map3));
+            tile_map3[0] = se_mem[MAIN_BG_SBB][8 + 32 * y];
+            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map3, sizeof(tile_map3));
 
             // 5th row
             y += 1;
             if (y > bottom_of_screen) break;
-            tile_map3[0] = se_mem[31][8 + 32 * y];
-            memcpy(&se_mem[31][8 + 32 * y], tile_map3, sizeof(tile_map3));
+            tile_map3[0] = se_mem[MAIN_BG_SBB][8 + 32 * y];
+            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map3, sizeof(tile_map3));
 
             // 6th row
             y += 1;
             if (y > bottom_of_screen) break;
-            const unsigned short tile_map4[17] = {se_mem[31][8 + 32 * y], 0x002A, 0x0055, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0455, 0x042A};
-            memcpy(&se_mem[31][8 + 32 * y], tile_map4, sizeof(tile_map4));
+            const unsigned short tile_map4[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x002A, 0x0055, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0455, 0x042A};
+            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map4, sizeof(tile_map4));
 
             // 7th row
             y += 1;
             if (y > bottom_of_screen) break;
-            const unsigned short tile_map5[17] = {se_mem[31][8 + 32 * y], 0x002A, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x042A};
-            memcpy(&se_mem[31][8 + 32 * y], tile_map5, sizeof(tile_map5));
+            const unsigned short tile_map5[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x002A, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x042A};
+            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map5, sizeof(tile_map5));
 
             if (timer >= 12)
             {
@@ -1386,11 +1386,11 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
 
             int y = 13;
 
-            const unsigned short tile_map1[17] = {se_mem[31][8 + 32 * (y - 1)], 0x002A, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042A};
-            memcpy(&se_mem[31][8 + 32 * (y - 1)], tile_map1, sizeof(tile_map1));
+            const unsigned short tile_map1[17] = {se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x002A, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042A};
+            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], tile_map1, sizeof(tile_map1));
 
-            const unsigned short tile_map2[17] = {se_mem[31][8 + 32 * y], 0x002A, 0x0055, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0455, 0x042A};
-            memcpy(&se_mem[31][8 + 32 * y], tile_map2, sizeof(tile_map2));
+            const unsigned short tile_map2[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x002A, 0x0055, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0455, 0x042A};
+            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map2, sizeof(tile_map2));
 
             if (timer >= 30)
             {
@@ -1405,7 +1405,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             const unsigned short tile_map3[4] = {0x003E, 0x003F, 0x0040, 0x0041};
 
             int temp_offset = timer;
-            memcpy(&se_mem[31][12 + temp_offset + 32 * 11], &tile_map3[temp_offset - 1], sizeof(tile_map3[0]));
+            memcpy(&se_mem[MAIN_BG_SBB][12 + temp_offset + 32 * 11], &tile_map3[temp_offset - 1], sizeof(tile_map3[0]));
 
             if (timer >= 4)
             {
@@ -1449,78 +1449,78 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
                     tte_erase_rect(40, 16, 64, 40);
                     obj_hide(playing_blind_token->obj);
 
-                    const unsigned short tile_map1[10] = {0x0064, 0x0065, 0x0065, 0x0066, 0x0067, 0x0067, 0x0067, 0x0068, 0x0464, se_mem[31][32 * y + 9]};
-                    memcpy(&se_mem[31][32 * y], &tile_map1, sizeof(tile_map1));
+                    const unsigned short tile_map1[10] = {0x0064, 0x0065, 0x0065, 0x0066, 0x0067, 0x0067, 0x0067, 0x0068, 0x0464, se_mem[MAIN_BG_SBB][32 * y + 9]};
+                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map1, sizeof(tile_map1));
 
                     y -= 1;
-                    const unsigned short tile_map2[10] = {0x006F, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x046F, se_mem[31][32 * y + 9]};
-                    memcpy(&se_mem[31][32 * y], &tile_map2, sizeof(tile_map2));
+                    const unsigned short tile_map2[10] = {0x006F, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x046F, se_mem[MAIN_BG_SBB][32 * y + 9]};
+                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map2, sizeof(tile_map2));
 
                     y = 1;
-                    const unsigned short tile_map3[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+                    const unsigned short tile_map3[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
                     y -= 1;
-                    memcpy(&se_mem[31][32 * y], &tile_map3, sizeof(tile_map3));
+                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map3, sizeof(tile_map3));
 
                     y = 2;
-                    const unsigned short tile_map4[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+                    const unsigned short tile_map4[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
                     y -= 1;
-                    memcpy(&se_mem[31][32 * y], &tile_map4, sizeof(tile_map4));
+                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map4, sizeof(tile_map4));
 
                     y = 3;
-                    const unsigned short tile_map5[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+                    const unsigned short tile_map5[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
                     y -= 1;
-                    memcpy(&se_mem[31][32 * y], &tile_map5, sizeof(tile_map5));
+                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map5, sizeof(tile_map5));
                 }
                 else if (sequence_step == 2)
                 {
-                    const unsigned short tile_map1[10] = {0x0064, 0x0065, 0x0065, 0x0066, 0x0067, 0x0067, 0x0067, 0x0068, 0x0464, se_mem[31][32 * y + 9]};
-                    memcpy(&se_mem[31][32 * y], &tile_map1, sizeof(tile_map1));
+                    const unsigned short tile_map1[10] = {0x0064, 0x0065, 0x0065, 0x0066, 0x0067, 0x0067, 0x0067, 0x0068, 0x0464, se_mem[MAIN_BG_SBB][32 * y + 9]};
+                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map1, sizeof(tile_map1));
                     
                     y = 1;
-                    const unsigned short tile_map3[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+                    const unsigned short tile_map3[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
                     y -= 1;
-                    memcpy(&se_mem[31][32 * y], &tile_map3, sizeof(tile_map3));
+                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map3, sizeof(tile_map3));
                     
                     y = 2;
-                    const unsigned short tile_map4[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+                    const unsigned short tile_map4[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
                     y -= 1;
-                    memcpy(&se_mem[31][32 * y], &tile_map4, sizeof(tile_map4));
+                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map4, sizeof(tile_map4));
 
                     y = 3;
-                    const unsigned short tile_map5[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+                    const unsigned short tile_map5[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
                     y -= 1;
-                    memcpy(&se_mem[31][32 * y], &tile_map5, sizeof(tile_map5));
+                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map5, sizeof(tile_map5));
 
                     y = 4;
-                    const unsigned short tile_map6[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+                    const unsigned short tile_map6[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
                     y -= 1;
-                    memcpy(&se_mem[31][32 * y], &tile_map6, sizeof(tile_map6));
+                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map6, sizeof(tile_map6));
 
                     y = 4;
-                    const unsigned short tile_map2[10] = {0x046B, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x006B, se_mem[31][32 * y + 9]};
-                    memcpy(&se_mem[31][32 * y], &tile_map2, sizeof(tile_map2));
+                    const unsigned short tile_map2[10] = {0x046B, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x006B, se_mem[MAIN_BG_SBB][32 * y + 9]};
+                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map2, sizeof(tile_map2));
                 }
                 else
                 {
                     y = 1;
-                    const unsigned short tile_map3[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+                    const unsigned short tile_map3[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
                     y -= 1;
-                    memcpy(&se_mem[31][32 * y], &tile_map3, sizeof(tile_map3));
+                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map3, sizeof(tile_map3));
                     
                     y = 2;
-                    const unsigned short tile_map4[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+                    const unsigned short tile_map4[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
                     y -= 1;
-                    memcpy(&se_mem[31][32 * y], &tile_map4, sizeof(tile_map4));
+                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map4, sizeof(tile_map4));
 
                     y = 3;
-                    const unsigned short tile_map5[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+                    const unsigned short tile_map5[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
                     y -= 1;
-                    memcpy(&se_mem[31][32 * y], &tile_map5, sizeof(tile_map5));
+                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map5, sizeof(tile_map5));
 
                     y = 4;
-                    const unsigned short tile_map6[10] = {se_mem[31][32 * y], se_mem[31][32 * y + 1], se_mem[31][32 * y + 2], se_mem[31][32 * y + 3], se_mem[31][32 * y + 4], se_mem[31][32 * y + 5], se_mem[31][32 * y + 6], se_mem[31][32 * y + 7], se_mem[31][32 * y + 8], se_mem[31][32 * (y - 1) + 9]};
+                    const unsigned short tile_map6[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
                     y -= 1;
-                    memcpy(&se_mem[31][32 * y], &tile_map6, sizeof(tile_map6));
+                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map6, sizeof(tile_map6));
                 }
             }
 
@@ -1554,11 +1554,11 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             {
                 int y = 14;
 
-                const unsigned short tile_map1[17] = {se_mem[31][8 + 32 * (y - 1)], 0x002A, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042A};
-                memcpy(&se_mem[31][8 + 32 * (y - 1)], tile_map1, sizeof(tile_map1));
+                const unsigned short tile_map1[17] = {se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x002A, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042A};
+                memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], tile_map1, sizeof(tile_map1));
 
-                const unsigned short tile_map2[17] = {se_mem[31][8 + 32 * y], 0x002A, 0x0055, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0455, 0x042A};
-                memcpy(&se_mem[31][8 + 32 * y], tile_map2, sizeof(tile_map2));
+                const unsigned short tile_map2[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x002A, 0x0055, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0455, 0x042A};
+                memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map2, sizeof(tile_map2));
             }
             else if (sequence_step < 15)
             {
@@ -1573,11 +1573,11 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
                 {
                     int y = 14 + hand_y;
 
-                    const unsigned short tile_map1[17] = {se_mem[31][8 + 32 * (y - 1)], 0x002A, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042A};
-                    memcpy(&se_mem[31][8 + 32 * (y - 1)], tile_map1, sizeof(tile_map1));
+                    const unsigned short tile_map1[17] = {se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x002A, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042A};
+                    memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], tile_map1, sizeof(tile_map1));
 
-                    const unsigned short tile_map2[17] = {se_mem[31][8 + 32 * y], 0x002A, 0x0055, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0455, 0x042A};
-                    memcpy(&se_mem[31][8 + 32 * y], tile_map2, sizeof(tile_map2));
+                    const unsigned short tile_map2[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x002A, 0x0055, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0455, 0x042A};
+                    memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map2, sizeof(tile_map2));
 
                     tte_printf("#{P:88,116; cx:0xD000}%d #{cx:0xF000}Hands", hand_reward); // Print the hand reward
                 }
@@ -1608,17 +1608,17 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
 
                 // 1st row
                 const unsigned short tile_map1[14] = {0x002B, 0x002C, 0x002C, 0x002C, 0x002C, 0x002C, 0x002C, 0x002C, 0x002C, 0x002C, 0x002C, 0x002C, 0x002C, 0x042B};
-                memcpy(&se_mem[31][10 + 32 * y], tile_map1, sizeof(tile_map1));
+                memcpy(&se_mem[MAIN_BG_SBB][10 + 32 * y], tile_map1, sizeof(tile_map1));
 
                 // 2nd row
                 y += 1;
                 const unsigned short tile_map2[14] = {0x0030, 0x0031, 0x0031, 0x0031, 0x0031, 0x0031, 0x0031, 0x0031, 0x0031, 0x0031, 0x0031, 0x0031, 0x0031, 0x0430};
-                memcpy(&se_mem[31][10 + 32 * y], tile_map2, sizeof(tile_map2));
+                memcpy(&se_mem[MAIN_BG_SBB][10 + 32 * y], tile_map2, sizeof(tile_map2));
 
                 // 3rd row
                 y += 1;
                 unsigned short tile_map3[14] = {0x0037, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0437};
-                memcpy(&se_mem[31][10 + 32 * y], tile_map3, sizeof(tile_map3));
+                memcpy(&se_mem[MAIN_BG_SBB][10 + 32 * y], tile_map3, sizeof(tile_map3));
 
                 tte_printf("#{P:88, 72; cx:0xF000}Cash Out: $%d", hands + blind_get_reward(current_blind)); // Print the cash out amount
             }
@@ -1642,7 +1642,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             
             for (int y = 19; y > 5; y--)
             {
-                memcpy16(&se_mem[31][x + 32 * (y + 1)], &se_mem[31][x + 32 * y], 16);
+                memcpy16(&se_mem[MAIN_BG_SBB][x + 32 * (y + 1)], &se_mem[MAIN_BG_SBB][x + 32 * y], 16);
             }
 
             if (sequence_step >= 20)
@@ -1664,7 +1664,6 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             break;
     }
 }
-
 
 void game_shop()
 {
@@ -1699,7 +1698,7 @@ void game_shop()
         for (int y = 7; y < 40; y++)
         {
             int x = 9;
-            memcpy16(&se_mem[31][x + 32 * (y - 1)], &se_mem[31][x + 32 * y], 16);
+            memcpy16(&se_mem[MAIN_BG_SBB][x + 32 * (y - 1)], &se_mem[MAIN_BG_SBB][x + 32 * y], 16);
         }
 
         if (timer >= 7)
@@ -1710,7 +1709,7 @@ void game_shop()
             {
                 int y_from = 26 + y - timer_offset;
                 int y_to = 0 + y;
-                memcpy16(&se_mem[31][32 * y_to], &se_mem[31][32 * y_from], 9);
+                memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
             }
         }
         
@@ -1718,7 +1717,7 @@ void game_shop()
         // {
         //     int y_from = 26;
         //     int y_to = 0;
-        //     memcpy16(&se_mem[31][32 * y_to], &se_mem[31][32 * y_from], 9);
+        //     memcpy16(&se_mem[MAIN_BG_SE_BASE][32 * y_to], &se_mem[MAIN_BG_SE_BASE][32 * y_from], 9);
         // }
     }
 }

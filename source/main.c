@@ -33,8 +33,8 @@ void init_map() // Temp function ripped from libtonc example
         // Actually for future reference, each number seems to equate to an XY on the palette, so 0xF0F0F0F0 would just push everything down 15 colors, since the second number isn't set.
     }
 
-	memcpy(&tile8_mem[2], correctedTiles, affine_background_gfxTilesLen);
-    GRIT_CPY(&se_mem[2], affine_background_gfxMap);
+	memcpy(&tile8_mem[AFFINE_BG_CBB], correctedTiles, affine_background_gfxTilesLen);
+    GRIT_CPY(&se_mem[AFFINE_BG_SBB], affine_background_gfxMap);
     memcpy16(&pal_bg_mem[16 * 15], affine_background_gfxPal, 5);
 
 	bgaff = bg_aff_default;
@@ -50,7 +50,7 @@ void init()
     mmStart(MOD_MAIN_THEME, MM_PLAY_LOOP);
 
     // Initialize text engine
-    tte_init_se(0, BG_CBB(0) | BG_SBB(30), 0, CLR_WHITE, 14, NULL, NULL);
+    tte_init_se(0, BG_CBB(TTE_CBB) | BG_SBB(TTE_SBB), 0, CLR_WHITE, 14, NULL, NULL);
     tte_erase_screen();
     tte_init_con();
 
@@ -63,17 +63,20 @@ void init()
     // Load the tiles and palette
     // Background
     memcpy(pal_bg_mem, background_gfxPal, 64); // This '64" isn't a specific number, I'm just using it to prevent the text colors from being overridden
-    GRIT_CPY(&tile8_mem[1], background_gfxTiles); // Deadass i have no clue how any of these memory things work but I just messed with them until stuff worked
-    GRIT_CPY(&se_mem[31], background_gfxMap);
+    GRIT_CPY(&tile8_mem[MAIN_BG_CBB], background_gfxTiles); // Deadass i have no clue how any of these memory things work but I just messed with them until stuff worked
+    GRIT_CPY(&se_mem[MAIN_BG_SBB], background_gfxMap);
 
     // Deck graphics
     GRIT_CPY(&tile_mem[4], deck_gfxTiles);
     GRIT_CPY(pal_obj_mem, deck_gfxPal);
 
     // Set up the video mode
-    REG_BG0CNT = BG_PRIO(0) | BG_CBB(0) | BG_SBB(30) | BG_4BPP;
-    REG_BG1CNT = BG_PRIO(1) | BG_CBB(1) | BG_SBB(31) | BG_8BPP;
-    REG_BG2CNT = BG_PRIO(2) | BG_CBB(2) | BG_SBB(2) | BG_8BPP | BG_WRAP | BG_AFF_32x32;
+    // BG0 is the TTE text layer
+    REG_BG0CNT = BG_PRIO(0) | BG_CBB(TTE_CBB) | BG_SBB(TTE_SBB) | BG_4BPP;
+    // BG1 is the main background layer
+    REG_BG1CNT = BG_PRIO(1) | BG_CBB(MAIN_BG_CBB) | BG_SBB(MAIN_BG_SBB) | BG_8BPP;
+	// BG2 is the affine background layer
+    REG_BG2CNT = BG_PRIO(2) | BG_CBB(AFFINE_BG_CBB) | BG_SBB(AFFINE_BG_CBB) | BG_8BPP | BG_WRAP | BG_AFF_32x32;
 
     int win1_left = 72;
     int win1_top = 44;
