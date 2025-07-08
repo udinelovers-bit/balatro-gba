@@ -252,7 +252,7 @@ enum HandType hand_get_type()
             }
             else
             {
-				hand_type = FIVE_OF_A_KIND;
+                hand_type = FIVE_OF_A_KIND;
                 return hand_type;
             }
         }
