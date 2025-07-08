@@ -241,21 +241,22 @@ enum HandType hand_get_type()
         return hand_type;
     }
 
-    // Check for flush five and five of a kind
-    if (hand_type == FLUSH && ranks[FIVE] >= 5)
-    {
-        hand_type = FLUSH_FIVE;
-        return hand_type;
-    }
-    else if (ranks[FIVE] >= 5)
-    {
-        return FIVE_OF_A_KIND;
-    }
-    
-    // Check for for of a kind
     for (int i = 0; i < NUM_RANKS; i++)
     {
-        if (ranks[i] >= 4)
+        if (ranks[i] >= 5)
+        {
+            if (hand_type == FLUSH)
+            {
+                hand_type = FLUSH_FIVE;
+                return hand_type;
+            }
+            else
+            {
+				hand_type = FIVE_OF_A_KIND;
+                return hand_type;
+            }
+        }
+        else if (ranks[i] == 4)
         {
             hand_type = FOUR_OF_A_KIND;
             return hand_type;
@@ -592,8 +593,8 @@ void game_init()
     obj_hide(round_end_blind_token->obj); // Hide the blind token sprite for now
 
     // Fill the deck with all the cards. Later on this can be replaced with a more dynamic system that allows for different decks and card types.
-    for (int suit = 0; suit < NUM_SUITS; suit++)
-    {
+        for (int suit = 0; suit < NUM_SUITS; suit++)
+        {
         for (int rank = 0; rank < NUM_RANKS; rank++)
         {
             Card *card = card_new(suit, rank);
@@ -737,6 +738,7 @@ static void game_playing_process_card_draw()
 
 static void game_playing_discarded_cards_loop()
 {
+    // Discarded cards loop (mainly for shuffling)
     if (hand_get_size() == 0 && hand_state == HAND_SHUFFLING && discard_top >= -1 && timer > FRAMES(10))
     {
         change_background(BG_ID_ROUND_END); // Change the background to the round end background. This is how it works in Balatro, so I'm doing it this way too.
@@ -1289,7 +1291,6 @@ void game_playing()
 
     game_playing_process_card_draw();
 
-    // Discarded cards loop (mainly for shuffling)
     game_playing_discarded_cards_loop();
 
     static int played_selections = 0;
