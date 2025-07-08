@@ -593,8 +593,8 @@ void game_init()
     obj_hide(round_end_blind_token->obj); // Hide the blind token sprite for now
 
     // Fill the deck with all the cards. Later on this can be replaced with a more dynamic system that allows for different decks and card types.
-        for (int suit = 0; suit < NUM_SUITS; suit++)
-        {
+    for (int suit = 0; suit < NUM_SUITS; suit++)
+    {
         for (int rank = 0; rank < NUM_RANKS; rank++)
         {
             Card *card = card_new(suit, rank);
