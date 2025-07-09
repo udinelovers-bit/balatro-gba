@@ -1,18 +1,6 @@
 #ifndef GAME_H
 #define GAME_H
 
-// TODO: Move to dedicated header?
-/* Reminder:
- *  Screen Base Block is the base for the screenblock entries i.e. tilemap
- *  Character Base Block is the base for the tiles themselves
- */
-#define MAIN_BG_SBB 31 
-#define MAIN_BG_CBB 1
-#define TTE_SBB 30
-#define TTE_CBB 0
-#define AFFINE_BG_SBB 2
-#define AFFINE_BG_CBB 2
-
 #define MAX_HAND_SIZE 16
 #define MAX_DECK_SIZE 52
 #define MAX_SELECTION_SIZE 5

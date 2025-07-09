@@ -9,6 +9,7 @@
 #include "sprite.h"
 #include "card.h"
 #include "blind.h"
+#include "graphic_utils.h"
 
 #include "background_gfx.h"
 #include "background_play_gfx.h"
@@ -104,6 +105,39 @@ static inline Card *discard_pop()
     if (discard_top < 0) return NULL;
     return discard_pile[discard_top--];
 }
+
+
+// Consts
+static const Rect ROUND_END_MENU_RECT = { 9, 7, 25, 21 }; // In screenblocks
+
+// Rects for TTE
+static const Rect HAND_SIZE_RECT = { 128, 128, 152, 160 }; // Seems to include both SELECT and PLAYING
+static const Rect HAND_SIZE_RECT_SELECT = { 128, 128, 152, 136 };
+static const Rect HAND_SIZE_RECT_PLAYING = { 128, 152, 152, 160 };
+static const Rect HAND_TYPE_RECT = { 8, 64, 64, 72 };
+// Score displayed in the same place as the hand type
+static const Rect TEMP_SCORE_RECT = { 8, 64, 64, 72 }; 
+
+static const Rect PLAYED_CARDS_SCORES_RECT = { 72, 48, 240, 56 };
+static const Rect BLIND_TOKEN_TEXT_RECT = { 80, 72, 200, 160 };
+static const Rect MONEY_TEXT_RECT = { 8, 120, 64, 120 };
+static const Rect CHIPS_TEXT_RECT = { 8, 80, 32, 88 };
+static const Rect MULT_TEXT_RECT = { 40, 80, 64, 88 };
+static const Rect BLIND_REWARD_RECT = { 40, 32, 64, 40 };
+
+// Rects with UNDEFINED are only used in tte_printf, they need to be fully defined
+// to be used with tte_erase_rect_wrapper()
+static const Rect HANDS_TEXT_RECT = { 16, 104, UNDEFINED, UNDEFINED };
+static const Rect DISCARDS_TEXT_RECT = { 48, 104, UNDEFINED, UNDEFINED };
+static const Rect BLIND_REQUIREMENT_TEXT_RECT = { 40, 24, UNDEFINED, UNDEFINED };
+static const Rect DECK_SIZE_RECT = { 200, 152, UNDEFINED, UNDEFINED };
+static const Rect ROUND_TEXT_RECT = { 48, 144, UNDEFINED, UNDEFINED };
+static const Rect ANTE_TEXT_RECT = { 8, 144, UNDEFINED, UNDEFINED };
+static const Rect ROUND_END_BLIND_REQUIREMENT_RECT = { 112, 96, UNDEFINED, UNDEFINED };
+static const Rect ROUND_END_BLIND_REWARD_RECT = { 168, 96, UNDEFINED, UNDEFINED };
+static const Rect ROUND_END_NUM_HANDS_RECT = { 88, 116, UNDEFINED, UNDEFINED };
+static const Rect HAND_REWARD_RECT = { 168, UNDEFINED, UNDEFINED, UNDEFINED };
+static const Rect CASHOUT_RECT = { 88, 72, UNDEFINED, UNDEFINED };
 
 // General functions
 void sort_hand_by_suit()
@@ -307,13 +341,13 @@ void change_background(int id)
     {
         memcpy(&se_mem[MAIN_BG_SBB], background_gfxMap, background_gfxMapLen);
 
-        tte_erase_rect(128, 152, 152, 160);
+        tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
     }
     else if (id == BG_ID_CARD_PLAYING)
     {
         memcpy(&se_mem[MAIN_BG_SBB], background_play_gfxMap, background_play_gfxMapLen);
 
-        tte_erase_rect(128, 128, 152, 136);
+        tte_erase_rect_wrapper(HAND_SIZE_RECT_SELECT);
     }
     else if (id == BG_ID_ROUND_END)
     {
@@ -324,19 +358,16 @@ void change_background(int id)
         memcpy(&se_mem[MAIN_BG_SBB], background_round_end_gfxMap, background_round_end_gfxMapLen);
 
         // 1024 0x0400 is when sprites are flipped horizontally, 2048 0x0800 is when they are flipped vertically, 3072 0x0C00 is when they are flipped both horizontally and vertically
+        // Not sure why this comment is here but note there are bit macros SE_HFLIP and SE_VFLIP for those.
 
-        // Incoming hack! this just clears the cash out menu thing so that we can slowly display it with an animation later. The reason this isn't optimal is because the full background is already loaded into the vram at this point.
+        // Incoming hack! Clear the round end menu so that we can slowly display it with an animation later. The reason this isn't optimal is because the full background is already loaded into the vram at this point.
         // I'm just doing it this way because it's easier than doing some weird shit with Grit in order to get a proper tilemap. I'm not the biggest fan of Grit.
-        for (int y = 19; y >= 7; y--)
-        {
-            const unsigned short tile_map[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000};
-            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map, sizeof(tile_map));
-        }
+        // TODO: See TODO comment in game_round_end(), once that is properly done, remove this.
+        main_bg_se_clear_rect(ROUND_END_MENU_RECT);
         
         //tte_erase_rect(0, 0, 64, 48); // Clear top left corner where the blind stats are displayed
-        tte_erase_rect(128, 128, 152, 160); // Clear the hand size/max size display
+        tte_erase_rect_wrapper(HAND_SIZE_RECT);
 
-        //tte_printf("#{P:88,72; cx:0xF000}Cash Out: $5"); // Hardcoded example
     }
     else if (id == BG_ID_SHOP)
     {
@@ -369,8 +400,8 @@ void change_background(int id)
 void set_temp_score(int value)
 {
     int x_offset = 40 - get_digits_even(value) * 8;
-    tte_erase_rect(8, 64, 64, 72);
-    tte_printf("#{P:%d,64; cx:0xF000}%d", x_offset, value);
+    tte_erase_rect_wrapper(TEMP_SCORE_RECT);
+    tte_printf("#{P:%d,%d; cx:0xF000}%d", x_offset, TEMP_SCORE_RECT.top, value);
 }
 
 void set_score(int value)
@@ -382,91 +413,98 @@ void set_score(int value)
 void set_money(int value)
 {
     int x_offset = 32 - get_digits_odd(value) * 8;
-    tte_erase_rect(8, 120, 64, 120);
-    tte_printf("#{P:%d,120; cx:0xC000}$%d", x_offset, value);
+    tte_erase_rect_wrapper(MONEY_TEXT_RECT);
+    tte_printf("#{P:%d,%d; cx:0xC000}$%d", x_offset, MONEY_TEXT_RECT.top, value);
 }
 
 void set_chips(int value)
 {
     int x_offset = 32 - get_digits(value) * 8; // Adjust the x offset based on the number of digits in chips
-    tte_erase_rect(8, 80, 32, 88);
-    tte_printf("#{P:%d,80; cx:0xF000;}%d", x_offset, value);
+    tte_erase_rect_wrapper(CHIPS_TEXT_RECT);
+    tte_printf("#{P:%d,%d; cx:0xF000;}%d", x_offset, CHIPS_TEXT_RECT.top, value);
 }
 
 void set_mult(int value)
 {
-    tte_erase_rect(40, 80, 64, 88);
-    tte_printf("#{P:40,80; cx:0xF000;}%d", value); // Mult
+    tte_erase_rect_wrapper(MULT_TEXT_RECT);
+    tte_printf("#{P:%d,%d; cx:0xF000;}%d", MULT_TEXT_RECT.left, MULT_TEXT_RECT.top, value); // Mult
+}
+
+static void print_hand_type(const char* hand_type_str)
+{
+    if (hand_type_str == NULL)
+        return; // NULL-checking paranoia
+    tte_printf("#{P:%d,%d;}%s", HAND_TYPE_RECT.left, HAND_TYPE_RECT.top, hand_type_str);
 }
 
 void set_hand()
 {
-    tte_erase_rect(8, 64, 64, 72); // Hand type
+    tte_erase_rect_wrapper(HAND_TYPE_RECT);
     hand_type = hand_get_type();
     switch (hand_type)
     {
     case HIGH_CARD:
-        tte_printf("#{P:8,64;}HIGH C");
+        print_hand_type("HIGH C");
         chips = 5;
         mult = 1;
         break;
     case PAIR:
-        tte_printf("#{P:8,64;}PAIR");
+        print_hand_type("PAIR");
         chips = 10;
         mult = 2;
         break;
     case TWO_PAIR:
-        tte_printf("#{P:8,64;}2 PAIR");
+        print_hand_type("2 PAIR");
         chips = 20;
         mult = 2;
         break;
     case THREE_OF_A_KIND:
-        tte_printf("#{P:8,64;}3 OAK");
+        print_hand_type("3 OAK");
         chips = 30;
         mult = 3;
         break;
     case STRAIGHT:
-        tte_printf("#{P:8,64;}STRT");
+        print_hand_type("STRT");
         chips = 30;
         mult = 4;
         break;
     case FLUSH:
-        tte_printf("#{P:8,64;}FLUSH");
+        print_hand_type("FLUSH");
         chips = 35;
         mult = 4;
         break;
     case FULL_HOUSE:
-        tte_printf("#{P:8,64;}FULL H");
+        print_hand_type("FULL H");
         chips = 40;
         mult = 4;
         break;
     case FOUR_OF_A_KIND:
-        tte_printf("#{P:8,64;}4 OAK");
+        print_hand_type("4 OAK");
         chips = 60;
         mult = 7;
         break;
     case STRAIGHT_FLUSH:
-        tte_printf("#{P:8,64;}STRT F");
+        print_hand_type("STRT F");
         chips = 100;
         mult = 8;
         break;
     case ROYAL_FLUSH:
-        tte_printf("#{P:8,64;}ROYAL F");
+        print_hand_type("ROYAL F");
         chips = 100;
         mult = 8;
         break;
     case FIVE_OF_A_KIND:
-        tte_printf("#{P:8,64;}5 OAK");
+        print_hand_type("5 OAK");
         chips = 120;
         mult = 12;
         break;
     case FLUSH_HOUSE:
-        tte_printf("#{P:8,64;}FLUSH H");
+        print_hand_type("FLUSH H");
         chips = 140;
         mult = 14;
         break;
     case FLUSH_FIVE:
-        tte_printf("#{P:8,64;}FLUSH 5");
+        print_hand_type("FLUSH 5");
         chips = 160;
         mult = 16;
         break;
@@ -615,25 +653,25 @@ void game_init()
 
     change_background(BG_ID_CARD_SELECTING);
 
-    tte_printf("#{P:128,128; cx:0xF000}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
-    tte_printf("#{P:200,152; cx:0xF000}%d/%d", deck_get_size(), deck_get_max_size()); // Deck size/max size
+    tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", HAND_SIZE_RECT.left, HAND_SIZE_RECT.top, hand_get_size(), hand_get_max_size()); // Hand size/max size
+    tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", DECK_SIZE_RECT.left, DECK_SIZE_RECT.top, deck_get_size(), deck_get_max_size()); // Deck size/max size
 
-    tte_printf("#{P:40,24; cx:0xE000}%d", blind_get_requirement(current_blind, ante)); // Blind requirement
-    tte_printf("#{P:40,32; cx:0xC000}$%d", blind_get_reward(current_blind)); // Blind reward
+    tte_printf("#{P:%d,%d; cx:0xE000}%d", BLIND_REQUIREMENT_TEXT_RECT.left, BLIND_REQUIREMENT_TEXT_RECT.top, blind_get_requirement(current_blind, ante)); // Blind requirement
+    tte_printf("#{P:%d,%d; cx:0xC000}$%d", BLIND_REWARD_RECT.left, BLIND_REWARD_RECT.top, blind_get_reward(current_blind)); // Blind reward
 
     set_score(score); // Set the score display
 
     set_chips(chips); // Set the chips display
     set_mult(mult); // Set the multiplier display
 
-    tte_printf("#{P:16,104; cx:0xD000}%d", hands); // Hand
-    tte_printf("#{P:48,104; cx:0xE000}%d", discards); // Discard
+    tte_printf("#{P:%d,%d; cx:0xD000}%d", HANDS_TEXT_RECT.left, HANDS_TEXT_RECT.top, hands); // Hand
+    tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards); // Discard
 
     //tte_printf("#{P:24,120; cx:0xC000}$%d", money); // Money
     set_money(money); // Set the money display
 
-    tte_printf("#{P:48,144; cx:0xC000}%d", 1); // Round
-    tte_printf("#{P:8,144; cx:0xC000}%d#{cx:0xF000}/%d", ante, MAX_ANTE); // Ante
+    tte_printf("#{P:%d,%d; cx:0xC000}%d", ROUND_TEXT_RECT.left, ROUND_TEXT_RECT.top, 1); // Round
+    tte_printf("#{P:%d,%d; cx:0xC000}%d#{cx:0xF000}/%d", ANTE_TEXT_RECT.left, ANTE_TEXT_RECT.top, ante, MAX_ANTE); // Ante
 }
 
 static void game_playing_process_input_and_state()
@@ -664,13 +702,13 @@ static void game_playing_process_input_and_state()
         {
             set_hand();
             discards--;
-            tte_printf("#{P:48,104; cx:0xE000}%d", discards);
+            tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards);
         }
 
         if (key_hit(KEY_START) && hands > 0 && hand_play())
         {
             hands--;
-            tte_printf("#{P:16,104; cx:0xD000}%d", hands);
+            tte_printf("#{P:%d,%d; cx:0xD000}%d", HANDS_TEXT_RECT.left, HANDS_TEXT_RECT.top, hands);
         }
     }
     else if (play_state == PLAY_ENDING)
@@ -703,7 +741,7 @@ static void game_playing_process_input_and_state()
 
             if (temp_score <= 0)
             {
-                tte_erase_rect(8, 64, 64, 72);
+                tte_erase_rect_wrapper(TEMP_SCORE_RECT);
             }
         }
         else
@@ -713,7 +751,7 @@ static void game_playing_process_input_and_state()
             lerped_temp_score = 0;
             lerped_score = 0;
 
-            tte_erase_rect(8, 64, 64, 72); // Just erase the temp score
+            tte_erase_rect_wrapper(TEMP_SCORE_RECT); // Just erase the temp score
 
             set_score(score);
         }
@@ -1132,7 +1170,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                                 scored_cards++;
                                 if (scored_cards > *played_selections)
                                 {
-                                    tte_erase_rect(72, 48, 240, 56);
+                                    tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
                                     tte_set_pos(fx2int(played[played_top - j]->x) + 8, 48); // Offset of 16 pixels to center the text on the card
                                     tte_set_special(0xD000); // Set text color to blue from background memory
 
@@ -1158,7 +1196,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
                             if (j == 0 && scored_cards == *played_selections) // Check if it's the last card 
                             {
-                                tte_erase_rect(72, 48, 240, 56);
+                                tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
                                 play_state = PLAY_ENDING;
                                 timer = 1;
                                 *played_selections = played_top + 1; // Reset the played selections to the top of the played stack
@@ -1256,14 +1294,14 @@ static void game_playing_ui_text_update()
     {
         if (background == BG_ID_CARD_SELECTING)
         {
-            tte_printf("#{P:128,128; cx:0xF000}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
+            tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", HAND_SIZE_RECT_SELECT.left, HAND_SIZE_RECT_SELECT.top, hand_get_size(), hand_get_max_size()); // Hand size/max size
         }
         else if (background == BG_ID_CARD_PLAYING)
         {
-            tte_printf("#{P:128,152; cx:0xF000}%d/%d", hand_get_size(), hand_get_max_size()); // Hand size/max size
+            tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", HAND_SIZE_RECT_PLAYING.left, HAND_SIZE_RECT_PLAYING.top, hand_get_size(), hand_get_max_size()); // Hand size/max size
         }
 
-        tte_printf("#{P:200,152; cx:0xF000}%d/%d", deck_get_size(), deck_get_max_size()); // Deck size/max size
+        tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", DECK_SIZE_RECT.left, DECK_SIZE_RECT.top, deck_get_size(), deck_get_max_size()); // Deck size/max size
 
         last_hand_size = hand_get_size();
         last_deck_size = deck_get_size();
@@ -1307,6 +1345,10 @@ void game_playing()
 
 void game_round_end() // Writing this kind a made me want to kms. If somewone wants to rewrite this, please do so.
 {
+    /* TODO: The correct way to do this is the same as game_shop(), 
+     * put the menu in VRAM outside the screen and copy it from there.
+     * That code needs to be extracted to a function and reused here.
+     */ 
     static int state = 0;
     static int sequence_step = 0; // Reusable variable for the animations in states
 
@@ -1384,7 +1426,8 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
         case 2:
         {
             obj_unhide(round_end_blind_token->obj, 0);
-            tte_printf("#{P:112,96; cx:0xE000}%d", blind_get_requirement(current_blind, ante));
+            
+            tte_printf("#{P:%d,%d; cx:0xE000}%d", ROUND_END_BLIND_REQUIREMENT_RECT.left, ROUND_END_BLIND_REQUIREMENT_RECT.top, blind_get_requirement(current_blind, ante));
 
             int y = 13;
 
@@ -1425,12 +1468,12 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             sequence_step++;
 
             blind_reward--;
-            tte_printf("#{P:40,32; cx:0xC000}$%d", blind_reward);
-            tte_printf("#{P:168, 96; cx:0xC000}$%d", blind_get_reward(current_blind) - blind_reward);
+            tte_printf("#{P:%d,%d; cx:0xC000}$%d", BLIND_REWARD_RECT.left , BLIND_REWARD_RECT.top, blind_reward);
+            tte_printf("#{P:%d,%d; cx:0xC000}$%d", ROUND_END_BLIND_REWARD_RECT.left, ROUND_END_BLIND_REQUIREMENT_RECT.top, blind_get_reward(current_blind) - blind_reward);
 
             if (blind_reward <= 0)
             {
-                tte_erase_rect(40, 32, 64, 40);
+                tte_erase_rect_wrapper(BLIND_REWARD_RECT);
                 obj_hide(playing_blind_token->obj);
                 state = 5;
                 sequence_step = 0;
@@ -1564,6 +1607,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             }
             else if (sequence_step < 15)
             {
+                // Print the separator dots
                 int x = (9 + sequence_step) * 8;
                 int y = (13) * 8;
 
@@ -1581,13 +1625,13 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
                     const unsigned short tile_map2[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x002A, 0x0055, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0455, 0x042A};
                     memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map2, sizeof(tile_map2));
 
-                    tte_printf("#{P:88,116; cx:0xD000}%d #{cx:0xF000}Hands", hand_reward); // Print the hand reward
+                    tte_printf("#{P:%d,%d; cx:0xD000}%d #{cx:0xF000}Hands", ROUND_END_NUM_HANDS_RECT.left, ROUND_END_NUM_HANDS_RECT.top, hand_reward); // Print the hand reward
                 }
                 else if (sequence_step > 45 && timer % FRAMES(20) == 0)
                 {
                     int y = (13 + hand_y) * 8;
                     hand_reward--;
-                    tte_printf("#{P:168, %d; cx:0xC000}$%d", y, hands - hand_reward); // Print the hand reward
+                    tte_printf("#{P:%d, %d; cx:0xC000}$%d", HAND_REWARD_RECT.left, y, hands - hand_reward); // Print the hand reward
                 }
             }
 
@@ -1622,7 +1666,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
                 unsigned short tile_map3[14] = {0x0037, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0437};
                 memcpy(&se_mem[MAIN_BG_SBB][10 + 32 * y], tile_map3, sizeof(tile_map3));
 
-                tte_printf("#{P:88, 72; cx:0xF000}Cash Out: $%d", hands + blind_get_reward(current_blind)); // Print the cash out amount
+                tte_printf("#{P:%d, %d; cx:0xF000}Cash Out: $%d", CASHOUT_RECT.left, CASHOUT_RECT.top, hands + blind_get_reward(current_blind)); // Print the cash out amount
             }
             else if (timer > FRAMES(40) && key_hit(KEY_A))
             {   
@@ -1632,7 +1676,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
                 memset16(&pal_bg_mem[6], 0x0174, 1);
 
                 obj_hide(round_end_blind_token->obj); // Hide the blind token object
-                tte_erase_rect(80, 72, 200, 160); // Erase the blind token text
+                tte_erase_rect_wrapper(BLIND_TOKEN_TEXT_RECT); // Erase the blind token text
             }
 
             break;
