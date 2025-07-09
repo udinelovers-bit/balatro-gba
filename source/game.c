@@ -9,6 +9,7 @@
 #include "sprite.h"
 #include "card.h"
 #include "blind.h"
+#include "graphic_utils.h"
 
 #include "background_gfx.h"
 #include "background_play_gfx.h"
@@ -104,6 +105,10 @@ static inline Card *discard_pop()
     if (discard_top < 0) return NULL;
     return discard_pile[discard_top--];
 }
+
+
+// Consts
+static const Rect ROUND_END_MENU_RECT = { 9, 7, 25, 21 };
 
 // General functions
 void sort_hand_by_suit()
@@ -295,18 +300,6 @@ enum HandType hand_get_type()
     return hand_type;
 }
 
-// TODO: Add function to header with documentation
-void main_bg_se_clear_rect(int bottom, int top, int left, int width)
-{
-    for (int y = bottom; y <= top; y++)
-    {
-        for (int x = 0; x < width; x++)
-        {
-            memset16(&se_mem[MAIN_BG_SBB][left + x + SCREENBLOCK_ROW_LEN*y], 0x000, 1);
-        }
-    }
-}
-
 void change_background(int id)
 {
     if (background == id)
@@ -337,7 +330,7 @@ void change_background(int id)
 
         // Incoming hack! Clear the round end menu so that we can slowly display it with an animation later. The reason this isn't optimal is because the full background is already loaded into the vram at this point.
         // I'm just doing it this way because it's easier than doing some weird shit with Grit in order to get a proper tilemap. I'm not the biggest fan of Grit.
-        main_bg_se_clear_rect(ROUND_END_MENU_BOTTOM_SE, ROUND_END_MENU_TOP_SE, ROUND_END_MENU_LEFT_SE, ROUND_END_MENU_WIDTH_SE);
+        main_bg_se_clear_rect(ROUND_END_MENU_RECT);
         
         //tte_erase_rect(0, 0, 64, 48); // Clear top left corner where the blind stats are displayed
         tte_erase_rect(128, 128, 152, 160); // Clear the hand size/max size display

@@ -6,6 +6,7 @@
 #include "card.h"
 #include "game.h"
 #include "blind.h"
+#include "graphic_utils.h"
 
 // Graphics
 #include "deck_gfx.h"
