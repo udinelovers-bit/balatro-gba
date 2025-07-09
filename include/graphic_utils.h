@@ -1,6 +1,11 @@
 #ifndef GRAPHIC_UTILS_H
 #define GRAPHIC_UTILS_H
 
+/* This file contains general utils and wrappers that relate to 
+ * graphics/video/vram and generally displaying things on the screen.
+ * Mostly wrappers and defines for using tonc.
+ */
+
 /* Reminder:
  *  Screen Base Block is the base for the screenblock entries i.e. tilemap
  *  Character Base Block is the base for the tiles themselves
@@ -19,6 +24,7 @@
  */
 #define SCREENBLOCK_ROW_LEN 32
 
+
 typedef struct
 {
 	int left;
@@ -27,10 +33,14 @@ typedef struct
 	int bottom;
 } Rect;
 
+#define UNDEFINED -1
+
 /* Clears a rect in the main background screenblock.
  * The rect needs to be in screenblocks
  */
 void main_bg_se_clear_rect(Rect rect);
 
+// A wrapper for tte_erase_rect that would use the rect struct
+void tte_erase_rect_wrapper(Rect rect);
 
 #endif //GRAPHIC_UTILS_H
