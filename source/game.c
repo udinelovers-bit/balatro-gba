@@ -295,6 +295,18 @@ enum HandType hand_get_type()
     return hand_type;
 }
 
+// TODO: Add function to header with documentation
+void main_bg_se_clear_rect(int bottom, int top, int left, int width)
+{
+    for (int y = bottom; y <= top; y++)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            memset16(&se_mem[MAIN_BG_SBB][left + x + SCREENBLOCK_ROW_LEN*y], 0x000, 1);
+        }
+    }
+}
+
 void change_background(int id)
 {
     if (background == id)
@@ -323,13 +335,9 @@ void change_background(int id)
 
         // 1024 0x0400 is when sprites are flipped horizontally, 2048 0x0800 is when they are flipped vertically, 3072 0x0C00 is when they are flipped both horizontally and vertically
 
-        // Incoming hack! this just clears the cash out menu thing so that we can slowly display it with an animation later. The reason this isn't optimal is because the full background is already loaded into the vram at this point.
+        // Incoming hack! Clear the round end menu so that we can slowly display it with an animation later. The reason this isn't optimal is because the full background is already loaded into the vram at this point.
         // I'm just doing it this way because it's easier than doing some weird shit with Grit in order to get a proper tilemap. I'm not the biggest fan of Grit.
-        for (int y = 19; y >= 7; y--)
-        {
-            const unsigned short tile_map[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000};
-            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map, sizeof(tile_map));
-        }
+        main_bg_se_clear_rect(ROUND_END_MENU_BOTTOM_SE, ROUND_END_MENU_TOP_SE, ROUND_END_MENU_LEFT_SE, ROUND_END_MENU_WIDTH_SE);
         
         //tte_erase_rect(0, 0, 64, 48); // Clear top left corner where the blind stats are displayed
         tte_erase_rect(128, 128, 152, 160); // Clear the hand size/max size display
@@ -1562,6 +1570,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             }
             else if (sequence_step < 15)
             {
+                // Print the separator dots
                 int x = (9 + sequence_step) * 8;
                 int y = (13) * 8;
 
