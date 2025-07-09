@@ -173,14 +173,16 @@ void sort_cards()
 
 enum HandType hand_get_type()
 {
+    enum HandType res_hand_type = NONE;
+
     // Idk if this is how Balatro does it but this is how I'm doing it
     if (hand_selections == 0 || hand_state == HAND_DISCARD)
     {
-        hand_type = NONE;
-        return hand_type;
+        res_hand_type = NONE;
+        return res_hand_type;
     }
 
-    hand_type = HIGH_CARD;
+    res_hand_type = HIGH_CARD;
 
     u8 suits[NUM_SUITS] = {0};
     u8 ranks[NUM_RANKS] = {0};
@@ -199,23 +201,23 @@ enum HandType hand_get_type()
     {
         if (suits[i] >= MAX_SELECTION_SIZE) // if i add jokers just MAX_SELECTION_SIZE - 1 for four fingers
         {
-            hand_type = FLUSH;
+            res_hand_type = FLUSH;
             break;
         }
     }
 
     // Check for straight
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < NUM_RANKS - 4; i++)
     {
         if (ranks[i] && ranks[i + 1] && ranks[i + 2] && ranks[i + 3] && ranks[i + 4])
         {
-            if (hand_type == FLUSH)
+            if (res_hand_type == FLUSH)
             {
-                hand_type = STRAIGHT_FLUSH;
+                res_hand_type = STRAIGHT_FLUSH;
             }
             else
             {
-                hand_type = STRAIGHT;
+                res_hand_type = STRAIGHT;
             }
             break;
         }
@@ -224,75 +226,75 @@ enum HandType hand_get_type()
     // Check for ace low straight
     if (ranks[ACE] && ranks[TWO] && ranks[THREE] && ranks[FOUR] && ranks[FIVE])
     {
-        hand_type = STRAIGHT;
+        res_hand_type = STRAIGHT;
     }
 
     // Check for royal flush
-    if (hand_type == STRAIGHT_FLUSH && ranks[TEN] && ranks[JACK] && ranks[QUEEN] && ranks[KING] && ranks[ACE])
+    if (res_hand_type == STRAIGHT_FLUSH && ranks[TEN] && ranks[JACK] && ranks[QUEEN] && ranks[KING] && ranks[ACE])
     {
-        hand_type = ROYAL_FLUSH;
-        return hand_type;
+        res_hand_type = ROYAL_FLUSH;
+        return res_hand_type;
     }
 
     // Check for straight flush
-    if (hand_type == STRAIGHT_FLUSH)
+    if (res_hand_type == STRAIGHT_FLUSH)
     {
-        hand_type = STRAIGHT_FLUSH;
-        return hand_type;
+        res_hand_type = STRAIGHT_FLUSH;
+        return res_hand_type;
     }
 
     for (int i = 0; i < NUM_RANKS; i++)
     {
         if (ranks[i] >= 5)
         {
-            if (hand_type == FLUSH)
+            if (res_hand_type == FLUSH)
             {
-                hand_type = FLUSH_FIVE;
-                return hand_type;
+                res_hand_type = FLUSH_FIVE;
+                return res_hand_type;
             }
             else
             {
-                hand_type = FIVE_OF_A_KIND;
-                return hand_type;
+                res_hand_type = FIVE_OF_A_KIND;
+                return res_hand_type;
             }
         }
         else if (ranks[i] == 4)
         {
-            hand_type = FOUR_OF_A_KIND;
-            return hand_type;
+            res_hand_type = FOUR_OF_A_KIND;
+            return res_hand_type;
         }
         else if (ranks[i] == 3)
         {   
-            if (hand_type == PAIR)
+            if (res_hand_type == PAIR)
             {
-                hand_type = FULL_HOUSE;
-                return hand_type;
+                res_hand_type = FULL_HOUSE;
+                return res_hand_type;
             }
             else
             {
-                hand_type = THREE_OF_A_KIND;
+                res_hand_type = THREE_OF_A_KIND;
             }
         }
         else if (ranks[i] == 2)
         {
-            if (hand_type == THREE_OF_A_KIND)
+            if (res_hand_type == THREE_OF_A_KIND)
             {
-                hand_type = FULL_HOUSE;
-                return hand_type;
+                res_hand_type = FULL_HOUSE;
+                return res_hand_type;
             }
-            else if (hand_type == PAIR)
+            else if (res_hand_type == PAIR)
             {
-                hand_type = TWO_PAIR;
-                return hand_type;
+                res_hand_type = TWO_PAIR;
+                return res_hand_type;
             }
             else
             {
-                hand_type = PAIR;
+                res_hand_type = PAIR;
             }
         }
     }
 
-    return hand_type;
+    return res_hand_type;
 }
 
 void change_background(int id)
@@ -400,8 +402,8 @@ void set_mult(int value)
 void set_hand()
 {
     tte_erase_rect(8, 64, 64, 72); // Hand type
-
-    switch (hand_get_type())
+    hand_type = hand_get_type();
+    switch (hand_type)
     {
     case HIGH_CARD:
         tte_printf("#{P:8,64;}HIGH C");
