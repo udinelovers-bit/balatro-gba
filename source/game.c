@@ -108,36 +108,46 @@ static inline Card *discard_pop()
 
 
 // Consts
-static const Rect ROUND_END_MENU_RECT = { 9, 7, 25, 21 }; // In screenblocks
 
-// Rects for TTE
-static const Rect HAND_SIZE_RECT = { 128, 128, 152, 160 }; // Seems to include both SELECT and PLAYING
-static const Rect HAND_SIZE_RECT_SELECT = { 128, 128, 152, 136 };
-static const Rect HAND_SIZE_RECT_PLAYING = { 128, 152, 152, 160 };
-static const Rect HAND_TYPE_RECT = { 8, 64, 64, 72 };
+// Rects                                       left     top     right   bottom
+// Screenblock rects
+static const Rect ROUND_END_MENU_RECT       = {9,       7,      25,     21 }; 
+
+static const Rect POP_MENU_ANIM_RECT        = {9,       7,      25,     32 };
+// The rect for popping menu animations - includes both the target and source position 
+// rects. The source position extends beyond the visible screen to the end
+// of the screenblock
+// The target position is blank so we just animate the whole thing so we don't 
+// have to track its position
+
+// Rects for TTE (in pixels)
+static const Rect HAND_SIZE_RECT            = {128,     128,    152,    160 }; // Seems to include both SELECT and PLAYING
+static const Rect HAND_SIZE_RECT_SELECT     = {128,     128,    152,    136 };
+static const Rect HAND_SIZE_RECT_PLAYING    = {128,     152,    152,    160 };
+static const Rect HAND_TYPE_RECT            = {8,       64,     64,     72  };
 // Score displayed in the same place as the hand type
-static const Rect TEMP_SCORE_RECT = { 8, 64, 64, 72 }; 
+static const Rect TEMP_SCORE_RECT           = {8,       64,     64,     72  }; 
 
-static const Rect PLAYED_CARDS_SCORES_RECT = { 72, 48, 240, 56 };
-static const Rect BLIND_TOKEN_TEXT_RECT = { 80, 72, 200, 160 };
-static const Rect MONEY_TEXT_RECT = { 8, 120, 64, 120 };
-static const Rect CHIPS_TEXT_RECT = { 8, 80, 32, 88 };
-static const Rect MULT_TEXT_RECT = { 40, 80, 64, 88 };
-static const Rect BLIND_REWARD_RECT = { 40, 32, 64, 40 };
+static const Rect PLAYED_CARDS_SCORES_RECT  = {72,      48,     240,    56  };
+static const Rect BLIND_TOKEN_TEXT_RECT     = {80,      72,     200,    160 };
+static const Rect MONEY_TEXT_RECT           = {8,       120,    64,     120 };
+static const Rect CHIPS_TEXT_RECT           = {8,       80,     32,     88  };
+static const Rect MULT_TEXT_RECT            = {40,      80,     64,     88  };
+static const Rect BLIND_REWARD_RECT         = {40,      32,     64,     40  };
 
 // Rects with UNDEFINED are only used in tte_printf, they need to be fully defined
 // to be used with tte_erase_rect_wrapper()
-static const Rect HANDS_TEXT_RECT = { 16, 104, UNDEFINED, UNDEFINED };
-static const Rect DISCARDS_TEXT_RECT = { 48, 104, UNDEFINED, UNDEFINED };
-static const Rect BLIND_REQUIREMENT_TEXT_RECT = { 40, 24, UNDEFINED, UNDEFINED };
-static const Rect DECK_SIZE_RECT = { 200, 152, UNDEFINED, UNDEFINED };
-static const Rect ROUND_TEXT_RECT = { 48, 144, UNDEFINED, UNDEFINED };
-static const Rect ANTE_TEXT_RECT = { 8, 144, UNDEFINED, UNDEFINED };
-static const Rect ROUND_END_BLIND_REQUIREMENT_RECT = { 112, 96, UNDEFINED, UNDEFINED };
-static const Rect ROUND_END_BLIND_REWARD_RECT = { 168, 96, UNDEFINED, UNDEFINED };
-static const Rect ROUND_END_NUM_HANDS_RECT = { 88, 116, UNDEFINED, UNDEFINED };
-static const Rect HAND_REWARD_RECT = { 168, UNDEFINED, UNDEFINED, UNDEFINED };
-static const Rect CASHOUT_RECT = { 88, 72, UNDEFINED, UNDEFINED };
+static const Rect HANDS_TEXT_RECT           = {16,      104,    UNDEFINED, UNDEFINED };
+static const Rect DISCARDS_TEXT_RECT        = {48,      104,    UNDEFINED, UNDEFINED };
+static const Rect BLIND_REQ_TEXT_RECT       = {40,      24,     UNDEFINED, UNDEFINED };
+static const Rect DECK_SIZE_RECT            = {200,     152,    UNDEFINED, UNDEFINED };
+static const Rect ROUND_TEXT_RECT           = {48,      144,    UNDEFINED, UNDEFINED };
+static const Rect ANTE_TEXT_RECT            = {8,       144,    UNDEFINED, UNDEFINED };
+static const Rect ROUND_END_BLIND_REQ_RECT  = {112,     96,     UNDEFINED, UNDEFINED };
+static const Rect ROUND_END_BLIND_REWARD_RECT = { 168,  96,     UNDEFINED, UNDEFINED };
+static const Rect ROUND_END_NUM_HANDS_RECT  = {88,      116,    UNDEFINED, UNDEFINED };
+static const Rect HAND_REWARD_RECT          = {168,     UNDEFINED, UNDEFINED, UNDEFINED };
+static const Rect CASHOUT_RECT              = {88,      72,     UNDEFINED, UNDEFINED };
 
 // General functions
 void sort_hand_by_suit()
@@ -171,7 +181,6 @@ void sort_hand_by_rank()
         }
     }
 }
-
 
 void sort_cards()
 {
@@ -656,7 +665,7 @@ void game_init()
     tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", HAND_SIZE_RECT.left, HAND_SIZE_RECT.top, hand_get_size(), hand_get_max_size()); // Hand size/max size
     tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", DECK_SIZE_RECT.left, DECK_SIZE_RECT.top, deck_get_size(), deck_get_max_size()); // Deck size/max size
 
-    tte_printf("#{P:%d,%d; cx:0xE000}%d", BLIND_REQUIREMENT_TEXT_RECT.left, BLIND_REQUIREMENT_TEXT_RECT.top, blind_get_requirement(current_blind, ante)); // Blind requirement
+    tte_printf("#{P:%d,%d; cx:0xE000}%d", BLIND_REQ_TEXT_RECT.left, BLIND_REQ_TEXT_RECT.top, blind_get_requirement(current_blind, ante)); // Blind requirement
     tte_printf("#{P:%d,%d; cx:0xC000}$%d", BLIND_REWARD_RECT.left, BLIND_REWARD_RECT.top, blind_get_reward(current_blind)); // Blind reward
 
     set_score(score); // Set the score display
@@ -1427,7 +1436,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
         {
             obj_unhide(round_end_blind_token->obj, 0);
             
-            tte_printf("#{P:%d,%d; cx:0xE000}%d", ROUND_END_BLIND_REQUIREMENT_RECT.left, ROUND_END_BLIND_REQUIREMENT_RECT.top, blind_get_requirement(current_blind, ante));
+            tte_printf("#{P:%d,%d; cx:0xE000}%d", ROUND_END_BLIND_REQ_RECT.left, ROUND_END_BLIND_REQ_RECT.top, blind_get_requirement(current_blind, ante));
 
             int y = 13;
 
@@ -1469,7 +1478,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
 
             blind_reward--;
             tte_printf("#{P:%d,%d; cx:0xC000}$%d", BLIND_REWARD_RECT.left , BLIND_REWARD_RECT.top, blind_reward);
-            tte_printf("#{P:%d,%d; cx:0xC000}$%d", ROUND_END_BLIND_REWARD_RECT.left, ROUND_END_BLIND_REQUIREMENT_RECT.top, blind_get_reward(current_blind) - blind_reward);
+            tte_printf("#{P:%d,%d; cx:0xC000}$%d", ROUND_END_BLIND_REWARD_RECT.left, ROUND_END_BLIND_REQ_RECT.top, blind_get_reward(current_blind) - blind_reward);
 
             if (blind_reward <= 0)
             {
@@ -1741,11 +1750,7 @@ void game_shop()
 
     if (timer < 13)
     {           
-        for (int y = 7; y < 40; y++)
-        {
-            int x = 9;
-            memcpy16(&se_mem[MAIN_BG_SBB][x + 32 * (y - 1)], &se_mem[MAIN_BG_SBB][x + 32 * y], 16);
-        }
+        main_bg_se_copy_rect_1_tile_up(POP_MENU_ANIM_RECT);
 
         if (timer >= 7)
         {
@@ -1763,7 +1768,7 @@ void game_shop()
         // {
         //     int y_from = 26;
         //     int y_to = 0;
-        //     memcpy16(&se_mem[MAIN_BG_SE_BASE][32 * y_to], &se_mem[MAIN_BG_SE_BASE][32 * y_from], 9);
+        //     memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
         // }
     }
 }
