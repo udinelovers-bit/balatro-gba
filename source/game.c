@@ -174,7 +174,6 @@ void sort_hand_by_rank()
     }
 }
 
-
 void sort_cards()
 {
     if (sort_by_suit)
@@ -395,9 +394,15 @@ void change_background(int id)
         GRIT_CPY(&tile_mem[MAIN_BG_CBB], background_blind_select_gfxTiles);
         GRIT_CPY(&se_mem[MAIN_BG_SBB], background_blind_select_gfxMap);
 
+        // Disable the button highlight colors
+        // Select button PID is 15 and the outline is 18
+        memcpy16(&pal_bg_mem[18], &pal_bg_mem[15], 1);
+        // Skip button PID is 10 and the outline is 5
+        memcpy16(&pal_bg_mem[10 ], &pal_bg_mem[5], 1);
+
         for (int i = 0; i < MAX_BLINDS; i++)
         {
-            if (blinds[i] != BLIND_CURRENT && (i == SMALL_BLIND || i == BIG_BLIND))
+            if (blinds[i] != BLIND_CURRENT && (i == SMALL_BLIND || i == BIG_BLIND)) // Make the skip button gray
             {
                 int x_from = 0;
                 int y_from = 24 + (i * 4);
@@ -413,7 +418,7 @@ void change_background(int id)
                 }
             }
 
-            if (blinds[i] == BLIND_CURRENT)
+            if (blinds[i] == BLIND_CURRENT) // Raise the blind panel up a bit
             {
                 int x_from = 0;
                 int y_from = 27;
@@ -421,7 +426,7 @@ void change_background(int id)
                 int x_to = 9 + (i * 5);
                 int y_to = 31;
 
-                for (int y = 7; y < 40; y++) // Shift the shop panel
+                for (int y = 7; y < 40; y++)
                 {
                     memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * (y - 1)], &se_mem[MAIN_BG_SBB][x_to + 32 * y], 5);
                 }
@@ -438,9 +443,29 @@ void change_background(int id)
 
                 memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 5);        
             }
-            else if (blinds[i] == BLIND_UPCOMING)
+            else if (blinds[i] == BLIND_UPCOMING) // Change the select icon to "NEXT" 
             {
                 int x_from = 0;
+                int y_from = 20;
+
+                int x_to = 10 + (i * 5);
+                int y_to = 20;
+
+                memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 3);
+            }
+            else if (blinds[i] == BLIND_SKIPPED) // Change the select icon to "SKIP"
+            {
+                int x_from = 3;
+                int y_from = 20;
+
+                int x_to = 10 + (i * 5);
+                int y_to = 20;
+
+                memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 3);
+            }
+            else if (blinds[i] == BLIND_DEFEATED) // Change the select icon to "DEFEATED"
+            {
+                int x_from = 6;
                 int y_from = 20;
 
                 int x_to = 10 + (i * 5);
@@ -684,6 +709,23 @@ void deck_shuffle()
     if (hand_state == HAND_SHUFFLING) return; // Prevent multiple shuffles at the same time
     hand_state = HAND_SHUFFLING;
     card_focused = 0;
+}
+
+void increment_blind(enum BlindState increment_reason)
+{
+    current_blind++;
+    if (current_blind >= MAX_BLINDS)
+    {
+        current_blind = 0;
+        blinds[0] = BLIND_CURRENT; // Reset the blinds to the first one
+        blinds[1] = BLIND_UPCOMING; // Set the next blind to upcoming
+        blinds[2] = BLIND_UPCOMING; // Set the next blind to upcoming
+    }
+    else
+    {
+        blinds[current_blind] = BLIND_CURRENT;
+        blinds[current_blind - 1] = increment_reason; 
+    }
 }
 
 // Game functions
@@ -1962,6 +2004,9 @@ void game_shop()
 
             selection_x = 0; // Reset the selection
             top_row = true; // Reset the top row selection
+
+            increment_blind(BLIND_DEFEATED);
+
             break;
     }
 }
@@ -1972,11 +2017,13 @@ void game_blind_select()
 
     static int state = 0;
 
+    static bool top_row = true; // There's only one row in this game state, but this is here for consistency with the shop state if we make these variables global or something
+
     switch (state) // I'm only using magic numbers here for the sake of simplicity since it's just sequential, but you can replace them with named constants or enums if it makes it clearer
     {
         case 0: // Intro sequence (menu and shop icon coming into frame)
         {           
-            for (int y = 7; y < 40; y++) // Shift the shop panel
+            for (int y = 7; y < 40; y++)
             {
                 int x = 9;
                 memcpy16(&se_mem[MAIN_BG_SBB][x + 32 * (y - 1)], &se_mem[MAIN_BG_SBB][x + 32 * y], 16);
@@ -1986,6 +2033,45 @@ void game_blind_select()
             {
                 state = 1;
                 timer = 0; // Reset the timer
+            }
+
+            break;
+        }
+        case 1: // Blind select input and selection
+        {
+            // Blind select input logic
+            if (key_hit(KEY_UP))
+            {
+                top_row = true;
+            }
+            else if (key_hit(KEY_DOWN))
+            {
+                top_row = false;
+            }
+            else if (key_hit(KEY_A))
+            {
+                if (top_row)
+                {
+                    state = 2;
+                }
+                else if (current_blind != BOSS_BLIND)
+                {
+                    increment_blind(BLIND_SKIPPED);
+                    state = 0; 
+                    background = -1; // Force refresh of the background
+                    timer = 0;
+                }
+            }
+
+            if (top_row)
+            {
+                memset16(&pal_bg_mem[18], 0xFFFF, 1);
+                memcpy16(&pal_bg_mem[10], &pal_bg_mem[5], 1);
+            }
+            else
+            {
+                memcpy16(&pal_bg_mem[18], &pal_bg_mem[15], 1);
+                memset16(&pal_bg_mem[10], 0xFFFF, 1);
             }
 
             break;
