@@ -113,14 +113,18 @@ static inline Card *discard_pop()
 
 // Rects                                       left     top     right   bottom
 // Screenblock rects
-static const Rect ROUND_END_MENU_RECT       = {9,       7,      25,     21 }; 
+static const Rect ROUND_END_MENU_RECT       = {9,       7,      24,     21 }; 
 
-static const Rect POP_MENU_ANIM_RECT        = {9,       7,      25,     32 };
-// The rect for popping menu animations - includes both the target and source position 
-// rects. The source position extends beyond the visible screen to the end
-// of the screenblock
-// The target position is blank so we just animate the whole thing so we don't 
-// have to track its position
+static const Rect POP_MENU_ANIM_RECT        = {9,       6,      24,     32 };
+// The rect for popping menu animations (round end, shop, blinds) - includes both the 
+// target and source position rects. 
+// Extends beyond the visible screen to the end of the screenblock
+// This is because when popping, the target position is blank so we just animate the whole thing 
+// so we don't have to track its position
+//
+// When unpopping we include another row above the menu assuming it's blank so it's copied into it
+
+static const Rect SHOP_ICON_RECT            = { 0,      0,      8,     4 };
 
 // Rects for TTE (in pixels)
 static const Rect HAND_SIZE_RECT            = {128,     128,    152,    160 }; // Seems to include both SELECT and PLAYING
@@ -373,7 +377,7 @@ void change_background(int id)
 
         // Incoming hack! Clear the round end menu so that we can slowly display it with an animation later. The reason this isn't optimal is because the full background is already loaded into the vram at this point.
         // I'm just doing it this way because it's easier than doing some weird shit with Grit in order to get a proper tilemap. I'm not the biggest fan of Grit.
-        // TODO: See TODO comment in game_round_end(), once that is properly done, remove this.
+        // TODO: Remove this if game_round_end() is fixed to use main_bg_se_copy_rect_1_tile_vert() for the pop menu
         main_bg_se_clear_rect(ROUND_END_MENU_RECT);
         
         //tte_erase_rect(0, 0, 64, 48); // Clear top left corner where the blind stats are displayed
@@ -1460,9 +1464,11 @@ void game_playing()
 
 void game_round_end() // Writing this kind a made me want to kms. If somewone wants to rewrite this, please do so.
 {
-    /* TODO: The correct way to do this is the same as game_shop(), 
-     * put the menu in VRAM outside the screen and copy it from there.
-     * That code needs to be extracted to a function and reused here.
+    /* TODO: I could use main_bg_se_copy_rect_1_tile_vert() to replace the menu pop up here
+     * But there are a bunch of other manual hard-coded tilemap animations in here that
+     * are very hard to understand, and if I change the background image for the pop up
+     * it will change the tile charblock layout and screw them up so it's all or nothing...
+     * - Meir
      */ 
     static int state = 0;
     static int sequence_step = 0; // Reusable variable for the animations in states
@@ -1799,12 +1805,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
         case 8:
         {
             sequence_step++;
-            int x = 9; 
-            
-            for (int y = 19; y > 5; y--)
-            {
-                memcpy16(&se_mem[MAIN_BG_SBB][x + 32 * (y + 1)], &se_mem[MAIN_BG_SBB][x + 32 * y], 16);
-            }
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
 
             if (sequence_step >= 20)
             {
@@ -1868,16 +1869,13 @@ void game_shop()
     {
         case 0: // Intro sequence (menu and shop icon coming into frame)
         {           
-            for (int y = 7; y < 40; y++) // Shift the shop panel
-            {
-                int x = 9;
-                memcpy16(&se_mem[MAIN_BG_SBB][x + 32 * (y - 1)], &se_mem[MAIN_BG_SBB][x + 32 * y], 16);
-            }
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
 
             if (timer >= 7) // Shift the shop icon
             {
                 int timer_offset = timer - 6;
 
+                // TODO: Extract to generic function?
                 for (int y = 0; y < timer_offset; y++)
                 {
                     int y_from = 26 + y - timer_offset;
@@ -1969,19 +1967,10 @@ void game_shop()
         }
         case 2: // Outro sequence (menu and shop icon going out of frame)
         {
-            // This is reused from game_round_end()
             // Shift the shop panel
-            int x = 9; 
-            for (int y = 19; y > 5; y--)
-            {
-                memcpy16(&se_mem[MAIN_BG_SBB][x + 32 * (y + 1)], &se_mem[MAIN_BG_SBB][x + 32 * y], 16);
-            }
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
 
-            // Shift the shop icon
-            for (int y = 0; y < 5; y++) 
-            {
-                memcpy16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], &se_mem[MAIN_BG_SBB][32 * y], 9);
-            }
+            main_bg_se_copy_rect_1_tile_vert(SHOP_ICON_RECT, SE_UP);
             
             if (timer == 1)
             {
@@ -2033,13 +2022,9 @@ void game_blind_select()
 
     switch (state) // I'm only using magic numbers here for the sake of simplicity since it's just sequential, but you can replace them with named constants or enums if it makes it clearer
     {
-        case 0: // Intro sequence (menu and shop icon coming into frame)
+        case 0: // Intro sequence (menu coming into frame)
         {           
-            for (int y = 7; y < 40; y++)
-            {
-                int x = 9;
-                memcpy16(&se_mem[MAIN_BG_SBB][x + 32 * (y - 1)], &se_mem[MAIN_BG_SBB][x + 32 * y], 16);
-            }
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
 
             if (timer == 12)
             {

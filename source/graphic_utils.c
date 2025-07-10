@@ -4,19 +4,15 @@
 
 #include "graphic_utils.h"
 
-/* 
- * 
- */
 const Rect FULL_SCREENBLOCK_RECT = { 0, 0, SE_ROW_LEN, SE_COL_LEN };
-
 
 // Clips a rect of screenblock entries to a specified rect
 static void clip_se_rect_to_bounding_rect(Rect* rect, const Rect* bounding_rect)
 {
-    rect->right = min(rect->right, SE_ROW_LEN);
-    rect->bottom = min(rect->bottom, SE_COL_LEN);
-    rect->left = max(rect->left, 0);
-    rect->top = max(rect->top, 0);
+    rect->right = min(rect->right, bounding_rect->right);
+    rect->bottom = min(rect->bottom, bounding_rect->bottom);
+    rect->left = max(rect->left, bounding_rect->left);
+    rect->top = max(rect->top, bounding_rect->top);
 }
 
 // Can be unstaticed if needed
@@ -32,29 +28,35 @@ void main_bg_se_clear_rect(Rect se_rect)
 {
     if (se_rect.left > se_rect.right)
         return;
-    // Just to make sure we're not overflowing the boundaries
+    // Clip to avoid screenblock overflow
     clip_se_rect_to_screenblock(&se_rect);
 
     for (int y = se_rect.top; y < se_rect.bottom; y++)
     {
-        memset16(&(se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * y]), 0x0000, se_rect.right - se_rect.left);
+        memset16(&(se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * y]), 0x0000, se_rect.right - se_rect.left + 1);
     }
 }
 
-void main_bg_se_copy_rect_1_tile_up(Rect se_rect)
+void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction)
 {
-    if (se_rect.left > se_rect.right)
+    if (se_rect.left > se_rect.right
+        || (direction != SE_UP && direction != SE_DOWN))
         return;
-    
+
+    // Clip to avoid read/write overflow of the screenblock
     Rect bounding_rect = FULL_SCREENBLOCK_RECT;
-    bounding_rect.top = 1; // Since we're going up, need to clip to 1 to not overflow
+	bounding_rect.top = 1;
+	bounding_rect.bottom = SE_COL_LEN - 1;
     clip_se_rect_to_bounding_rect(&se_rect, &bounding_rect);
 
-    for (int y = se_rect.top; y < se_rect.bottom; y++)
+    int start = (direction == SE_UP) ? se_rect.top : se_rect.bottom;
+    int end = (direction == SE_UP) ? se_rect.bottom : se_rect.top;
+
+    for (int y = start; y != end - direction; y -= direction)
     {
-        memcpy16(&se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * (y - 1)], 
+        memcpy16(&se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * (y + direction)],
 			     &se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * y], 
-                 se_rect.right - se_rect.left);
+                 se_rect.right - se_rect.left + 1);
     }   
 }
 
