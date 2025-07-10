@@ -15,10 +15,11 @@
 #include "background_play_gfx.h"
 #include "background_round_end_gfx.h"
 #include "background_shop_gfx.h"
+#include "background_blind_select_gfx.h"
 
 #include "soundbank.h"
 
-static int timer = 1; // This might already exist in libtonc but idk so i'm just making my own
+static int timer = 0; // This might already exist in libtonc but idk so i'm just making my own
 static int game_speed = 1;
 static int background = 0;
 
@@ -31,7 +32,8 @@ static enum HandType hand_type = NONE;
 static Sprite *playing_blind_token = NULL; // The sprite that displays the blind when in "GAME_PLAYING/GAME_ROUND_END" state
 static Sprite *round_end_blind_token = NULL; // The sprite that displays the blind when in "GAME_ROUND_END" state
 
-static enum BlindType current_blind = SMALL_BLIND;
+static int current_blind = SMALL_BLIND;
+static enum BlindState blinds[MAX_BLINDS] = {BLIND_CURRENT, BLIND_UPCOMING, BLIND_UPCOMING}; // The current state of the blinds, this is used to determine what the game is doing at any given time
 
 static int hands = 4;
 static int discards = 4;
@@ -388,15 +390,102 @@ void change_background(int id)
 
         // Set the outline colors for the shop background
         memset16(&pal_bg_mem[27], 0x213D, 1);
-        memset16(&pal_bg_mem[7], 0x10B4, 1);
-
+        memset16(&pal_bg_mem[6], 0x10B4, 1);
+        
         memset16(&pal_bg_mem[14], 0x32BE, 1); // Reset the shop lights to correct colors
         memset16(&pal_bg_mem[17], 0x4B5F, 1);
         memset16(&pal_bg_mem[22], 0x5F9F, 1);
         memset16(&pal_bg_mem[8], 0xFFFF, 1);
 
-        memcpy16(&pal_bg_mem[6], &pal_bg_mem[3], 1); // Disable the button highlight colors
-        memcpy16(&pal_bg_mem[13], &pal_bg_mem[15], 1);
+        memcpy16(&pal_bg_mem[7], &pal_bg_mem[3], 1); // Disable the button highlight colors
+        memcpy16(&pal_bg_mem[5], &pal_bg_mem[16], 1);
+    }
+    else if (id == BG_ID_BLIND_SELECT)
+    {
+        memcpy(pal_bg_mem, background_blind_select_gfxPal, 64);
+        GRIT_CPY(&tile_mem[MAIN_BG_CBB], background_blind_select_gfxTiles);
+        GRIT_CPY(&se_mem[MAIN_BG_SBB], background_blind_select_gfxMap);
+
+        // Disable the button highlight colors
+        // Select button PID is 15 and the outline is 18
+        memcpy16(&pal_bg_mem[18], &pal_bg_mem[15], 1);
+        // Skip button PID is 10 and the outline is 5
+        memcpy16(&pal_bg_mem[10 ], &pal_bg_mem[5], 1);
+
+        for (int i = 0; i < MAX_BLINDS; i++)
+        {
+            if (blinds[i] != BLIND_CURRENT && (i == SMALL_BLIND || i == BIG_BLIND)) // Make the skip button gray
+            {
+                int x_from = 0;
+                int y_from = 24 + (i * 4);
+
+                int x_to = 9 + (i * 5);
+                int y_to = 29;
+
+                for (int j = 0; j < 3; j++)
+                {
+                    memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 5);
+                    y_from++;
+                    y_to++;
+                }
+            }
+
+            if (blinds[i] == BLIND_CURRENT) // Raise the blind panel up a bit
+            {
+                int x_from = 0;
+                int y_from = 27;
+
+                int x_to = 9 + (i * 5);
+                int y_to = 31;
+
+                for (int y = 7; y < 40; y++)
+                {
+                    memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * (y - 1)], &se_mem[MAIN_BG_SBB][x_to + 32 * y], 5);
+                }
+
+                if (i == BIG_BLIND)
+                {
+                    y_from = 31;
+                }
+                else if (i == BOSS_BLIND)
+                {
+                    x_from = x_to;
+                    y_from = 30;
+                }
+
+                memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 5);        
+            }
+            else if (blinds[i] == BLIND_UPCOMING) // Change the select icon to "NEXT" 
+            {
+                int x_from = 0;
+                int y_from = 20;
+
+                int x_to = 10 + (i * 5);
+                int y_to = 20;
+
+                memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 3);
+            }
+            else if (blinds[i] == BLIND_SKIPPED) // Change the select icon to "SKIP"
+            {
+                int x_from = 3;
+                int y_from = 20;
+
+                int x_to = 10 + (i * 5);
+                int y_to = 20;
+
+                memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 3);
+            }
+            else if (blinds[i] == BLIND_DEFEATED) // Change the select icon to "DEFEATED"
+            {
+                int x_from = 6;
+                int y_from = 20;
+
+                int x_to = 10 + (i * 5);
+                int y_to = 20;
+
+                memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 3);
+            }
+        }
     }
     else
     {
@@ -632,6 +721,23 @@ void deck_shuffle()
     if (hand_state == HAND_SHUFFLING) return; // Prevent multiple shuffles at the same time
     hand_state = HAND_SHUFFLING;
     card_focused = 0;
+}
+
+void increment_blind(enum BlindState increment_reason)
+{
+    current_blind++;
+    if (current_blind >= MAX_BLINDS)
+    {
+        current_blind = 0;
+        blinds[0] = BLIND_CURRENT; // Reset the blinds to the first one
+        blinds[1] = BLIND_UPCOMING; // Set the next blind to upcoming
+        blinds[2] = BLIND_UPCOMING; // Set the next blind to upcoming
+    }
+    else
+    {
+        blinds[current_blind] = BLIND_CURRENT;
+        blinds[current_blind - 1] = increment_reason; 
+    }
 }
 
 // Game functions
@@ -1706,8 +1812,8 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
                 timer = 0; 
                 state = 9;
             }
-        }
             break;
+        }   
         default:
             timer = 0;
             sequence_step = 0;
@@ -1723,6 +1829,17 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
 void game_shop()
 {
     change_background(BG_ID_SHOP);
+    
+    // TODO: Later move these static variables somewhere else so they can be reused for each game state
+    static int state = 0;
+
+    // these are for controlling the shop menu
+    static bool top_row = true;
+    static ushort selection_x = 0;
+
+    // temp variables for future implementation
+    const ushort max_items_top = 0; 
+    const ushort max_items_bottom = 0;
 
     if (timer % 20 == 0) // Shift palette around the border of the shop icon
     {
@@ -1745,31 +1862,234 @@ void game_shop()
         memcpy16(&pal_bg_mem[17], &shifted_palette[1], 1);
         memcpy16(&pal_bg_mem[22], &shifted_palette[2], 1);
         memcpy16(&pal_bg_mem[8], &shifted_palette[3], 1);
-
     }
 
-    if (timer < 13)
-    {           
-        main_bg_se_copy_rect_1_tile_up(POP_MENU_ANIM_RECT);
-
-        if (timer >= 7)
-        {
-            int timer_offset = timer - 6;
-
-            for (int y = 0; y < timer_offset; y++)
+    switch (state) // I'm only using magic numbers here for the sake of simplicity since it's just sequential, but you can replace them with named constants or enums if it makes it clearer
+    {
+        case 0: // Intro sequence (menu and shop icon coming into frame)
+        {           
+            for (int y = 7; y < 40; y++) // Shift the shop panel
             {
-                int y_from = 26 + y - timer_offset;
-                int y_to = 0 + y;
-                memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
+                int x = 9;
+                memcpy16(&se_mem[MAIN_BG_SBB][x + 32 * (y - 1)], &se_mem[MAIN_BG_SBB][x + 32 * y], 16);
             }
+
+            if (timer >= 7) // Shift the shop icon
+            {
+                int timer_offset = timer - 6;
+
+                for (int y = 0; y < timer_offset; y++)
+                {
+                    int y_from = 26 + y - timer_offset;
+                    int y_to = 0 + y;
+                    memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
+                }
+            }
+
+            if (timer == 12)
+            {
+                state = 1;
+                timer = 0; // Reset the timer
+            }
+
+            break;
+        }    
+        case 1: // Shop menu input and selection
+        {
+            // Shop input logic
+            if (key_hit(KEY_UP))
+            {
+                top_row = true;
+
+                if (selection_x > max_items_top)
+                {
+                    selection_x = max_items_top;
+                }
+            }
+            else if (key_hit(KEY_DOWN))
+            {
+                top_row = false;
+
+                if (selection_x > max_items_bottom)
+                {
+                    selection_x = max_items_bottom;
+                }
+            }
+            else if (key_hit(KEY_LEFT))
+            {
+                if (selection_x > 0)
+                {
+                    selection_x--;
+                }
+            }
+            else if (key_hit(KEY_RIGHT))
+            {
+                if (top_row && selection_x < max_items_top)
+                {
+                    selection_x++;
+                }
+                else if (!top_row && selection_x < max_items_bottom)
+                {
+                    selection_x++;
+                }
+            }
+
+            // Shop selection logic
+            if (selection_x == 0 && top_row)
+            {
+                memcpy16(&pal_bg_mem[7], &pal_bg_mem[3], 1);
+                memset16(&pal_bg_mem[5], 0xFFFF, 1);
+
+                if (key_hit(KEY_A))
+                {
+                    // Go to next blind selection game state
+                    state = 2; // Go to the outro sequence state
+                    timer = 0; // Reset the timer
+
+                    memcpy16(&pal_bg_mem[5], &pal_bg_mem[6], 1);
+
+                    // memcpy16(&pal_bg_mem[16], &pal_bg_mem[6], 1); 
+                    // This changes the color of the button to a dark red.
+                    // However, it shares a palette with the shop icon, so it will change the color of the shop icon as well.
+                    // And I don't care enough to fix it right now.
+                }
+            }
+            else if (selection_x == 0 && !top_row)
+            {
+                memset16(&pal_bg_mem[7], 0xFFFF, 1);
+                memcpy16(&pal_bg_mem[5], &pal_bg_mem[16], 1);
+
+                if (key_hit(KEY_A))
+                {
+                    // Do shop re-roll for money
+                }
+            }
+
+            break;
         }
-        
-        // if (timer == 8)
-        // {
-        //     int y_from = 26;
-        //     int y_to = 0;
-        //     memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
-        // }
+        case 2: // Outro sequence (menu and shop icon going out of frame)
+        {
+            // This is reused from game_round_end()
+            // Shift the shop panel
+            int x = 9; 
+            for (int y = 19; y > 5; y--)
+            {
+                memcpy16(&se_mem[MAIN_BG_SBB][x + 32 * (y + 1)], &se_mem[MAIN_BG_SBB][x + 32 * y], 16);
+            }
+
+            // Shift the shop icon
+            for (int y = 0; y < 5; y++) 
+            {
+                memcpy16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], &se_mem[MAIN_BG_SBB][32 * y], 9);
+            }
+            
+            if (timer == 1)
+            {
+                int y = 6;
+                memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0006, 1);
+                memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0007, 2);
+                memset16(&se_mem[MAIN_BG_SBB][3 + 32 * (y - 1)], 0x0008, 1);
+                memset16(&se_mem[MAIN_BG_SBB][4 + 32 * (y - 1)], 0x0009, 4);
+                memset16(&se_mem[MAIN_BG_SBB][7 + 32 * (y - 1)], 0x000A, 1);
+                memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0406, 1); 
+            }
+            else if (timer == 2)
+            {
+                int y = 5;
+                memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0001, 1);
+                memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0002, 7);
+                memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0401, 1); 
+            }
+
+            if (timer >= 20)
+            {
+                state = 3; // Go to the next state
+                timer = 0; // Reset the timer
+            }
+
+            break;
+        }
+        default:
+            game_state = GAME_BLIND_SELECT; // If we reach here, we should go to the blind select state
+            state = 0; // Reset the state
+            timer = 0; // Reset the timer
+
+            selection_x = 0; // Reset the selection
+            top_row = true; // Reset the top row selection
+
+            increment_blind(BLIND_DEFEATED);
+
+            break;
+    }
+}
+
+void game_blind_select()
+{
+    change_background(BG_ID_BLIND_SELECT);
+
+    static int state = 0;
+
+    static bool top_row = true; // There's only one row in this game state, but this is here for consistency with the shop state if we make these variables global or something
+
+    switch (state) // I'm only using magic numbers here for the sake of simplicity since it's just sequential, but you can replace them with named constants or enums if it makes it clearer
+    {
+        case 0: // Intro sequence (menu and shop icon coming into frame)
+        {           
+            for (int y = 7; y < 40; y++)
+            {
+                int x = 9;
+                memcpy16(&se_mem[MAIN_BG_SBB][x + 32 * (y - 1)], &se_mem[MAIN_BG_SBB][x + 32 * y], 16);
+            }
+
+            if (timer == 12)
+            {
+                state = 1;
+                timer = 0; // Reset the timer
+            }
+
+            break;
+        }
+        case 1: // Blind select input and selection
+        {
+            // Blind select input logic
+            if (key_hit(KEY_UP))
+            {
+                top_row = true;
+            }
+            else if (key_hit(KEY_DOWN))
+            {
+                top_row = false;
+            }
+            else if (key_hit(KEY_A))
+            {
+                if (top_row)
+                {
+                    state = 2;
+                }
+                else if (current_blind != BOSS_BLIND)
+                {
+                    increment_blind(BLIND_SKIPPED);
+                    state = 0; 
+                    background = -1; // Force refresh of the background
+                    timer = 0;
+                }
+            }
+
+            if (top_row)
+            {
+                memset16(&pal_bg_mem[18], 0xFFFF, 1);
+                memcpy16(&pal_bg_mem[10], &pal_bg_mem[5], 1);
+            }
+            else
+            {
+                memcpy16(&pal_bg_mem[18], &pal_bg_mem[15], 1);
+                memset16(&pal_bg_mem[10], 0xFFFF, 1);
+            }
+
+            break;
+        }
+        default:
+            break;
     }
 }
 
@@ -1789,7 +2109,7 @@ void game_update()
             game_shop();
             break;
         case GAME_BLIND_SELECT:
-            // Handle blind select logic here
+            game_blind_select();
             break;
         case GAME_LOSE:
             // Handle lose logic here
