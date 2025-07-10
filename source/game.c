@@ -110,36 +110,50 @@ static inline Card *discard_pop()
 
 
 // Consts
-static const Rect ROUND_END_MENU_RECT = { 9, 7, 25, 21 }; // In screenblocks
 
-// Rects for TTE
-static const Rect HAND_SIZE_RECT = { 128, 128, 152, 160 }; // Seems to include both SELECT and PLAYING
-static const Rect HAND_SIZE_RECT_SELECT = { 128, 128, 152, 136 };
-static const Rect HAND_SIZE_RECT_PLAYING = { 128, 152, 152, 160 };
-static const Rect HAND_TYPE_RECT = { 8, 64, 64, 72 };
+// Rects                                       left     top     right   bottom
+// Screenblock rects
+static const Rect ROUND_END_MENU_RECT       = {9,       7,      24,     21 }; 
+
+static const Rect POP_MENU_ANIM_RECT        = {9,       6,      24,     32 };
+// The rect for popping menu animations (round end, shop, blinds) - includes both the 
+// target and source position rects. 
+// Extends beyond the visible screen to the end of the screenblock
+// This is because when popping, the target position is blank so we just animate the whole thing 
+// so we don't have to track its position
+//
+// When unpopping we include another row above the menu assuming it's blank so it's copied into it
+
+static const Rect SHOP_ICON_RECT            = { 0,      0,      8,     4 };
+
+// Rects for TTE (in pixels)
+static const Rect HAND_SIZE_RECT            = {128,     128,    152,    160 }; // Seems to include both SELECT and PLAYING
+static const Rect HAND_SIZE_RECT_SELECT     = {128,     128,    152,    136 };
+static const Rect HAND_SIZE_RECT_PLAYING    = {128,     152,    152,    160 };
+static const Rect HAND_TYPE_RECT            = {8,       64,     64,     72  };
 // Score displayed in the same place as the hand type
-static const Rect TEMP_SCORE_RECT = { 8, 64, 64, 72 }; 
+static const Rect TEMP_SCORE_RECT           = {8,       64,     64,     72  }; 
 
-static const Rect PLAYED_CARDS_SCORES_RECT = { 72, 48, 240, 56 };
-static const Rect BLIND_TOKEN_TEXT_RECT = { 80, 72, 200, 160 };
-static const Rect MONEY_TEXT_RECT = { 8, 120, 64, 120 };
-static const Rect CHIPS_TEXT_RECT = { 8, 80, 32, 88 };
-static const Rect MULT_TEXT_RECT = { 40, 80, 64, 88 };
-static const Rect BLIND_REWARD_RECT = { 40, 32, 64, 40 };
+static const Rect PLAYED_CARDS_SCORES_RECT  = {72,      48,     240,    56  };
+static const Rect BLIND_TOKEN_TEXT_RECT     = {80,      72,     200,    160 };
+static const Rect MONEY_TEXT_RECT           = {8,       120,    64,     120 };
+static const Rect CHIPS_TEXT_RECT           = {8,       80,     32,     88  };
+static const Rect MULT_TEXT_RECT            = {40,      80,     64,     88  };
+static const Rect BLIND_REWARD_RECT         = {40,      32,     64,     40  };
 
 // Rects with UNDEFINED are only used in tte_printf, they need to be fully defined
 // to be used with tte_erase_rect_wrapper()
-static const Rect HANDS_TEXT_RECT = { 16, 104, UNDEFINED, UNDEFINED };
-static const Rect DISCARDS_TEXT_RECT = { 48, 104, UNDEFINED, UNDEFINED };
-static const Rect BLIND_REQUIREMENT_TEXT_RECT = { 40, 24, UNDEFINED, UNDEFINED };
-static const Rect DECK_SIZE_RECT = { 200, 152, UNDEFINED, UNDEFINED };
-static const Rect ROUND_TEXT_RECT = { 48, 144, UNDEFINED, UNDEFINED };
-static const Rect ANTE_TEXT_RECT = { 8, 144, UNDEFINED, UNDEFINED };
-static const Rect ROUND_END_BLIND_REQUIREMENT_RECT = { 112, 96, UNDEFINED, UNDEFINED };
-static const Rect ROUND_END_BLIND_REWARD_RECT = { 168, 96, UNDEFINED, UNDEFINED };
-static const Rect ROUND_END_NUM_HANDS_RECT = { 88, 116, UNDEFINED, UNDEFINED };
-static const Rect HAND_REWARD_RECT = { 168, UNDEFINED, UNDEFINED, UNDEFINED };
-static const Rect CASHOUT_RECT = { 88, 72, UNDEFINED, UNDEFINED };
+static const Rect HANDS_TEXT_RECT           = {16,      104,    UNDEFINED, UNDEFINED };
+static const Rect DISCARDS_TEXT_RECT        = {48,      104,    UNDEFINED, UNDEFINED };
+static const Rect BLIND_REQ_TEXT_RECT       = {40,      24,     UNDEFINED, UNDEFINED };
+static const Rect DECK_SIZE_RECT            = {200,     152,    UNDEFINED, UNDEFINED };
+static const Rect ROUND_TEXT_RECT           = {48,      144,    UNDEFINED, UNDEFINED };
+static const Rect ANTE_TEXT_RECT            = {8,       144,    UNDEFINED, UNDEFINED };
+static const Rect ROUND_END_BLIND_REQ_RECT  = {112,     96,     UNDEFINED, UNDEFINED };
+static const Rect ROUND_END_BLIND_REWARD_RECT = { 168,  96,     UNDEFINED, UNDEFINED };
+static const Rect ROUND_END_NUM_HANDS_RECT  = {88,      116,    UNDEFINED, UNDEFINED };
+static const Rect HAND_REWARD_RECT          = {168,     UNDEFINED, UNDEFINED, UNDEFINED };
+static const Rect CASHOUT_RECT              = {88,      72,     UNDEFINED, UNDEFINED };
 
 // General functions
 void sort_hand_by_suit()
@@ -208,14 +222,16 @@ void sort_cards()
 
 enum HandType hand_get_type()
 {
+    enum HandType res_hand_type = NONE;
+
     // Idk if this is how Balatro does it but this is how I'm doing it
     if (hand_selections == 0 || hand_state == HAND_DISCARD)
     {
-        hand_type = NONE;
-        return hand_type;
+        res_hand_type = NONE;
+        return res_hand_type;
     }
 
-    hand_type = HIGH_CARD;
+    res_hand_type = HIGH_CARD;
 
     u8 suits[NUM_SUITS] = {0};
     u8 ranks[NUM_RANKS] = {0};
@@ -234,23 +250,23 @@ enum HandType hand_get_type()
     {
         if (suits[i] >= MAX_SELECTION_SIZE) // if i add jokers just MAX_SELECTION_SIZE - 1 for four fingers
         {
-            hand_type = FLUSH;
+            res_hand_type = FLUSH;
             break;
         }
     }
 
     // Check for straight
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < NUM_RANKS - 4; i++)
     {
         if (ranks[i] && ranks[i + 1] && ranks[i + 2] && ranks[i + 3] && ranks[i + 4])
         {
-            if (hand_type == FLUSH)
+            if (res_hand_type == FLUSH)
             {
-                hand_type = STRAIGHT_FLUSH;
+                res_hand_type = STRAIGHT_FLUSH;
             }
             else
             {
-                hand_type = STRAIGHT;
+                res_hand_type = STRAIGHT;
             }
             break;
         }
@@ -259,75 +275,75 @@ enum HandType hand_get_type()
     // Check for ace low straight
     if (ranks[ACE] && ranks[TWO] && ranks[THREE] && ranks[FOUR] && ranks[FIVE])
     {
-        hand_type = STRAIGHT;
+        res_hand_type = STRAIGHT;
     }
 
     // Check for royal flush
-    if (hand_type == STRAIGHT_FLUSH && ranks[TEN] && ranks[JACK] && ranks[QUEEN] && ranks[KING] && ranks[ACE])
+    if (res_hand_type == STRAIGHT_FLUSH && ranks[TEN] && ranks[JACK] && ranks[QUEEN] && ranks[KING] && ranks[ACE])
     {
-        hand_type = ROYAL_FLUSH;
-        return hand_type;
+        res_hand_type = ROYAL_FLUSH;
+        return res_hand_type;
     }
 
     // Check for straight flush
-    if (hand_type == STRAIGHT_FLUSH)
+    if (res_hand_type == STRAIGHT_FLUSH)
     {
-        hand_type = STRAIGHT_FLUSH;
-        return hand_type;
+        res_hand_type = STRAIGHT_FLUSH;
+        return res_hand_type;
     }
 
     for (int i = 0; i < NUM_RANKS; i++)
     {
         if (ranks[i] >= 5)
         {
-            if (hand_type == FLUSH)
+            if (res_hand_type == FLUSH)
             {
-                hand_type = FLUSH_FIVE;
-                return hand_type;
+                res_hand_type = FLUSH_FIVE;
+                return res_hand_type;
             }
             else
             {
-                hand_type = FIVE_OF_A_KIND;
-                return hand_type;
+                res_hand_type = FIVE_OF_A_KIND;
+                return res_hand_type;
             }
         }
         else if (ranks[i] == 4)
         {
-            hand_type = FOUR_OF_A_KIND;
-            return hand_type;
+            res_hand_type = FOUR_OF_A_KIND;
+            return res_hand_type;
         }
         else if (ranks[i] == 3)
         {   
-            if (hand_type == PAIR)
+            if (res_hand_type == PAIR)
             {
-                hand_type = FULL_HOUSE;
-                return hand_type;
+                res_hand_type = FULL_HOUSE;
+                return res_hand_type;
             }
             else
             {
-                hand_type = THREE_OF_A_KIND;
+                res_hand_type = THREE_OF_A_KIND;
             }
         }
         else if (ranks[i] == 2)
         {
-            if (hand_type == THREE_OF_A_KIND)
+            if (res_hand_type == THREE_OF_A_KIND)
             {
-                hand_type = FULL_HOUSE;
-                return hand_type;
+                res_hand_type = FULL_HOUSE;
+                return res_hand_type;
             }
-            else if (hand_type == PAIR)
+            else if (res_hand_type == PAIR)
             {
-                hand_type = TWO_PAIR;
-                return hand_type;
+                res_hand_type = TWO_PAIR;
+                return res_hand_type;
             }
             else
             {
-                hand_type = PAIR;
+                res_hand_type = PAIR;
             }
         }
     }
 
-    return hand_type;
+    return res_hand_type;
 }
 
 void change_background(int id)
@@ -361,7 +377,7 @@ void change_background(int id)
 
         // Incoming hack! Clear the round end menu so that we can slowly display it with an animation later. The reason this isn't optimal is because the full background is already loaded into the vram at this point.
         // I'm just doing it this way because it's easier than doing some weird shit with Grit in order to get a proper tilemap. I'm not the biggest fan of Grit.
-        // TODO: See TODO comment in game_round_end(), once that is properly done, remove this.
+        // TODO: Remove this if game_round_end() is fixed to use main_bg_se_copy_rect_1_tile_vert() for the pop menu
         main_bg_se_clear_rect(ROUND_END_MENU_RECT);
         
         //tte_erase_rect(0, 0, 64, 48); // Clear top left corner where the blind stats are displayed
@@ -526,8 +542,8 @@ static void print_hand_type(const char* hand_type_str)
 void set_hand()
 {
     tte_erase_rect_wrapper(HAND_TYPE_RECT);
-
-    switch (hand_get_type())
+    hand_type = hand_get_type();
+    switch (hand_type)
     {
     case HIGH_CARD:
         print_hand_type("HIGH C");
@@ -759,7 +775,7 @@ void game_init()
     tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", HAND_SIZE_RECT.left, HAND_SIZE_RECT.top, hand_get_size(), hand_get_max_size()); // Hand size/max size
     tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", DECK_SIZE_RECT.left, DECK_SIZE_RECT.top, deck_get_size(), deck_get_max_size()); // Deck size/max size
 
-    tte_printf("#{P:%d,%d; cx:0xE000}%d", BLIND_REQUIREMENT_TEXT_RECT.left, BLIND_REQUIREMENT_TEXT_RECT.top, blind_get_requirement(current_blind, ante)); // Blind requirement
+    tte_printf("#{P:%d,%d; cx:0xE000}%d", BLIND_REQ_TEXT_RECT.left, BLIND_REQ_TEXT_RECT.top, blind_get_requirement(current_blind, ante)); // Blind requirement
     tte_printf("#{P:%d,%d; cx:0xC000}$%d", BLIND_REWARD_RECT.left, BLIND_REWARD_RECT.top, blind_get_reward(current_blind)); // Blind reward
 
     set_score(score); // Set the score display
@@ -1448,9 +1464,11 @@ void game_playing()
 
 void game_round_end() // Writing this kind a made me want to kms. If somewone wants to rewrite this, please do so.
 {
-    /* TODO: The correct way to do this is the same as game_shop(), 
-     * put the menu in VRAM outside the screen and copy it from there.
-     * That code needs to be extracted to a function and reused here.
+    /* TODO: I could use main_bg_se_copy_rect_1_tile_vert() to replace the menu pop up here
+     * But there are a bunch of other manual hard-coded tilemap animations in here that
+     * are very hard to understand, and if I change the background image for the pop up
+     * it will change the tile charblock layout and screw them up so it's all or nothing...
+     * - Meir
      */ 
     static int state = 0;
     static int sequence_step = 0; // Reusable variable for the animations in states
@@ -1530,7 +1548,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
         {
             obj_unhide(round_end_blind_token->obj, 0);
             
-            tte_printf("#{P:%d,%d; cx:0xE000}%d", ROUND_END_BLIND_REQUIREMENT_RECT.left, ROUND_END_BLIND_REQUIREMENT_RECT.top, blind_get_requirement(current_blind, ante));
+            tte_printf("#{P:%d,%d; cx:0xE000}%d", ROUND_END_BLIND_REQ_RECT.left, ROUND_END_BLIND_REQ_RECT.top, blind_get_requirement(current_blind, ante));
 
             int y = 13;
 
@@ -1572,7 +1590,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
 
             blind_reward--;
             tte_printf("#{P:%d,%d; cx:0xC000}$%d", BLIND_REWARD_RECT.left , BLIND_REWARD_RECT.top, blind_reward);
-            tte_printf("#{P:%d,%d; cx:0xC000}$%d", ROUND_END_BLIND_REWARD_RECT.left, ROUND_END_BLIND_REQUIREMENT_RECT.top, blind_get_reward(current_blind) - blind_reward);
+            tte_printf("#{P:%d,%d; cx:0xC000}$%d", ROUND_END_BLIND_REWARD_RECT.left, ROUND_END_BLIND_REQ_RECT.top, blind_get_reward(current_blind) - blind_reward);
 
             if (blind_reward <= 0)
             {
@@ -1787,12 +1805,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
         case 8:
         {
             sequence_step++;
-            int x = 9; 
-            
-            for (int y = 19; y > 5; y--)
-            {
-                memcpy16(&se_mem[MAIN_BG_SBB][x + 32 * (y + 1)], &se_mem[MAIN_BG_SBB][x + 32 * y], 16);
-            }
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
 
             if (sequence_step >= 20)
             {
@@ -1856,16 +1869,13 @@ void game_shop()
     {
         case 0: // Intro sequence (menu and shop icon coming into frame)
         {           
-            for (int y = 7; y < 40; y++) // Shift the shop panel
-            {
-                int x = 9;
-                memcpy16(&se_mem[MAIN_BG_SBB][x + 32 * (y - 1)], &se_mem[MAIN_BG_SBB][x + 32 * y], 16);
-            }
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
 
             if (timer >= 7) // Shift the shop icon
             {
                 int timer_offset = timer - 6;
 
+                // TODO: Extract to generic function?
                 for (int y = 0; y < timer_offset; y++)
                 {
                     int y_from = 26 + y - timer_offset;
@@ -1957,19 +1967,10 @@ void game_shop()
         }
         case 2: // Outro sequence (menu and shop icon going out of frame)
         {
-            // This is reused from game_round_end()
             // Shift the shop panel
-            int x = 9; 
-            for (int y = 19; y > 5; y--)
-            {
-                memcpy16(&se_mem[MAIN_BG_SBB][x + 32 * (y + 1)], &se_mem[MAIN_BG_SBB][x + 32 * y], 16);
-            }
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
 
-            // Shift the shop icon
-            for (int y = 0; y < 5; y++) 
-            {
-                memcpy16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], &se_mem[MAIN_BG_SBB][32 * y], 9);
-            }
+            main_bg_se_copy_rect_1_tile_vert(SHOP_ICON_RECT, SE_UP);
             
             if (timer == 1)
             {
@@ -2021,13 +2022,9 @@ void game_blind_select()
 
     switch (state) // I'm only using magic numbers here for the sake of simplicity since it's just sequential, but you can replace them with named constants or enums if it makes it clearer
     {
-        case 0: // Intro sequence (menu and shop icon coming into frame)
+        case 0: // Intro sequence (menu coming into frame)
         {           
-            for (int y = 7; y < 40; y++)
-            {
-                int x = 9;
-                memcpy16(&se_mem[MAIN_BG_SBB][x + 32 * (y - 1)], &se_mem[MAIN_BG_SBB][x + 32 * y], 16);
-            }
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
 
             if (timer == 12)
             {
