@@ -15,6 +15,7 @@
 #include "background_play_gfx.h"
 #include "background_round_end_gfx.h"
 #include "background_shop_gfx.h"
+#include "background_blind_select_gfx.h"
 
 #include "soundbank.h"
 
@@ -22,7 +23,7 @@ static int timer = 0; // This might already exist in libtonc but idk so i'm just
 static int game_speed = 1;
 static int background = 0;
 
-static enum GameState game_state = GAME_ROUND_END; // The current game state, this is used to determine what the game is doing at any given time
+static enum GameState game_state = GAME_PLAYING; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
 
@@ -31,7 +32,8 @@ static enum HandType hand_type = NONE;
 static Sprite *playing_blind_token = NULL; // The sprite that displays the blind when in "GAME_PLAYING/GAME_ROUND_END" state
 static Sprite *round_end_blind_token = NULL; // The sprite that displays the blind when in "GAME_ROUND_END" state
 
-static enum BlindType current_blind = SMALL_BLIND;
+static int current_blind = SMALL_BLIND;
+static enum BlindState blinds[MAX_BLINDS] = {BLIND_CURRENT, BLIND_UPCOMING, BLIND_UPCOMING}; // The current state of the blinds, this is used to determine what the game is doing at any given time
 
 static int hands = 4;
 static int discards = 4;
@@ -386,6 +388,67 @@ void change_background(int id)
 
         memcpy16(&pal_bg_mem[7], &pal_bg_mem[3], 1); // Disable the button highlight colors
         memcpy16(&pal_bg_mem[5], &pal_bg_mem[16], 1);
+    }
+    else if (id == BG_ID_BLIND_SELECT)
+    {
+        memcpy(pal_bg_mem, background_blind_select_gfxPal, 64);
+        GRIT_CPY(&tile_mem[MAIN_BG_CBB], background_blind_select_gfxTiles);
+        GRIT_CPY(&se_mem[MAIN_BG_SBB], background_blind_select_gfxMap);
+
+        for (int i = 0; i < MAX_BLINDS; i++)
+        {
+            if (blinds[i] != BLIND_CURRENT && (i == SMALL_BLIND || i == BIG_BLIND))
+            {
+                int x_from = 0;
+                int y_from = 24 + (i * 4);
+
+                int x_to = 9 + (i * 5);
+                int y_to = 29;
+
+                for (int j = 0; j < 3; j++)
+                {
+                    memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 5);
+                    y_from++;
+                    y_to++;
+                }
+            }
+
+            if (blinds[i] == BLIND_CURRENT)
+            {
+                int x_from = 0;
+                int y_from = 27;
+
+                int x_to = 9 + (i * 5);
+                int y_to = 31;
+
+                for (int y = 7; y < 40; y++) // Shift the shop panel
+                {
+                    memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * (y - 1)], &se_mem[MAIN_BG_SBB][x_to + 32 * y], 5);
+                }
+
+                if (i == BIG_BLIND)
+                {
+                    y_from = 31;
+                }
+                else if (i == BOSS_BLIND)
+                {
+                    x_from = x_to;
+                    y_from = 30;
+                }
+
+                memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 5);        
+            }
+            else if (blinds[i] == BLIND_UPCOMING)
+            {
+                int x_from = 0;
+                int y_from = 20;
+
+                int x_to = 10 + (i * 5);
+                int y_to = 20;
+
+                memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 3);
+            }
+        }
     }
     else
     {
@@ -1873,7 +1936,7 @@ void game_shop()
                 memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0007, 2);
                 memset16(&se_mem[MAIN_BG_SBB][3 + 32 * (y - 1)], 0x0008, 1);
                 memset16(&se_mem[MAIN_BG_SBB][4 + 32 * (y - 1)], 0x0009, 4);
-                memset16(&se_mem[MAIN_BG_SBB][7 + 32 * (y - 1)], 0x0408, 1);
+                memset16(&se_mem[MAIN_BG_SBB][7 + 32 * (y - 1)], 0x000A, 1);
                 memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0406, 1); 
             }
             else if (timer == 2)
@@ -1887,6 +1950,41 @@ void game_shop()
             if (timer >= 20)
             {
                 state = 3; // Go to the next state
+                timer = 0; // Reset the timer
+            }
+
+            break;
+        }
+        default:
+            game_state = GAME_BLIND_SELECT; // If we reach here, we should go to the blind select state
+            state = 0; // Reset the state
+            timer = 0; // Reset the timer
+
+            selection_x = 0; // Reset the selection
+            top_row = true; // Reset the top row selection
+            break;
+    }
+}
+
+void game_blind_select()
+{
+    change_background(BG_ID_BLIND_SELECT);
+
+    static int state = 0;
+
+    switch (state) // I'm only using magic numbers here for the sake of simplicity since it's just sequential, but you can replace them with named constants or enums if it makes it clearer
+    {
+        case 0: // Intro sequence (menu and shop icon coming into frame)
+        {           
+            for (int y = 7; y < 40; y++) // Shift the shop panel
+            {
+                int x = 9;
+                memcpy16(&se_mem[MAIN_BG_SBB][x + 32 * (y - 1)], &se_mem[MAIN_BG_SBB][x + 32 * y], 16);
+            }
+
+            if (timer == 12)
+            {
+                state = 1;
                 timer = 0; // Reset the timer
             }
 
@@ -1913,7 +2011,7 @@ void game_update()
             game_shop();
             break;
         case GAME_BLIND_SELECT:
-            // Handle blind select logic here
+            game_blind_select();
             break;
         case GAME_LOSE:
             // Handle lose logic here

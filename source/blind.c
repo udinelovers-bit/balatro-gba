@@ -14,7 +14,7 @@ void blinds_init()
     memcpy16(&pal_obj_mem[17], &small_blind_token_palette, sizeof(small_blind_token_palette) / 2);
 }
 
-int blind_get_requirement(enum BlindType type, int ante)
+int blind_get_requirement(int type, int ante)
 {
     if (ante < 0 || ante > MAX_ANTE)
     {
@@ -34,7 +34,7 @@ int blind_get_requirement(enum BlindType type, int ante)
     }
 }
 
-int blind_get_reward(enum BlindType type)
+int blind_get_reward(int type)
 {
     switch (type)
     {
@@ -49,7 +49,7 @@ int blind_get_reward(enum BlindType type)
     }
 }
 
-Sprite *blind_token_new(enum BlindType type, int x, int y, int sprite_index)
+Sprite *blind_token_new(int type, int x, int y, int sprite_index)
 {
     Sprite *sprite = NULL;
 
