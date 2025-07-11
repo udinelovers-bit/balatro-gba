@@ -45,8 +45,8 @@ void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction)
 
     // Clip to avoid read/write overflow of the screenblock
     Rect bounding_rect = FULL_SCREENBLOCK_RECT;
-	bounding_rect.top = 1;
-	bounding_rect.bottom = SE_COL_LEN - 1;
+    bounding_rect.top = 1;
+    bounding_rect.bottom = SE_COL_LEN - 1;
     clip_se_rect_to_bounding_rect(&se_rect, &bounding_rect);
 
     int start = (direction == SE_UP) ? se_rect.top : se_rect.bottom;
@@ -55,7 +55,7 @@ void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction)
     for (int y = start; y != end - direction; y -= direction)
     {
         memcpy16(&se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * (y + direction)],
-			     &se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * y], 
+                 &se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * y], 
                  se_rect.right - se_rect.left + 1);
     }   
 }
