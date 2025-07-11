@@ -124,6 +124,8 @@ static const Rect POP_MENU_ANIM_RECT        = {9,       6,      24,     32 };
 //
 // When unpopping we include another row above the menu assuming it's blank so it's copied into it
 
+static const Rect SINGLE_BLIND_SELECT_RECT = { 9,       7,      13,     32 };
+
 static const Rect SHOP_ICON_RECT            = { 0,      0,      8,     4 };
 
 // Rects for TTE (in pixels)
@@ -439,13 +441,15 @@ void change_background(int id)
                 int x_from = 0;
                 int y_from = 27;
 
-                int x_to = 9 + (i * 5);
-                int y_to = 31;
+                Rect blind_rect = SINGLE_BLIND_SELECT_RECT;
 
-                for (int y = 7; y < 40; y++)
-                {
-                    memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * (y - 1)], &se_mem[MAIN_BG_SBB][x_to + 32 * y], 5);
-                }
+                // + 1 to get to the start of the next blind, no gap between them
+                blind_rect.left += i * (SINGLE_BLIND_SELECT_RECT.right - SINGLE_BLIND_SELECT_RECT.left + 1);
+                blind_rect.right += i * (SINGLE_BLIND_SELECT_RECT.right - SINGLE_BLIND_SELECT_RECT.left + 1);
+                main_bg_se_copy_rect_1_tile_vert(blind_rect, SE_UP);
+
+                int x_to = blind_rect.left;
+                int y_to = 31;
 
                 if (i == BIG_BLIND)
                 {
