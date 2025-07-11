@@ -115,14 +115,15 @@ static inline Card *discard_pop()
 // Screenblock rects
 static const Rect ROUND_END_MENU_RECT       = {9,       7,      24,     21 }; 
 
-static const Rect POP_MENU_ANIM_RECT        = {9,       6,      24,     32 };
-// The rect for popping menu animations (round end, shop, blinds) - includes both the 
-// target and source position rects. 
-// Extends beyond the visible screen to the end of the screenblock
-// This is because when popping, the target position is blank so we just animate the whole thing 
-// so we don't have to track its position
-//
-// When unpopping we include another row above the menu assuming it's blank so it's copied into it
+static const Rect POP_MENU_ANIM_RECT_DOWN   = {9,       6,      24,     32 };
+static const Rect POP_MENU_ANIM_RECT_UP     = {9,       7,      24,     32 };
+// The rects for popping menu animations (round end, shop, blinds) 
+// - extends beyond the visible screen to the end of the screenblock
+// It includes both the target and source position rects. 
+// This is because when popping, the target position is blank so we just animate 
+// the whole rect so we don't have to track its position
+// 
+// In the down version we include another row above the menu assuming it's blank so it's copied into it
 
 static const Rect SINGLE_BLIND_SELECT_RECT = { 9,       7,      13,     32 };
 
@@ -1808,7 +1809,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
         case 8: // Shift the round end panel back out of view and go to the next state
         {
             sequence_step++;
-            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
 
             if (sequence_step >= 20)
             {
@@ -1872,7 +1873,7 @@ void game_shop()
     {
         case 0: // Intro sequence (menu and shop icon coming into frame)
         {           
-            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_UP, SE_UP);
 
             if (timer >= 7) // Shift the shop icon
             {
@@ -1971,7 +1972,7 @@ void game_shop()
         case 2: // Outro sequence (menu and shop icon going out of frame)
         {
             // Shift the shop panel
-            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
 
             main_bg_se_copy_rect_1_tile_vert(SHOP_ICON_RECT, SE_UP);
             
@@ -2027,7 +2028,7 @@ void game_blind_select()
     {
         case 0: // Intro sequence (menu coming into frame)
         {           
-            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_UP, SE_UP);
 
             if (timer == 12)
             {
