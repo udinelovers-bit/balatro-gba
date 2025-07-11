@@ -41,7 +41,9 @@ void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction)
 {
     if (se_rect.left > se_rect.right
         || (direction != SE_UP && direction != SE_DOWN))
+    {
         return;
+    }
 
     // Clip to avoid read/write overflow of the screenblock
     Rect bounding_rect = FULL_SCREENBLOCK_RECT;
@@ -58,6 +60,27 @@ void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction)
                  &se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * y], 
                  se_rect.right - se_rect.left + 1);
     }   
+}
+
+void main_bg_se_copy_rect(Rect rect_from, Rect rect_to)
+{
+    if (rect_from.left > rect_from.right
+        || rect_from.top < rect_from.bottom
+        || rect_to.left > rect_to.right
+        || rect_from.top < rect_from.bottom
+        // Check equal dimensions
+        || rect_from.bottom - rect_from.top != rect_to.bottom - rect_to.top
+        || rect_from.left - rect_from.right != rect_to.left - rect_to.right)
+    {
+        return;
+    }
+
+    for (int y = rect_from.top; y < rect_from.bottom; y++)
+    {
+        memcpy16(&(se_mem[MAIN_BG_SBB][rect_to.left + SE_ROW_LEN * y]), 
+                 &(se_mem[MAIN_BG_SBB][rect_from.left + SE_ROW_LEN * y]),
+                 rect_from.right - rect_from.left + 1);
+    }
 }
 
 void tte_erase_rect_wrapper(Rect rect)
