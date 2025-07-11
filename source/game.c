@@ -834,7 +834,7 @@ void game_init()
         deck[j] = temp;
     }
 
-    change_background(BG_ID_CARD_SELECTING);
+    change_background(BG_ID_BLIND_SELECT);
 
     tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", DECK_SIZE_RECT.left, DECK_SIZE_RECT.top, deck_get_size(), deck_get_max_size()); // Deck size/max size
     
@@ -2148,7 +2148,7 @@ void game_blind_select()
             if (timer < MENU_POP_OUT_ANIM_FRAMES)
             {
                 // TODO: Figure out why this animation doesn't display...
-                main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
+                main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
             }
             // TODO: Currently selecting other blinds crashes, remove this condition once fixed
             else if (current_blind == SMALL_BLIND)
