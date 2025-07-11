@@ -23,7 +23,7 @@ static int timer = 0; // This might already exist in libtonc but idk so i'm just
 static int game_speed = 1;
 static int background = 0;
 
-static enum GameState game_state = GAME_PLAYING; // The current game state, this is used to determine what the game is doing at any given time
+static enum GameState game_state = GAME_BLIND_SELECT; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
 
@@ -157,6 +157,9 @@ static const Rect ROUND_END_BLIND_REWARD_RECT = { 168,  96,     UNDEFINED, UNDEF
 static const Rect ROUND_END_NUM_HANDS_RECT  = {88,      116,    UNDEFINED, UNDEFINED };
 static const Rect HAND_REWARD_RECT          = {168,     UNDEFINED, UNDEFINED, UNDEFINED };
 static const Rect CASHOUT_RECT              = {88,      72,     UNDEFINED, UNDEFINED };
+
+//TODO: Different number ? 11 ?
+#define MENU_POP_OUT_ANIM_FRAMES 20
 
 // General functions
 void sort_hand_by_suit()
@@ -357,12 +360,20 @@ void change_background(int id)
     }
     else if (id == BG_ID_CARD_SELECTING)
     {
-        memcpy(&se_mem[MAIN_BG_SBB], background_gfxMap, background_gfxMapLen);
+        REG_DISPCNT |= DCNT_WIN0; // Enable window 0 to make hand background transparent
+        // Load the tiles and palette
+        // Background
+        memcpy(pal_bg_mem, background_gfxPal, 64); // This '64" isn't a specific number, I'm just using it to prevent the text colors from being overridden
+        GRIT_CPY(&tile8_mem[MAIN_BG_CBB], background_gfxTiles); // Deadass i have no clue how any of these memory things work but I just messed with them until stuff worked
+        GRIT_CPY(&se_mem[MAIN_BG_SBB], background_gfxMap);
 
         tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
     }
     else if (id == BG_ID_CARD_PLAYING)
     {
+        REG_DISPCNT |= DCNT_WIN0;
+        memcpy(pal_bg_mem, background_gfxPal, 64);
+        GRIT_CPY(&tile8_mem[MAIN_BG_CBB], background_gfxTiles);
         memcpy(&se_mem[MAIN_BG_SBB], background_play_gfxMap, background_play_gfxMapLen);
 
         tte_erase_rect_wrapper(HAND_SIZE_RECT_SELECT);
@@ -409,6 +420,8 @@ void change_background(int id)
     }
     else if (id == BG_ID_BLIND_SELECT)
     {
+        REG_DISPCNT &= ~DCNT_WIN0;
+
         memcpy(pal_bg_mem, background_blind_select_gfxPal, 64);
         GRIT_CPY(&tile_mem[MAIN_BG_CBB], background_blind_select_gfxTiles);
         GRIT_CPY(&se_mem[MAIN_BG_SBB], background_blind_select_gfxMap);
@@ -749,13 +762,58 @@ void increment_blind(enum BlindState increment_reason)
     }
 }
 
-// Game functions
-void game_init()
+void game_round_init()
 {
     playing_blind_token = blind_token_new(current_blind, 8, 18, 33); // Create the blind token sprite at the top left corner
+    // TODO: Hide blind token and display it after sliding blind rect animation
+    //if (playing_blind_token != NULL)
+    //{
+    //    obj_hide(playing_blind_token->obj); // Hide the blind token sprite for now
+    //}
     round_end_blind_token = blind_token_new(current_blind, 82, 86, 34); // Create the blind token sprite for round end
-    obj_hide(round_end_blind_token->obj); // Hide the blind token sprite for now
+    if (round_end_blind_token != NULL)
+    {
+        obj_hide(round_end_blind_token->obj); // Hide the blind token sprite for now
+    }
 
+    tte_printf("#{P:%d,%d; cx:0xE000}%d", BLIND_REQ_TEXT_RECT.left, BLIND_REQ_TEXT_RECT.top, blind_get_requirement(current_blind, ante)); // Blind requirement
+    tte_printf("#{P:%d,%d; cx:0xC000}$%d", BLIND_REWARD_RECT.left, BLIND_REWARD_RECT.top, blind_get_reward(current_blind)); // Blind reward
+    // TODO: Add round variable for current round
+    tte_printf("#{P:%d,%d; cx:0xC000}%d", ROUND_TEXT_RECT.left, ROUND_TEXT_RECT.top, 1); // Round
+}
+
+void init_game_state(enum GameState game_state_to_init)
+{
+    // Switch written out, add init for states as needed
+    switch (game_state_to_init)
+    {
+    case GAME_PLAYING:
+        game_round_init();
+        break;
+    case GAME_ROUND_END:
+        break;
+    case GAME_SHOP:
+        break;
+    case GAME_BLIND_SELECT:
+        break;
+    case GAME_LOSE:
+        break;
+    default:
+        break;
+    }
+}
+
+// Game functions
+void game_set_state(enum GameState new_game_state)
+{
+    // TODO: Reset timer. To 1? To 0?
+
+    init_game_state(new_game_state);
+    game_state = new_game_state;
+}
+
+void game_init()
+{
     // Fill the deck with all the cards. Later on this can be replaced with a more dynamic system that allows for different decks and card types.
     for (int suit = 0; suit < NUM_SUITS; suit++)
     {
@@ -766,6 +824,7 @@ void game_init()
         }
     }
 
+    // TODO: Move to external function
     // Shuffle the deck
     for (int i = 0; i < MAX_DECK_SIZE; i++)
     {
@@ -777,12 +836,8 @@ void game_init()
 
     change_background(BG_ID_CARD_SELECTING);
 
-    tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", HAND_SIZE_RECT.left, HAND_SIZE_RECT.top, hand_get_size(), hand_get_max_size()); // Hand size/max size
     tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", DECK_SIZE_RECT.left, DECK_SIZE_RECT.top, deck_get_size(), deck_get_max_size()); // Deck size/max size
-
-    tte_printf("#{P:%d,%d; cx:0xE000}%d", BLIND_REQ_TEXT_RECT.left, BLIND_REQ_TEXT_RECT.top, blind_get_requirement(current_blind, ante)); // Blind requirement
-    tte_printf("#{P:%d,%d; cx:0xC000}$%d", BLIND_REWARD_RECT.left, BLIND_REWARD_RECT.top, blind_get_reward(current_blind)); // Blind reward
-
+    
     set_score(score); // Set the score display
 
     set_chips(chips); // Set the chips display
@@ -794,7 +849,6 @@ void game_init()
     //tte_printf("#{P:24,120; cx:0xC000}$%d", money); // Money
     set_money(money); // Set the money display
 
-    tte_printf("#{P:%d,%d; cx:0xC000}%d", ROUND_TEXT_RECT.left, ROUND_TEXT_RECT.top, 1); // Round
     tte_printf("#{P:%d,%d; cx:0xC000}%d#{cx:0xF000}/%d", ANTE_TEXT_RECT.left, ANTE_TEXT_RECT.top, ante, MAX_ANTE); // Ante
 }
 
@@ -946,7 +1000,7 @@ static void game_playing_discarded_cards_loop()
         if (discard_top == -1 && discarded_card_object == NULL) // If there are no more discarded cards, stop shuffling
         {
             hand_state = HAND_SELECT; // Reset the hand state to the functional default
-            game_state = GAME_ROUND_END; // Set the game state back to playing
+            game_set_state(GAME_ROUND_END); // Set the game state back to playing
             timer = 1; // Reset the timer
         }
     }
@@ -1434,8 +1488,10 @@ static void game_playing_ui_text_update()
 
 void game_playing()
 {
+    // TODO: Blind rect sliding into view animation...
     if (hand_state == HAND_SELECT && hands == 0) 
     {
+        // TODO: Check if it's safe to change to game_set_state() without side effects
         game_state = GAME_LOSE;
     }
 
@@ -1465,6 +1521,15 @@ void game_playing()
 	played_cards_update_loop(&discarded_card, &played_selections, &sound_played);
     
     game_playing_ui_text_update();
+}
+
+void game_round_end_cleanup()
+{
+    // Cleanup blind tokens from this round to avoid accumulating 
+    // allocated blind sprites each round
+    sprite_destroy(&playing_blind_token);
+    sprite_destroy(&round_end_blind_token);
+    // TODO: Reuse sprites for blind selection?
 }
 
 void game_round_end() // Writing this kind a made me want to kms. If somewone wants to rewrite this, please do so.
@@ -1826,7 +1891,8 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             blind_reward = 0;
             hand_reward = 0;
             interest_reward = 0;
-            game_state = GAME_SHOP;
+            game_round_end_cleanup();
+            game_set_state(GAME_SHOP);
             break;
     }
 }
@@ -1994,7 +2060,7 @@ void game_shop()
                 memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0401, 1); 
             }
 
-            if (timer >= 20)
+            if (timer >= MENU_POP_OUT_ANIM_FRAMES)
             {
                 state = 3; // Go to the next state
                 timer = 0; // Reset the timer
@@ -2003,7 +2069,6 @@ void game_shop()
             break;
         }
         default:
-            game_state = GAME_BLIND_SELECT; // If we reach here, we should go to the blind select state
             state = 0; // Reset the state
             timer = 0; // Reset the timer
 
@@ -2011,6 +2076,7 @@ void game_shop()
             top_row = true; // Reset the top row selection
 
             increment_blind(BLIND_DEFEATED);
+            game_set_state(GAME_BLIND_SELECT); // If we reach here, we should go to the blind select state
 
             break;
     }
@@ -2058,7 +2124,7 @@ void game_blind_select()
                 else if (current_blind != BOSS_BLIND)
                 {
                     increment_blind(BLIND_SKIPPED);
-                    state = 0; 
+                    state = 0;
                     background = -1; // Force refresh of the background
                     timer = 0;
                 }
@@ -2075,6 +2141,21 @@ void game_blind_select()
                 memset16(&pal_bg_mem[10], 0xFFFF, 1);
             }
 
+            break;
+        }
+        case 2: // Blind selected, perform menu popout animation
+        {
+            if (timer < MENU_POP_OUT_ANIM_FRAMES)
+            {
+                // TODO: Figure out why this animation doesn't display...
+                main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
+            }
+            // TODO: Currently selecting other blinds crashes, remove this condition once fixed
+            else if (current_blind == SMALL_BLIND)
+            {
+                game_set_state(GAME_PLAYING);
+                timer = 0;
+            }
             break;
         }
         default:

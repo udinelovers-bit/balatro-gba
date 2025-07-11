@@ -61,12 +61,6 @@ void init()
     pal_bg_bank[14][15] = 0x213F; // Red
     pal_bg_bank[15][15] = CLR_WHITE;
 
-    // Load the tiles and palette
-    // Background
-    memcpy(pal_bg_mem, background_gfxPal, 64); // This '64" isn't a specific number, I'm just using it to prevent the text colors from being overridden
-    GRIT_CPY(&tile8_mem[MAIN_BG_CBB], background_gfxTiles); // Deadass i have no clue how any of these memory things work but I just messed with them until stuff worked
-    GRIT_CPY(&se_mem[MAIN_BG_SBB], background_gfxMap);
-
     // Deck graphics
     GRIT_CPY(&tile_mem[4], deck_gfxTiles);
     GRIT_CPY(pal_obj_mem, deck_gfxPal);
