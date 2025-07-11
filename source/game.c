@@ -1481,7 +1481,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
     {
         case 0:
         {
-            if (timer == 30)
+            if (timer == 30) // Reset static variables to default values upon re-entering the round end state
             {   
                 change_background(BG_ID_ROUND_END); // Change the background to the round end background
                 state = 1; // Change the state to the next one
@@ -1492,7 +1492,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             }
             break;
         }
-        case 1:
+        case 1: // This creates the top 16 by 7 tiles of the pop up. It places it in vram, moving it up one tile each frame, not clearing the previous row of tiles so they fill the blank space as it moves up.
         {
             const int bottom_of_screen = 19;
             int y = bottom_of_screen - timer;
@@ -1544,7 +1544,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             }
             break;
         }
-        case 2:
+        case 2: // Display the beaten blind, expand the panel border down a tile and wait until a bit until going to the next state
         {
             obj_unhide(round_end_blind_token->obj, 0);
             
@@ -1565,7 +1565,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             }
             break;
         }
-        case 3:
+        case 3: // Sequentially display the "score min" text over the next 4 frames
         {
             // "Score Min" text
             const unsigned short tile_map3[4] = {0x003E, 0x003F, 0x0040, 0x0041};
@@ -1580,7 +1580,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             }
             break;
         }
-        case 4:
+        case 4: // Every 20 frames, display the blind reward and update the text until it reaches 0
         {
             if (timer % FRAMES(20) != 0) break;
 
@@ -1602,7 +1602,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             }
             break;
         }
-        case 5:
+        case 5: // This is just an incredibly convoluted way to slide the "small blind" panel out of view. It was made this way because I didn't know the better way at the time AND because I was being a perfectionist and wanted to make the bottom row of tiles on the panel not connected to the "SCORE" panel.
         {
             if (timer < FRAMES(20)) break;
 
@@ -1610,18 +1610,18 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             {
                 int y = 5;
 
-                if (sequence_step == 1)
+                if (sequence_step == 1) // Erase the score text from the small blind panel and move it all up by one tile
                 {
                     tte_erase_rect(40, 16, 64, 40);
-                    obj_hide(playing_blind_token->obj);
 
-                    const unsigned short tile_map1[10] = {0x0064, 0x0065, 0x0065, 0x0066, 0x0067, 0x0067, 0x0067, 0x0068, 0x0464, se_mem[MAIN_BG_SBB][32 * y + 9]};
+                    const unsigned short tile_map1[10] = {0x0064, 0x0065, 0x0065, 0x0066, 0x0067, 0x0067, 0x0067, 0x0068, 0x0464, se_mem[MAIN_BG_SBB][32 * y + 9]}; // Swaps the top of the score panel tiles with ones that aren't connected to the small blind panel
                     memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map1, sizeof(tile_map1));
 
                     y -= 1;
-                    const unsigned short tile_map2[10] = {0x006F, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x046F, se_mem[MAIN_BG_SBB][32 * y + 9]};
+                    const unsigned short tile_map2[10] = {0x006F, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x046F, se_mem[MAIN_BG_SBB][32 * y + 9]}; // Swaps the bottom of the small blind panel tiles with ones that aren't connected to the score panel
                     memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map2, sizeof(tile_map2));
 
+                    // These just move everything else up by one tile
                     y = 1;
                     const unsigned short tile_map3[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
                     y -= 1;
@@ -1639,9 +1639,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
                 }
                 else if (sequence_step == 2)
                 {
-                    const unsigned short tile_map1[10] = {0x0064, 0x0065, 0x0065, 0x0066, 0x0067, 0x0067, 0x0067, 0x0068, 0x0464, se_mem[MAIN_BG_SBB][32 * y + 9]};
-                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map1, sizeof(tile_map1));
-                    
+                       
                     y = 1;
                     const unsigned short tile_map3[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
                     y -= 1;
@@ -1663,10 +1661,10 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
                     memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map6, sizeof(tile_map6));
 
                     y = 4;
-                    const unsigned short tile_map2[10] = {0x046B, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x006B, se_mem[MAIN_BG_SBB][32 * y + 9]};
+                    const unsigned short tile_map2[10] = {0x046B, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x006B, se_mem[MAIN_BG_SBB][32 * y + 9]}; // This sets the uncleared bottom row of the small blind panel to empty tiles that match the stats panel
                     memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map2, sizeof(tile_map2));
                 }
-                else
+                else // The rest of this just moves the panel tiles up in vram until they're gone
                 {
                     y = 1;
                     const unsigned short tile_map3[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
@@ -1699,7 +1697,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             }
             break;
         }
-        case 6: // TODO: implement interest
+        case 6: // This state handles displaying the rewards earned from the completed round
         {
             if (timer < FRAMES(20)) break;
 
@@ -1711,12 +1709,13 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
                 hand_y = 1;
             }
 
+            // TODO: implement interest
             // if (interest > 0)
             // {
             //     interest_y = 1 + hand_y;
             // }
 
-            if (sequence_step == 0)
+            if (sequence_step == 0) // Expand the black part of the panel down by one tile
             {
                 int y = 14;
 
@@ -1726,7 +1725,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
                 const unsigned short tile_map2[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x002A, 0x0055, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0455, 0x042A};
                 memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map2, sizeof(tile_map2));
             }
-            else if (sequence_step < 15)
+            else if (sequence_step < 15) // Use TTE to print '.' until the end of the panel width
             {
                 // Print the separator dots
                 int x = (9 + sequence_step) * 8;
@@ -1734,11 +1733,11 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
 
                 tte_printf("#{P:%d,%d; cx:0xF000}.", x, y); 
             }
-            else if (sequence_step >= 30 && hand_reward > 0)
+            else if (sequence_step >= 30 && hand_reward > 0) // Wait an additional 15 frames since the last sequenced action
             {
-                if (sequence_step == 30)
+                if (sequence_step == 30) // Expand the black part of the panel down by one tile again
                 {
-                    int y = 14 + hand_y;
+                    int y = 14 + hand_y; // This was intended for modularity so that I can add interest rewards later
 
                     const unsigned short tile_map1[17] = {se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x002A, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042A};
                     memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], tile_map1, sizeof(tile_map1));
@@ -1748,7 +1747,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
 
                     tte_printf("#{P:%d,%d; cx:0xD000}%d #{cx:0xF000}Hands", ROUND_END_NUM_HANDS_RECT.left, ROUND_END_NUM_HANDS_RECT.top, hand_reward); // Print the hand reward
                 }
-                else if (sequence_step > 45 && timer % FRAMES(20) == 0)
+                else if (sequence_step > 45 && timer % FRAMES(20) == 0) // After 15 frames, every 20 frames, increment the hand reward text until the hand reward variable is depleted
                 {
                     int y = (13 + hand_y) * 8;
                     hand_reward--;
@@ -1758,7 +1757,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
 
             sequence_step++;
 
-            if (hand_reward <= 0 && interest_reward <= 0)
+            if (hand_reward <= 0 && interest_reward <= 0) // Once all rewards are accounted for go to the next state
             {
                 sequence_step = 0;
                 timer = 0; // Reset the timer
@@ -1769,7 +1768,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
         }
         case 7:
         {
-            if (timer == FRAMES(40))
+            if (timer == FRAMES(40)) // Put the "cash out" button onto the round end panel
             {
                 int y = 8;
 
@@ -1789,7 +1788,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
 
                 tte_printf("#{P:%d, %d; cx:0xF000}Cash Out: $%d", CASHOUT_RECT.left, CASHOUT_RECT.top, hands + blind_get_reward(current_blind)); // Print the cash out amount
             }
-            else if (timer > FRAMES(40) && key_hit(KEY_A))
+            else if (timer > FRAMES(40) && key_hit(KEY_A)) // Wait until the player presses A to cash out
             {   
                 state = 8; // Go to the next state
                 money += hands + blind_get_reward(current_blind); // Reward the player
@@ -1802,7 +1801,7 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
 
             break;
         }
-        case 8:
+        case 8: // Shift the round end panel back out of view and go to the next state
         {
             sequence_step++;
             main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
