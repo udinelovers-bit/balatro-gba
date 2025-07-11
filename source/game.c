@@ -2146,7 +2146,8 @@ void game_blind_select()
                 // TODO: Figure out why this animation doesn't display...
                 main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
             }
-            else
+            // TODO: Currently selecting other blinds crashes, remove this condition once fixed
+            else if (current_blind == SMALL_BLIND)
             {
                 game_set_state(GAME_PLAYING);
                 timer = 0;
