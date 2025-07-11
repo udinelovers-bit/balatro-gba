@@ -2116,12 +2116,20 @@ void game_blind_select()
                 if (top_row)
                 {
                     state = 2;
+                    timer = 0;
                 }
                 else if (current_blind != BOSS_BLIND)
                 {
                     increment_blind(BLIND_SKIPPED);
-                    state = 0;
+                    
                     background = -1; // Force refresh of the background
+                    change_background(BG_ID_BLIND_SELECT);
+
+                    for (int i = 0; i < 12; i++)
+                    {
+                        main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_UP, SE_UP);
+                    }
+
                     timer = 0;
                 }
             }
@@ -2143,13 +2151,13 @@ void game_blind_select()
         {
             if (timer < MENU_POP_OUT_ANIM_FRAMES)
             {
-                // TODO: Figure out why this animation doesn't display...
                 main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
             }
             // TODO: Currently selecting other blinds crashes, remove this condition once fixed
             else if (current_blind == SMALL_BLIND)
             {
                 game_set_state(GAME_PLAYING);
+                state = 0; // Reset the state
             }
             break;
         }
