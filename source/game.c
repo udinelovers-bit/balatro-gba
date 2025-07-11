@@ -806,8 +806,7 @@ void init_game_state(enum GameState game_state_to_init)
 // Game functions
 void game_set_state(enum GameState new_game_state)
 {
-    // TODO: Reset timer. To 1? To 0?
-
+    timer = 0; // Reset the timer
     init_game_state(new_game_state);
     game_state = new_game_state;
 }
@@ -950,7 +949,7 @@ static void game_playing_process_card_draw()
     {
         hand_state = HAND_SELECT; // Change the hand state to select after drawing all the cards
         cards_drawn = 0;
-        timer = 1;
+        timer = 0;
     }
 }
 
@@ -1001,7 +1000,6 @@ static void game_playing_discarded_cards_loop()
         {
             hand_state = HAND_SELECT; // Reset the hand state to the functional default
             game_set_state(GAME_ROUND_END); // Set the game state back to playing
-            timer = 1; // Reset the timer
         }
     }
 }
@@ -1071,7 +1069,7 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                             hand_top--;
                             cards_drawn++; // This technically isn't drawing cards, I'm just reusing the variable
                             *sound_played = false;
-                            timer = 1;
+                            timer = 0;
 
                             hand_y = hand[i]->y;
                             hand_x = hand[i]->x;
@@ -1103,7 +1101,7 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                     *sound_played = false;
                     cards_drawn = 0;
                     hand_selections = 0;
-                    timer = 1;
+                    timer = 0;
                     break;
                 }
 
@@ -1112,7 +1110,7 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                 hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
                 hand_y += (24 << FIX_SHIFT);
 
-                if (hand[i]->selected && timer % FRAMES(10) == 0)
+                if (hand[i]->selected && *discarded_card == false && timer % FRAMES(10) == 0)
                 {
                     hand[i]->selected = false;
                     played_push(hand[i]);
@@ -1128,15 +1126,15 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                     hand_selections--;
                     cards_drawn++;
 
-                    timer = 1;
+                    *discarded_card = true;
                 }
 
-                if (i == 0 && timer % FRAMES(10) == 0)
+                if (i == 0 && *discarded_card == false && timer % FRAMES(10) == 0)
                 {
                     hand_state = HAND_PLAYING;
                     cards_drawn = 0;
                     hand_selections = 0;
-                    timer = 1;
+                    timer = 0;
                     *played_selections = played_top + 1;
 
                     switch (hand_type) // select the cards that apply to the hand type
@@ -1327,7 +1325,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                         if (*played_selections == 0)
                         {
                             play_state = PLAY_SCORING;
-                            timer = 1;
+                            timer = 0;
                         }
                     }
 
@@ -1376,7 +1374,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                             {
                                 tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
                                 play_state = PLAY_ENDING;
-                                timer = 1;
+                                timer = 0;
                                 *played_selections = played_top + 1; // Reset the played selections to the top of the played stack
                                 break;
                             }
@@ -1396,7 +1394,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                         if (*played_selections == 0)
                         {
                             play_state = PLAY_ENDED;
-                            timer = 1;
+                            timer = 0;
                         }
                     }
 
@@ -1444,7 +1442,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                                 hand_selections = 0;
                                 *played_selections = 0;
                                 played_top = -1; // Reset the played stack
-                                timer = 1;
+                                timer = 0;
                                 break; // Break out of the loop to avoid accessing an invalid index
                             }
                         }
@@ -1885,7 +1883,6 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             break;
         }   
         default:
-            timer = 0;
             sequence_step = 0;
             state = 0;
             blind_reward = 0;
@@ -2070,7 +2067,6 @@ void game_shop()
         }
         default:
             state = 0; // Reset the state
-            timer = 0; // Reset the timer
 
             selection_x = 0; // Reset the selection
             top_row = true; // Reset the top row selection
@@ -2154,7 +2150,6 @@ void game_blind_select()
             else if (current_blind == SMALL_BLIND)
             {
                 game_set_state(GAME_PLAYING);
-                timer = 0;
             }
             break;
         }
