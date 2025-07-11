@@ -8,21 +8,21 @@ This port is strictly limited to the content that was available in the Balatro S
 # **Build Instructions:**
 
 ## **-Windows-**
-1. Install `devkitPro` from https://devkitpro.org/ and navigate to `Click Here for instructions`
-2. Navigate down until you find the `Download the latest version of the graphical installer` and download the latest release from the Github page.
-3. Execute it and follow the installation instructions, you only need to install the tools for the GBA development so ensure you have it selected and install it to the default directory.
-4. Go to the Start Menu and search for `MSys2` and open it.
-5. Install `Git` by typing this command: `pacman -S git`
-6. Navigate to where you want to clone the project such as your desktop or Documents folder. 
+1. Install `devkitPro` from https://github.com/devkitPro/installer by downloading the latest release.
+2. Execute it and follow the installation instructions, you only need to install the tools for the GBA development so ensure you have it selected and install it to the default directory.
+3. Go to the Start Menu and search for `MSys2` and open it.
+4. Install `Git` by typing this command: `pacman -S git` if you don't have it already installed.
+5. Navigate to where you want to clone the project such as your desktop or Documents folder. 
 The easiest way to properly `cd` to the directory is to type `cd` and drag and drop the folder into the terminal window and press Enter. 
-Example: `cd '/home/user/OneDrive/Documents/Folder` or something like this.
-7. Clone the project with `git clone --recursive https://github.com/cellos51/balatro-gba.git` in the terminal
-8. Now you want to `cd` to the new folder that was created. Use `cd` and drag the new folder into the window to add the file path and press Enter.
-9. Run the `make` command in the window to start building.
-10. After it completes, navigate through the `build` directory in the project folder and look for `balatro-gba.gba` and load it on an emulator or flashcart.
+Example: `cd '/home/user/OneDrive/Documents/balatro-gba` or something like this.
+6. Clone the project with `git clone --recursive https://github.com/cellos51/balatro-gba.git` in the terminal window.
+7. Use `cd` and drag the newly generated folder into the window to add the file path and press Enter.
+8. Type `make` into the window and press Enter to start building the game.
+9. After it completes, navigate through the `build` directory in the project folder and look for `balatro-gba.gba` and load it on an emulator or flashcart.
 
 ## **-Linux-**
-[Undocumented]
+Arch Linux (Steam Deck)
+[Coming Soon]
 
 ### **Common Issues:**
 1. **When I drag the folder into the window and press enter, it doesn't work!**
