@@ -59,7 +59,10 @@ void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction)
                  se_rect.right - se_rect.left + 1);
     }
 
-    memset16(&se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * (end)], 0x0000, se_rect.right - se_rect.left + 1); // This clears the top row when going down, or the bottom row when going up.
+    if (direction == SE_DOWN)
+    {
+        memset16(&se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * (end)], 0x0000, se_rect.right - se_rect.left + 1); // This clears the top row when going down, or the bottom row when going up.
+    }
 }
 
 void tte_erase_rect_wrapper(Rect rect)
