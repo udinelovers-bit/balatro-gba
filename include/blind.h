@@ -14,6 +14,14 @@ static const int ante_lut[MAX_ANTE + 1] = {100, 300, 800, 2000, 5000, 11000, 200
 #define BIG_BLIND 1
 #define BOSS_BLIND 2
 
+#define SMALL_BLIND_PB 1
+#define BIG_BLIND_PB 2
+#define BOSS_BLIND_PB 3
+
+#define SMALL_BLIND_TID 832
+#define BIG_BLIND_TID (SMALL_BLIND_TID + 16)
+#define BOSS_BLIND_TID (BIG_BLIND_TID + 16)
+
 enum BlindState
 {
     BLIND_CURRENT,

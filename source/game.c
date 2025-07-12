@@ -32,6 +32,8 @@ static enum HandType hand_type = NONE;
 static Sprite *playing_blind_token = NULL; // The sprite that displays the blind when in "GAME_PLAYING/GAME_ROUND_END" state
 static Sprite *round_end_blind_token = NULL; // The sprite that displays the blind when in "GAME_ROUND_END" state
 
+static Sprite *blind_select_tokens[MAX_BLINDS] = {NULL}; // The sprites that display the blinds when in "GAME_BLIND_SELECT" state
+
 static int current_blind = SMALL_BLIND;
 static enum BlindState blinds[MAX_BLINDS] = {BLIND_CURRENT, BLIND_UPCOMING, BLIND_UPCOMING}; // The current state of the blinds, this is used to determine what the game is doing at any given time
 
@@ -420,6 +422,15 @@ void change_background(int id)
     }
     else if (id == BG_ID_BLIND_SELECT)
     {
+        obj_unhide(blind_select_tokens[SMALL_BLIND]->obj, 0);
+        obj_unhide(blind_select_tokens[BIG_BLIND]->obj, 0);
+        obj_unhide(blind_select_tokens[BOSS_BLIND]->obj, 0);
+
+        const int default_y = 89 + (8 * 12); // Default y position for the blind select tokens. 8 is the size of a tile and 12 is the amound of tiles the background is shifted down by
+        sprite_position(blind_select_tokens[SMALL_BLIND], 80, default_y);
+        sprite_position(blind_select_tokens[BIG_BLIND], 120, default_y);
+        sprite_position(blind_select_tokens[BOSS_BLIND], 160, default_y);
+
         REG_DISPCNT &= ~DCNT_WIN0;
 
         memcpy(pal_bg_mem, background_blind_select_gfxPal, 64);
@@ -475,7 +486,9 @@ void change_background(int id)
                     y_from = 30;
                 }
 
-                memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 5);        
+                memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 5);
+
+                sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y - 8); // Move token up by a tile
             }
             else if (blinds[i] == BLIND_UPCOMING) // Change the select icon to "NEXT" 
             {
@@ -813,6 +826,14 @@ void game_set_state(enum GameState new_game_state)
 
 void game_init()
 {
+    blind_select_tokens[SMALL_BLIND] = blind_token_new(SMALL_BLIND, 8, 18, 35);
+    blind_select_tokens[BIG_BLIND] = blind_token_new(BIG_BLIND, 8, 18, 36);
+    blind_select_tokens[BOSS_BLIND] = blind_token_new(BOSS_BLIND, 8, 18, 37);
+
+    obj_hide(blind_select_tokens[SMALL_BLIND]->obj);
+    obj_hide(blind_select_tokens[BIG_BLIND]->obj);
+    obj_hide(blind_select_tokens[BOSS_BLIND]->obj);
+
     // Fill the deck with all the cards. Later on this can be replaced with a more dynamic system that allows for different decks and card types.
     for (int suit = 0; suit < NUM_SUITS; suit++)
     {
@@ -2092,6 +2113,11 @@ void game_blind_select()
         {           
             main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_UP, SE_UP);
 
+            for (int i = 0; i < MAX_BLINDS; i++)
+            {
+                sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y - 8);
+            }
+
             if (timer == 12)
             {
                 state = 1;
@@ -2130,6 +2156,11 @@ void game_blind_select()
                         main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_UP, SE_UP);
                     }
 
+                    for (int i = 0; i < MAX_BLINDS; i++)
+                    {
+                        sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y - (8 * 12));
+                    }
+
                     timer = 0;
                 }
             }
@@ -2149,13 +2180,23 @@ void game_blind_select()
         }
         case 2: // Blind selected, perform menu popout animation
         {
-            if (timer < MENU_POP_OUT_ANIM_FRAMES)
+            if (timer < 15)
             {
                 main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
+
+                for (int i = 0; i < MAX_BLINDS; i++)
+                {
+                    sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y + 8);
+                }
             }
             // TODO: Currently selecting other blinds crashes, remove this condition once fixed
-            else if (current_blind == SMALL_BLIND)
+            else if (current_blind == SMALL_BLIND && timer >= MENU_POP_OUT_ANIM_FRAMES)
             {
+                for (int i = 0; i < MAX_BLINDS; i++)
+                {
+                    obj_hide(blind_select_tokens[i]->obj);
+                }
+
                 game_set_state(GAME_PLAYING);
                 state = 0; // Reset the state
             }
