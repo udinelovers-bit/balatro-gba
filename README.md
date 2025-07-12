@@ -21,8 +21,7 @@ Example: `cd '/home/user/OneDrive/Documents/balatro-gba` or something like this.
 9. After it completes, navigate through the `build` directory in the project folder and look for `balatro-gba.gba` and load it on an emulator or flashcart.
 
 ## **-Linux-**
-Arch Linux (Steam Deck)
-[Coming Soon]
+[Not Available]
 
 ### **Common Issues:**
 1. **When I drag the folder into the window and press enter, it doesn't work!**
@@ -33,3 +32,5 @@ Arch Linux (Steam Deck)
 -Look for a folder called `build` inside the project folder and then find `balatro-gba.gba`.
 4. **The Game won't start!**
 -Try a different emulator or if you are using original hardware, make sure the rom is not corrupted and try a different flashcart or SD Card. If this does not work, open an issue on the Github page because a recent commit may have broke the game. 
+5. **It says I don't have `Git` or `Make` installed!**
+-Use `pacman -S git` or `pacman -S make` although it should already be installed if you followed the instructions correctly.
