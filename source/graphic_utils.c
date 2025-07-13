@@ -4,7 +4,7 @@
 
 #include "graphic_utils.h"
 
-const Rect FULL_SCREENBLOCK_RECT = { 0, 0, SE_ROW_LEN, SE_COL_LEN };
+const Rect FULL_SCREENBLOCK_RECT = { 0, 0, SE_ROW_LEN, SE_COL_LEN }; // TODO: LEN - 1 ...
 
 // Clips a rect of screenblock entries to a specified rect
 static void clip_se_rect_to_bounding_rect(Rect* rect, const Rect* bounding_rect)
@@ -33,7 +33,7 @@ void main_bg_se_clear_rect(Rect se_rect)
 
     for (int y = se_rect.top; y < se_rect.bottom; y++)
     {
-        memset16(&(se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * y]), 0x0000, se_rect.right - se_rect.left + 1);
+        memset16(&(se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * y]), 0x0000, rect_width(&se_rect));
     }
 }
 
@@ -58,33 +58,33 @@ void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction)
     {
         memcpy16(&se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * (y + direction)],
                  &se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * y], 
-                 se_rect.right - se_rect.left + 1);
+                 rect_width(&se_rect));
     }
 
     if (direction == SE_DOWN)
     {
-        memset16(&se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * (end)], 0x0000, se_rect.right - se_rect.left + 1); // This clears the top row when going down, or the bottom row when going up.
+        memset16(&se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * (end)], 0x0000, rect_width(&se_rect)); // This clears the top row when going down, or the bottom row when going up.
     }
 }
 
-void main_bg_se_copy_rect(Rect rect_from, Rect rect_to)
+void main_bg_se_copy_rect(Rect rect_to, Rect rect_from)
 {
     if (rect_from.left > rect_from.right
-        || rect_from.top < rect_from.bottom
+        || rect_from.top > rect_from.bottom
         || rect_to.left > rect_to.right
-        || rect_from.top < rect_from.bottom
+        || rect_from.top > rect_from.bottom
         // Check equal dimensions
-        || rect_from.bottom - rect_from.top != rect_to.bottom - rect_to.top
-        || rect_from.left - rect_from.right != rect_to.left - rect_to.right)
+        || rect_width(&rect_from) != rect_width(&rect_to)
+        || rect_height(&rect_from) != rect_height(&rect_to))
     {
         return;
     }
 
-    for (int y = rect_from.top; y < rect_from.bottom; y++)
+    for (int y = 0; y < rect_height(&rect_from); y++)
     {
-        memcpy16(&(se_mem[MAIN_BG_SBB][rect_to.left + SE_ROW_LEN * y]), 
-                 &(se_mem[MAIN_BG_SBB][rect_from.left + SE_ROW_LEN * y]),
-                 rect_from.right - rect_from.left + 1);
+        memcpy16(&(se_mem[MAIN_BG_SBB][rect_to.left + SE_ROW_LEN * (rect_to.top + y)]),
+                 &(se_mem[MAIN_BG_SBB][rect_from.left + SE_ROW_LEN * (rect_from.top + y)]),
+                 rect_width(&rect_from));
     }
 }
 

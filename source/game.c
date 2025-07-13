@@ -116,8 +116,12 @@ static inline Card *discard_pop()
 // Screenblock rects
 static const Rect ROUND_END_MENU_RECT       = {9,       7,      24,     21 }; 
 
-static const Rect POP_MENU_ANIM_RECT_DOWN   = {9,       6,      24,     32 };
-static const Rect POP_MENU_ANIM_RECT_UP     = {9,       7,      24,     32 };
+// TODO: Currently unused, remove?
+//static const Rect POP_MENU_ANIM_RECT_SRC    = {9,       19,     24,     31 };
+//static const Rect POP_MENU_ANIM_RECT_DEST   = {9,       7,      24,     19 };
+
+static const Rect POP_MENU_ANIM_RECT_DOWN   = {9,       6,      24,     31 };
+static const Rect POP_MENU_ANIM_RECT_UP     = {9,       7,      24,     31 };
 // The rects for popping menu animations (round end, shop, blinds) 
 // - extends beyond the visible screen to the end of the screenblock
 // It includes both the target and source position rects. 
@@ -126,9 +130,22 @@ static const Rect POP_MENU_ANIM_RECT_UP     = {9,       7,      24,     32 };
 // 
 // In the down version we include another row above the menu assuming it's blank so it's copied into it
 
-static const Rect SINGLE_BLIND_SELECT_RECT = { 9,       7,      13,     32 };
+static const Rect SINGLE_BLIND_SELECT_RECT  = {9,       7,      13,     31 };
 
-static const Rect SHOP_ICON_RECT            = { 0,      0,      8,     4 };
+static const Rect TOP_LEFT_ITEM_SRC_RECT    = {0,       20,     8,      25 };
+static const Rect TOP_LEFT_PANEL_RECT       = {0,       0,      8,      5  };
+static const Rect TOP_LEFT_PANEL_ANIM_RECT  = {0,       0,      8,      4  };
+/* Contains the shop icon/current blind etc. 
+ * The difference between TOP_LEFT_PANEL_ANIM_RECT and TOP_LEFT_PANEL_RECT 
+ * is due to an overlap between the bottom of the top left panel
+ * and the top of the score panel in the tiles connecting them.
+ * TOP_LEFT_PANEL_ANIM_RECT should be used for animations, 
+ * TOP_LEFT_PANEL_RECT for copies etc. but mind the overlap
+ */
+static const Rect TOP_LEFT_BLIND_TITLE_RECT = {0,       1,      8,      1 };
+static const Rect BIG_BLIND_TITLE_SRC_RECT  = {0,       26,     8,      26 };
+static const Rect BOSS_BLIND_TITLE_SRC_RECT = {0,       27,     8,      27 };
+
 
 // Rects for TTE (in pixels)
 static const Rect HAND_SIZE_RECT            = {128,     128,    152,    160 }; // Seems to include both SELECT and PLAYING
@@ -159,7 +176,7 @@ static const Rect ROUND_END_NUM_HANDS_RECT  = {88,      116,    UNDEFINED, UNDEF
 static const Rect HAND_REWARD_RECT          = {168,     UNDEFINED, UNDEFINED, UNDEFINED };
 static const Rect CASHOUT_RECT              = {88,      72,     UNDEFINED, UNDEFINED };
 
-//TODO: Different number ? 11 ?
+//TODO: Properly define and use
 #define MENU_POP_OUT_ANIM_FRAMES 20
 
 // General functions
@@ -353,6 +370,14 @@ enum HandType hand_get_type()
     return res_hand_type;
 }
 
+/* Copies the appropriate item into the top left panel (blind/shop icon)
+ * from where it was put outside the screenview
+ */
+void bg_copy_current_item_to_top_left_panel()
+{
+    main_bg_se_copy_rect(TOP_LEFT_PANEL_RECT, TOP_LEFT_ITEM_SRC_RECT);
+}
+
 void change_background(int id)
 {
     if (background == id)
@@ -370,24 +395,19 @@ void change_background(int id)
 
         tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
 
-        for (int y = 0; y < 6; y++) // Copies the blind panel from the bottom of the screen to the top. This code is identical to the one used in game_shop()
-        {
-            int y_from = 20 + y;
-            int y_to = 0 + y;
-            memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
-        }
-
+        /* TODO: The blind panel should come in with an animation when it's selected, 
+         * probably should happen elsewhere
+         */ 
+        bg_copy_current_item_to_top_left_panel();
+        
+        // TODO: These cases are still untested
         if (current_blind == BIG_BLIND) // Change text and palette depending on blind type
         {
-            int y_from = 26;
-            int y_to = 1;
-            memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
+            main_bg_se_copy_rect(TOP_LEFT_BLIND_TITLE_RECT, BIG_BLIND_TITLE_SRC_RECT);
         }
         else if (current_blind == BOSS_BLIND)
         {
-            int y_from = 27;
-            int y_to = 1;
-            memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
+            main_bg_se_copy_rect(TOP_LEFT_BLIND_TITLE_RECT, BOSS_BLIND_TITLE_SRC_RECT);
         }
 
         // This would change the palette of the background to match the blind, but the backgroun doesn't use the blind token's exact colors so a different approach is required
@@ -461,7 +481,7 @@ void change_background(int id)
         obj_unhide(blind_select_tokens[BIG_BLIND]->obj, 0);
         obj_unhide(blind_select_tokens[BOSS_BLIND]->obj, 0);
 
-        const int default_y = 89 + (8 * 12); // Default y position for the blind select tokens. 8 is the size of a tile and 12 is the amound of tiles the background is shifted down by
+        const int default_y = 89 + (TILE_SIZE * 12); // Default y position for the blind select tokens. 8 is the size of a tile and 12 is the amound of tiles the background is shifted down by
         sprite_position(blind_select_tokens[SMALL_BLIND], 80, default_y);
         sprite_position(blind_select_tokens[BIG_BLIND], 120, default_y);
         sprite_position(blind_select_tokens[BOSS_BLIND], 160, default_y);
@@ -503,9 +523,9 @@ void change_background(int id)
 
                 Rect blind_rect = SINGLE_BLIND_SELECT_RECT;
 
-                // + 1 to get to the start of the next blind, no gap between them
-                blind_rect.left += i * (SINGLE_BLIND_SELECT_RECT.right - SINGLE_BLIND_SELECT_RECT.left + 1);
-                blind_rect.right += i * (SINGLE_BLIND_SELECT_RECT.right - SINGLE_BLIND_SELECT_RECT.left + 1);
+                // There's no gap between them
+                blind_rect.left += i * rect_width(&SINGLE_BLIND_SELECT_RECT);
+                blind_rect.right += i * rect_width(&SINGLE_BLIND_SELECT_RECT);
                 main_bg_se_copy_rect_1_tile_vert(blind_rect, SE_UP);
 
                 int x_to = blind_rect.left;
@@ -521,16 +541,17 @@ void change_background(int id)
                     y_from = 30;
                 }
 
+                // TODO: What is this doing? I couldn't figure out and it seems unnecessary
                 memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 5);
 
-                sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y - 8); // Move token up by a tile
+                sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y - TILE_SIZE); // Move token up by a tile
             }
             else if (blinds[i] == BLIND_UPCOMING) // Change the select icon to "NEXT" 
             {
                 int x_from = 0;
                 int y_from = 20;
 
-                int x_to = 10 + (i * 5);
+                int x_to = 10 + (i * rect_width(&SINGLE_BLIND_SELECT_RECT));
                 int y_to = 20;
 
                 memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 3);
@@ -2093,7 +2114,7 @@ void game_shop()
             // Shift the shop panel
             main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
 
-            main_bg_se_copy_rect_1_tile_vert(SHOP_ICON_RECT, SE_UP);
+            main_bg_se_copy_rect_1_tile_vert(TOP_LEFT_PANEL_ANIM_RECT, SE_UP);
             
             if (timer == 1)
             {
@@ -2193,7 +2214,7 @@ void game_blind_select()
 
                     for (int i = 0; i < MAX_BLINDS; i++)
                     {
-                        sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y - (8 * 12));
+                        sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y - (TILE_SIZE * 12));
                     }
 
                     timer = 0;
@@ -2221,7 +2242,7 @@ void game_blind_select()
 
                 for (int i = 0; i < MAX_BLINDS; i++)
                 {
-                    sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y + 8);
+                    sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y + TILE_SIZE);
                 }
             }
             // TODO: Currently selecting other blinds crashes, remove this condition once fixed
