@@ -12,7 +12,6 @@
 #include "graphic_utils.h"
 
 #include "background_gfx.h"
-#include "background_play_gfx.h"
 #include "background_round_end_gfx.h"
 #include "background_shop_gfx.h"
 #include "background_blind_select_gfx.h"
@@ -370,13 +369,49 @@ void change_background(int id)
         GRIT_CPY(&se_mem[MAIN_BG_SBB], background_gfxMap);
 
         tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
+
+        for (int y = 0; y < 6; y++) // Copies the blind panel from the bottom of the screen to the top. This code is identical to the one used in game_shop()
+        {
+            int y_from = 20 + y;
+            int y_to = 0 + y;
+            memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
+        }
+
+        if (current_blind == BIG_BLIND) // Change text and palette depending on blind type
+        {
+            int y_from = 26;
+            int y_to = 1;
+            memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
+        }
+        else if (current_blind == BOSS_BLIND)
+        {
+            int y_from = 27;
+            int y_to = 1;
+            memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
+        }
+
+        // This would change the palette of the background to match the blind, but the backgroun doesn't use the blind token's exact colors so a different approach is required
+        // memset16(&pal_bg_mem[17], blind_get_color(current_blind, BLIND_HIGHLIGHT_COLOR_INDEX), 1);
+        // memset16(&pal_bg_mem[5], blind_get_color(current_blind, BLIND_MAIN_COLOR_INDEX), 1);
+        // memset16(&pal_bg_mem[13], blind_get_color(current_blind, BLIND_SHADOW_COLOR_INDEX), 1);
     }
     else if (id == BG_ID_CARD_PLAYING)
     {
-        REG_DISPCNT |= DCNT_WIN0;
-        memcpy(pal_bg_mem, background_gfxPal, 64);
-        GRIT_CPY(&tile8_mem[MAIN_BG_CBB], background_gfxTiles);
-        memcpy(&se_mem[MAIN_BG_SBB], background_play_gfxMap, background_play_gfxMapLen);
+        // REG_DISPCNT |= DCNT_WIN0;
+        // memcpy(pal_bg_mem, background_gfxPal, 64);
+        // GRIT_CPY(&tile8_mem[MAIN_BG_CBB], background_gfxTiles);
+        // GRIT_CPY(&se_mem[MAIN_BG_SBB], background_gfxMap);
+
+        if (background != BG_ID_CARD_SELECTING)
+        {
+            change_background(BG_ID_CARD_SELECTING);
+            background = BG_ID_CARD_PLAYING;
+        }
+
+        for (int i = 0; i <= 2; i++)
+        {
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_UP, SE_DOWN);
+        }        
 
         tte_erase_rect_wrapper(HAND_SIZE_RECT_SELECT);
     }
