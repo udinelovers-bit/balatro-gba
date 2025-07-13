@@ -431,7 +431,7 @@ void change_background(int id)
         Rect curr_hand_bg_rect = HAND_BG_RECT_SELECTING;
         for (int i = 0; i <= 2; i++)
         {
-            main_bg_se_move_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
+            main_bg_se_move_rect_1_tile_vert(curr_hand_bg_rect, SE_DOWN);
             curr_hand_bg_rect.top++;
             curr_hand_bg_rect.bottom++;
         }        
