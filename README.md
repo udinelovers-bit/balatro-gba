@@ -1,8 +1,9 @@
 # Balatro GBA
 This is an attempt to recreate the game 'Balatro' as accurately as possible, including all of the visual effects that make Balatro feel satisfying to play.
 
-This port is strictly limited to the content that was available in the Balatro Steam demo.
-
+This port is strictly limited to the content that was available in the January 2024 Balatro Steam demo.
+### **Disclaimer: This project is NOT endorsed or supported by Playstack or LocalThunk**
+#### This project is solely aimed to recreate Balatro's old demo on the Game Boy Advance and is not meant to infringe or draw sales away from the full game's release or any of the established works by Playstack and LocalThunk. All rights are reserved to their respective holders. 
 ![Example](https://github.com/cellos51/balatro-gba/blob/main/example.gif)
 
 # **Build Instructions:**
@@ -34,3 +35,6 @@ Example: `cd '/home/user/OneDrive/Documents/balatro-gba` or something like this.
 -Try a different emulator or if you are using original hardware, make sure the rom is not corrupted and try a different flashcart or SD Card. If this does not work, open an issue on the Github page because a recent commit may have broke the game. 
 5. **It says I don't have `Git` or `Make` installed!**
 -Use `pacman -S git` or `pacman -S make` although it should already be installed if you followed the instructions correctly.
+
+#### Purchasing the official game is highly recommended and almost mandatory in order for this project to have a chance of staying up due to copyright issues and potential legal action.
+**Purchase the Steam Version here: https://store.steampowered.com/app/2379780/Balatro/**
