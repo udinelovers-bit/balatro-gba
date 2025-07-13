@@ -74,6 +74,7 @@ void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction);
 
 /* Moves a rect in the main background vertically in direction by a single tile.
  * Note that tiles in the previous location will be transparent (0x000)
+ * so maybe copy would be a better choice if you don't want to delete things
  * direction must be either SE_UP or SE_DOWN.
  * se_rect dimensions are in number of tiles.
  */
@@ -81,7 +82,7 @@ void main_bg_se_move_rect_1_tile_vert(Rect se_rect, int direction);
 
 /* Copies the rect in rect_from into rect_to.
  * Notice there may be overlaps and overwrites due to them.
- * Both ects must be the same size
+ * Both rects must be the same size
  */
 void main_bg_se_copy_rect(Rect rect_to, Rect rect_from);
 

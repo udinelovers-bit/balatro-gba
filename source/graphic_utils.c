@@ -46,8 +46,6 @@ void main_bg_se_clear_rect(Rect se_rect)
     }
 }
 
-
-
 void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction)
 {
     if (se_rect.left > se_rect.right
@@ -81,11 +79,11 @@ void main_bg_se_move_rect_1_tile_vert(Rect se_rect, int direction)
     // Clip to avoid read/write overflow of the screenblock
     clip_se_rect_within_step_of_full_screen_vert(&se_rect);
 
-    int end = (direction == SE_UP) ? se_rect.bottom : se_rect.top;
+    int deleted_y = (direction == SE_UP) ? se_rect.bottom : se_rect.top;
 
     main_bg_se_copy_rect_1_tile_vert(se_rect, direction);
 
-    memset16(&se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * (end)], 0x0000, rect_width(&se_rect));
+    memset16(&se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * (deleted_y)], 0x0000, rect_width(&se_rect));
 }
 
 void main_bg_se_copy_rect(Rect rect_to, Rect rect_from)

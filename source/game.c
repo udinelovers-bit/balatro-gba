@@ -129,6 +129,10 @@ static const Rect POP_MENU_ANIM_RECT        = {9,       7,      24,     31 };
 
 static const Rect SINGLE_BLIND_SELECT_RECT  = {9,       7,      13,     31 };
 
+static const Rect HAND_BG_RECT_SELECTING    = {9,       11,     24,     15 };
+// TODO: Currently unused, remove?
+//static const Rect HAND_BG_RECT_PLAYING      = {9,       14,     24,     18 };
+
 static const Rect TOP_LEFT_ITEM_SRC_RECT    = {0,       20,     8,      25 };
 static const Rect TOP_LEFT_PANEL_RECT       = {0,       0,      8,      5  };
 static const Rect TOP_LEFT_PANEL_ANIM_RECT  = {0,       0,      8,      4  };
@@ -142,7 +146,6 @@ static const Rect TOP_LEFT_PANEL_ANIM_RECT  = {0,       0,      8,      4  };
 static const Rect TOP_LEFT_BLIND_TITLE_RECT = {0,       1,      8,      1 };
 static const Rect BIG_BLIND_TITLE_SRC_RECT  = {0,       26,     8,      26 };
 static const Rect BOSS_BLIND_TITLE_SRC_RECT = {0,       27,     8,      27 };
-
 
 // Rects for TTE (in pixels)
 static const Rect HAND_SIZE_RECT            = {128,     128,    152,    160 }; // Seems to include both SELECT and PLAYING
@@ -425,9 +428,12 @@ void change_background(int id)
             background = BG_ID_CARD_PLAYING;
         }
 
+        Rect curr_hand_bg_rect = HAND_BG_RECT_SELECTING;
         for (int i = 0; i <= 2; i++)
         {
-            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
+            main_bg_se_move_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
+            curr_hand_bg_rect.top++;
+            curr_hand_bg_rect.bottom++;
         }        
 
         tte_erase_rect_wrapper(HAND_SIZE_RECT_SELECT);
@@ -445,7 +451,7 @@ void change_background(int id)
 
         // Incoming hack! Clear the round end menu so that we can slowly display it with an animation later. The reason this isn't optimal is because the full background is already loaded into the vram at this point.
         // I'm just doing it this way because it's easier than doing some weird shit with Grit in order to get a proper tilemap. I'm not the biggest fan of Grit.
-        // TODO: Remove this if game_round_end() is fixed to use main_bg_se_copy_rect_1_tile_vert() for the pop menu
+        // TODO: Remove this if game_round_end() is fixed to use main_bg_se_copy/move_rect_1_tile_vert() for the pop menu
         main_bg_se_clear_rect(ROUND_END_MENU_RECT);
         
         //tte_erase_rect(0, 0, 64, 48); // Clear top left corner where the blind stats are displayed
@@ -499,12 +505,13 @@ void change_background(int id)
         {
             if (blinds[i] != BLIND_CURRENT && (i == SMALL_BLIND || i == BIG_BLIND)) // Make the skip button gray
             {
+                // TODO: Switch all the copies here to use main_bg_se_copy_rect()
                 int x_from = 0;
                 int y_from = 24 + (i * 4);
 
                 int x_to = 9 + (i * 5);
                 int y_to = 29;
-
+                
                 for (int j = 0; j < 3; j++)
                 {
                     memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 5);
@@ -538,7 +545,7 @@ void change_background(int id)
                     y_from = 30;
                 }
 
-                // TODO: What is this doing? I couldn't figure out and it seems unnecessary
+                // TODO: What is this doing? More importantly, why?
                 memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 5);
 
                 sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y - TILE_SIZE); // Move token up by a tile
@@ -548,7 +555,7 @@ void change_background(int id)
                 int x_from = 0;
                 int y_from = 20;
 
-                int x_to = 10 + (i * rect_width(&SINGLE_BLIND_SELECT_RECT));
+                int x_to = 10 + (i * 5);
                 int y_to = 20;
 
                 memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 3);
@@ -2204,6 +2211,7 @@ void game_blind_select()
                     background = -1; // Force refresh of the background
                     change_background(BG_ID_BLIND_SELECT);
 
+                    // TODO: Create a generic vertical move by any number of tiles to avoid for loops?
                     for (int i = 0; i < 12; i++)
                     {
                         main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
