@@ -385,7 +385,9 @@ void change_background(int id)
         }
         else if (current_blind == BOSS_BLIND)
         {
-
+            int y_from = 27;
+            int y_to = 1;
+            memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
         }
 
         // This would change the palette of the background to match the blind, but the backgroun doesn't use the blind token's exact colors so a different approach is required
