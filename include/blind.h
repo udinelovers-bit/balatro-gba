@@ -22,6 +22,11 @@ static const int ante_lut[MAX_ANTE + 1] = {100, 300, 800, 2000, 5000, 11000, 200
 #define BIG_BLIND_TID (SMALL_BLIND_TID + 16)
 #define BOSS_BLIND_TID (BIG_BLIND_TID + 16)
 
+#define BLIND_TEXT_COLOR_INDEX 1
+#define BLIND_SHADOW_COLOR_INDEX 2
+#define BLIND_HIGHLIGHT_COLOR_INDEX 3
+#define BLIND_MAIN_COLOR_INDEX 4
+
 enum BlindState
 {
     BLIND_CURRENT,
@@ -34,6 +39,7 @@ void blinds_init();
 
 int blind_get_requirement(int type, int ante);
 int blind_get_reward(int type);
+u16 blind_get_color(int type, int index);
 
 Sprite *blind_token_new(int type, int x, int y, int sprite_index); 
 
