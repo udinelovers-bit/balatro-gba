@@ -35,6 +35,9 @@
 #define SE_UP	-1
 #define SE_DOWN 1
 
+// Tile size in pixels, both height and width as tiles are square
+#define TILE_SIZE 8
+
 typedef struct
 {
 	int left;
@@ -44,6 +47,19 @@ typedef struct
 } Rect;
 
 #define UNDEFINED -1
+
+INLINE int rect_width(const Rect* rect)
+{
+	/* Extra parens to avoid issues in case compiler turns INLINE into macro
+	 * Not sure if necessary, could be just paranoia
+	 */ 
+	return (((rect)->right) - ((rect)->left) + 1);
+}
+
+INLINE int rect_height(const Rect* rect)
+{
+	return (((rect)->bottom) - ((rect)->top) + 1);
+}
 
 /* Clears a rect in the main background.
  * The se_rect dimensions need to be in number of tiles.
@@ -55,6 +71,20 @@ void main_bg_se_clear_rect(Rect se_rect);
  * se_rect dimensions are in number of tiles.
  */
 void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction);
+
+/* Moves a rect in the main background vertically in direction by a single tile.
+ * Note that tiles in the previous location will be transparent (0x000)
+ * so maybe copy would be a better choice if you don't want to delete things
+ * direction must be either SE_UP or SE_DOWN.
+ * se_rect dimensions are in number of tiles.
+ */
+void main_bg_se_move_rect_1_tile_vert(Rect se_rect, int direction);
+
+/* Copies the rect in rect_from into rect_to.
+ * Notice there may be overlaps and overwrites due to them.
+ * Both rects must be the same size
+ */
+void main_bg_se_copy_rect(Rect rect_to, Rect rect_from);
 
 // A wrapper for tte_erase_rect that would use the rect struct
 void tte_erase_rect_wrapper(Rect rect);
