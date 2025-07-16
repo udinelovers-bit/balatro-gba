@@ -21,6 +21,7 @@
 #define TTE_CBB 0
 #define AFFINE_BG_SBB 2
 #define AFFINE_BG_CBB 2
+#define PAL_ROW_LEN 16
 
 /* Dimensions for a screenblock.
  * A 1024 size screenblock is arranged in a grid of 32x32 screen entries
@@ -45,6 +46,12 @@ typedef struct
 
 #define UNDEFINED -1
 
+/* Gets the screenblock tile for the given coordinates (x, y).
+ * x and y are in number of tiles.
+ * Returns the screenblock tile.
+ */
+u16 main_bg_se_get_tile(int x, int y);
+
 /* Clears a rect in the main background.
  * The se_rect dimensions need to be in number of tiles.
  */
@@ -55,6 +62,18 @@ void main_bg_se_clear_rect(Rect se_rect);
  * se_rect dimensions are in number of tiles.
  */
 void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction);
+
+/* Copies a rect in the main background from se_rect to the position (x, y).
+ * se_rect dimensions are in number of tiles.
+ * x and y are the coordinates in number of tiles.
+ */
+void main_bg_se_copy_rect(Rect se_rect, int x, int y);
+
+/* Copies a tile to a rect in the main background.
+ * se_rect dimensions are in number of tiles.
+ * The tile is copied to the top left corner of the rect.
+ */
+void main_bg_se_copy_tile_to_rect(u16 tile, Rect se_rect);
 
 // A wrapper for tte_erase_rect that would use the rect struct
 void tte_erase_rect_wrapper(Rect rect);

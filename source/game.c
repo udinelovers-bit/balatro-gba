@@ -10,6 +10,7 @@
 #include "card.h"
 #include "blind.h"
 #include "graphic_utils.h"
+#include "tonc_video.h"
 
 #include "background_gfx.h"
 #include "background_round_end_gfx.h"
@@ -18,7 +19,11 @@
 
 #include "soundbank.h"
 
-static int timer = 0; // This might already exist in libtonc but idk so i'm just making my own
+// This seed system is temporary.
+static uint rng_seed = 2048;
+static bool seeded = false;
+
+static uint timer = 0; // This might already exist in libtonc but idk so i'm just making my own
 static int game_speed = 1;
 static int background = 0;
 
@@ -36,9 +41,14 @@ static Sprite *blind_select_tokens[MAX_BLINDS] = {NULL}; // The sprites that dis
 static int current_blind = SMALL_BLIND;
 static enum BlindState blinds[MAX_BLINDS] = {BLIND_CURRENT, BLIND_UPCOMING, BLIND_UPCOMING}; // The current state of the blinds, this is used to determine what the game is doing at any given time
 
-static int hands = 4;
-static int discards = 4;
+// Red deck default (can later be moved to a deck.h file or something)
+static int max_hands = 4;
+static int max_discards = 4;
+// Set in game_init and game_round_init
+static int hands = 0;
+static int discards = 0;
 
+static int round = 0;
 static int ante = 1;
 static int money = 4;
 static int score = 0;
@@ -109,15 +119,15 @@ static inline Card *discard_pop()
     return discard_pile[discard_top--];
 }
 
-
 // Consts
 
 // Rects                                       left     top     right   bottom
 // Screenblock rects
-static const Rect ROUND_END_MENU_RECT       = {9,       7,      24,     21 }; 
+static const Rect ROUND_END_MENU_RECT       = {9,       7,      24,     20 }; 
 
-static const Rect POP_MENU_ANIM_RECT_DOWN   = {9,       6,      24,     32 };
-static const Rect POP_MENU_ANIM_RECT_UP     = {9,       7,      24,     32 };
+static const Rect POP_MENU_ANIM_RECT_DOWN   = {9,       6,      24,     30 };
+static const Rect POP_MENU_ANIM_RECT_UP     = {9,       7,      24,     31 };
+static const Rect BLIND_SELECT_MENU_CLIP_RECT = {9,     6,      24,      7 };
 // The rects for popping menu animations (round end, shop, blinds) 
 // - extends beyond the visible screen to the end of the screenblock
 // It includes both the target and source position rects. 
@@ -137,6 +147,7 @@ static const Rect HAND_SIZE_RECT_PLAYING    = {128,     152,    152,    160 };
 static const Rect HAND_TYPE_RECT            = {8,       64,     64,     72  };
 // Score displayed in the same place as the hand type
 static const Rect TEMP_SCORE_RECT           = {8,       64,     64,     72  }; 
+static const Rect SCORE_RECT                = {32,       48,     64,     56 };
 
 static const Rect PLAYED_CARDS_SCORES_RECT  = {72,      48,     240,    56  };
 static const Rect BLIND_TOKEN_TEXT_RECT     = {80,      72,     200,    160 };
@@ -144,12 +155,12 @@ static const Rect MONEY_TEXT_RECT           = {8,       120,    64,     120 };
 static const Rect CHIPS_TEXT_RECT           = {8,       80,     32,     88  };
 static const Rect MULT_TEXT_RECT            = {40,      80,     64,     88  };
 static const Rect BLIND_REWARD_RECT         = {40,      32,     64,     40  };
+static const Rect BLIND_REQ_TEXT_RECT       = {40,      24,     64,     32  };
 
 // Rects with UNDEFINED are only used in tte_printf, they need to be fully defined
 // to be used with tte_erase_rect_wrapper()
 static const Rect HANDS_TEXT_RECT           = {16,      104,    UNDEFINED, UNDEFINED };
 static const Rect DISCARDS_TEXT_RECT        = {48,      104,    UNDEFINED, UNDEFINED };
-static const Rect BLIND_REQ_TEXT_RECT       = {40,      24,     UNDEFINED, UNDEFINED };
 static const Rect DECK_SIZE_RECT            = {200,     152,    UNDEFINED, UNDEFINED };
 static const Rect ROUND_TEXT_RECT           = {48,      144,    UNDEFINED, UNDEFINED };
 static const Rect ANTE_TEXT_RECT            = {8,       144,    UNDEFINED, UNDEFINED };
@@ -163,6 +174,16 @@ static const Rect CASHOUT_RECT              = {88,      72,     UNDEFINED, UNDEF
 #define MENU_POP_OUT_ANIM_FRAMES 20
 
 // General functions
+void set_seed(int seed)
+{
+    if (!seeded)
+    {
+        seeded = true;
+        rng_seed = seed;
+        srand(rng_seed);
+    }
+}
+
 void sort_hand_by_suit()
 {
     for (int a = 0; a < hand_top; a++)
@@ -390,18 +411,16 @@ void change_background(int id)
             memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
         }
 
+        Rect rect = {0, 1, 9, 2};
+        main_bg_se_copy_rect(rect, 0, 21); // Copy the blind name to the bottom of the screen. This is used for the blind panel animation in game_blind_select()
+
         // This would change the palette of the background to match the blind, but the backgroun doesn't use the blind token's exact colors so a different approach is required
-        // memset16(&pal_bg_mem[17], blind_get_color(current_blind, BLIND_HIGHLIGHT_COLOR_INDEX), 1);
-        // memset16(&pal_bg_mem[5], blind_get_color(current_blind, BLIND_MAIN_COLOR_INDEX), 1);
-        // memset16(&pal_bg_mem[13], blind_get_color(current_blind, BLIND_SHADOW_COLOR_INDEX), 1);
+        memset16(&pal_bg_mem[17], blind_get_color(current_blind, BLIND_BACKGROUND_MAIN_COLOR_INDEX), 1);
+        memset16(&pal_bg_mem[16], blind_get_color(current_blind, BLIND_BACKGROUND_SECONDARY_COLOR_INDEX), 1);
+        memset16(&pal_bg_mem[5], blind_get_color(current_blind, BLIND_BACKGROUND_SHADOW_COLOR_INDEX), 1);
     }
     else if (id == BG_ID_CARD_PLAYING)
     {
-        // REG_DISPCNT |= DCNT_WIN0;
-        // memcpy(pal_bg_mem, background_gfxPal, 64);
-        // GRIT_CPY(&tile8_mem[MAIN_BG_CBB], background_gfxTiles);
-        // GRIT_CPY(&se_mem[MAIN_BG_SBB], background_gfxMap);
-
         if (background != BG_ID_CARD_SELECTING)
         {
             change_background(BG_ID_CARD_SELECTING);
@@ -410,30 +429,23 @@ void change_background(int id)
 
         for (int i = 0; i <= 2; i++)
         {
-            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_UP, SE_DOWN);
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
         }        
 
         tte_erase_rect_wrapper(HAND_SIZE_RECT_SELECT);
     }
     else if (id == BG_ID_ROUND_END)
     {
+        if (background != BG_ID_CARD_SELECTING)
+        {
+            change_background(BG_ID_CARD_SELECTING);
+            background = BG_ID_ROUND_END;
+        }
+
         REG_DISPCNT &= ~DCNT_WIN0; // Disable window 0 so it doesn't make the cashout menu transparent
 
-        memcpy(pal_bg_mem, background_round_end_gfxPal, 64);
-        memcpy(&tile_mem[MAIN_BG_CBB], background_round_end_gfxTiles, background_round_end_gfxTilesLen);
-        memcpy(&se_mem[MAIN_BG_SBB], background_round_end_gfxMap, background_round_end_gfxMapLen);
-
-        // 1024 0x0400 is when sprites are flipped horizontally, 2048 0x0800 is when they are flipped vertically, 3072 0x0C00 is when they are flipped both horizontally and vertically
-        // Not sure why this comment is here but note there are bit macros SE_HFLIP and SE_VFLIP for those.
-
-        // Incoming hack! Clear the round end menu so that we can slowly display it with an animation later. The reason this isn't optimal is because the full background is already loaded into the vram at this point.
-        // I'm just doing it this way because it's easier than doing some weird shit with Grit in order to get a proper tilemap. I'm not the biggest fan of Grit.
-        // TODO: Remove this if game_round_end() is fixed to use main_bg_se_copy_rect_1_tile_vert() for the pop menu
         main_bg_se_clear_rect(ROUND_END_MENU_RECT);
-        
-        //tte_erase_rect(0, 0, 64, 48); // Clear top left corner where the blind stats are displayed
         tte_erase_rect_wrapper(HAND_SIZE_RECT);
-
     }
     else if (id == BG_ID_SHOP)
     {
@@ -443,8 +455,8 @@ void change_background(int id)
         GRIT_CPY(&tile_mem[MAIN_BG_CBB], background_shop_gfxTiles);
         GRIT_CPY(&se_mem[MAIN_BG_SBB], background_shop_gfxMap);
 
-        // Set the outline colors for the shop background
-        memset16(&pal_bg_mem[27], 0x213D, 1);
+        // Set the outline colors for the shop background. This is used for the alternate shop palettes when opening packs
+        memset16(&pal_bg_mem[26], 0x213D, 1);
         memset16(&pal_bg_mem[6], 0x10B4, 1);
         
         memset16(&pal_bg_mem[14], 0x32BE, 1); // Reset the shop lights to correct colors
@@ -574,6 +586,13 @@ void set_temp_score(int value)
 
 void set_score(int value)
 {
+    if (value == 0) // Clear if 0
+    {
+        Rect rect = SCORE_RECT;
+        rect.left += 1;
+        tte_erase_rect_wrapper(rect);
+    }
+
     int x_offset = 32;
     tte_printf("#{P:%d,48; cx:0xF000}%d", x_offset, value);
 }
@@ -596,6 +615,24 @@ void set_mult(int value)
 {
     tte_erase_rect_wrapper(MULT_TEXT_RECT);
     tte_printf("#{P:%d,%d; cx:0xF000;}%d", MULT_TEXT_RECT.left, MULT_TEXT_RECT.top, value); // Mult
+}
+
+void set_round(int value)
+{
+    //tte_erase_rect_wrapper(ROUND_TEXT_RECT);
+    tte_printf("#{P:%d,%d; cx:0xC000}%d", ROUND_TEXT_RECT.left, ROUND_TEXT_RECT.top, round);
+}
+
+void set_hands(int value)
+{
+    //tte_erase_rect_wrapper(HANDS_TEXT_RECT);
+    tte_printf("#{P:%d,%d; cx:0xD000}%d", HANDS_TEXT_RECT.left, HANDS_TEXT_RECT.top, hands); // Hand
+}
+
+void set_discards(int value)
+{
+    //tte_erase_rect_wrapper(DISCARDS_TEXT_RECT);
+    tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards); // Discard
 }
 
 static void print_hand_type(const char* hand_type_str)
@@ -788,9 +825,13 @@ int deck_get_max_size()
 
 void deck_shuffle()
 {
-    if (hand_state == HAND_SHUFFLING) return; // Prevent multiple shuffles at the same time
-    hand_state = HAND_SHUFFLING;
-    card_focused = 0;
+    for (int i = deck_top; i > 0; i--) 
+    {
+        int j = rand() % (i + 1);
+        Card *temp = deck[i];
+        deck[i] = deck[j];
+        deck[j] = temp;
+    }
 }
 
 void increment_blind(enum BlindState increment_reason)
@@ -812,6 +853,13 @@ void increment_blind(enum BlindState increment_reason)
 
 void game_round_init()
 {
+    // once we have a main menu, move the seed set there. this is only here now because there isn't a way to set the seed to a psudorandom value unless there is something to wait on
+    set_seed(rng_seed);
+
+    hand_state = HAND_DRAW;
+    cards_drawn = 0;
+    hand_selections = 0;
+
     playing_blind_token = blind_token_new(current_blind, 8, 18, 33); // Create the blind token sprite at the top left corner
     // TODO: Hide blind token and display it after sliding blind rect animation
     //if (playing_blind_token != NULL)
@@ -819,6 +867,7 @@ void game_round_init()
     //    obj_hide(playing_blind_token->obj); // Hide the blind token sprite for now
     //}
     round_end_blind_token = blind_token_new(current_blind, 82, 86, 34); // Create the blind token sprite for round end
+
     if (round_end_blind_token != NULL)
     {
         obj_hide(round_end_blind_token->obj); // Hide the blind token sprite for now
@@ -826,8 +875,8 @@ void game_round_init()
 
     tte_printf("#{P:%d,%d; cx:0xE000}%d", BLIND_REQ_TEXT_RECT.left, BLIND_REQ_TEXT_RECT.top, blind_get_requirement(current_blind, ante)); // Blind requirement
     tte_printf("#{P:%d,%d; cx:0xC000}$%d", BLIND_REWARD_RECT.left, BLIND_REWARD_RECT.top, blind_get_reward(current_blind)); // Blind reward
-    // TODO: Add round variable for current round
-    tte_printf("#{P:%d,%d; cx:0xC000}%d", ROUND_TEXT_RECT.left, ROUND_TEXT_RECT.top, 1); // Round
+
+    deck_shuffle(); // Shuffle the deck at the start of the round
 }
 
 void init_game_state(enum GameState game_state_to_init)
@@ -861,6 +910,9 @@ void game_set_state(enum GameState new_game_state)
 
 void game_init()
 {
+    hands = max_hands;
+    discards = max_discards;
+
     blind_select_tokens[SMALL_BLIND] = blind_token_new(SMALL_BLIND, 8, 18, 35);
     blind_select_tokens[BIG_BLIND] = blind_token_new(BIG_BLIND, 8, 18, 36);
     blind_select_tokens[BOSS_BLIND] = blind_token_new(BOSS_BLIND, 8, 18, 37);
@@ -879,27 +931,18 @@ void game_init()
         }
     }
 
-    // TODO: Move to external function
-    // Shuffle the deck
-    for (int i = 0; i < MAX_DECK_SIZE; i++)
-    {
-        int j = rand() % MAX_DECK_SIZE;
-        Card *temp = deck[i];
-        deck[i] = deck[j];
-        deck[j] = temp;
-    }
-
     change_background(BG_ID_BLIND_SELECT);
 
     tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", DECK_SIZE_RECT.left, DECK_SIZE_RECT.top, deck_get_size(), deck_get_max_size()); // Deck size/max size
     
+    set_round(round); // Set the round display
     set_score(score); // Set the score display
 
     set_chips(chips); // Set the chips display
     set_mult(mult); // Set the multiplier display
 
-    tte_printf("#{P:%d,%d; cx:0xD000}%d", HANDS_TEXT_RECT.left, HANDS_TEXT_RECT.top, hands); // Hand
-    tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards); // Discard
+    set_hands(hands); // Hand
+    set_discards(discards); // Discard
 
     //tte_printf("#{P:24,120; cx:0xC000}$%d", money); // Money
     set_money(money); // Set the money display
@@ -1054,7 +1097,6 @@ static void game_playing_discarded_cards_loop()
 
         if (discard_top == -1 && discarded_card_object == NULL) // If there are no more discarded cards, stop shuffling
         {
-            hand_state = HAND_SELECT; // Reset the hand state to the functional default
             game_set_state(GAME_ROUND_END); // Set the game state back to playing
         }
     }
@@ -1540,6 +1582,20 @@ static void game_playing_ui_text_update()
     }
 }
 
+static void game_round_end_cashout()
+{
+    money += hands + blind_get_reward(current_blind); // Reward the player
+    set_money(money);
+
+    hands = max_hands; // Reset the hands to the maximum
+    discards = max_discards; // Reset the discards to the maximum
+    set_hands(hands); // Set the hands display
+    set_discards(discards); // Set the discards display
+
+    score = 0;
+    set_score(score); // Set the score display
+}
+
 void game_playing()
 {
     // TODO: Blind rect sliding into view animation...
@@ -1586,16 +1642,9 @@ void game_round_end_cleanup()
     // TODO: Reuse sprites for blind selection?
 }
 
-void game_round_end() // Writing this kind a made me want to kms. If somewone wants to rewrite this, please do so.
+void game_round_end()
 {
-    /* TODO: I could use main_bg_se_copy_rect_1_tile_vert() to replace the menu pop up here
-     * But there are a bunch of other manual hard-coded tilemap animations in here that
-     * are very hard to understand, and if I change the background image for the pop up
-     * it will change the tile charblock layout and screw them up so it's all or nothing...
-     * - Meir
-     */ 
     static int state = 0;
-    static int sequence_step = 0; // Reusable variable for the animations in states
 
     static int blind_reward = 0;
     static int hand_reward = 0;
@@ -1609,7 +1658,6 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             {   
                 change_background(BG_ID_ROUND_END); // Change the background to the round end background
                 state = 1; // Change the state to the next one
-                sequence_step = 0;
                 timer = 0; // Reset the timer
                 blind_reward = blind_get_reward(current_blind);
                 hand_reward = hands;
@@ -1618,50 +1666,9 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
         }
         case 1: // This creates the top 16 by 7 tiles of the pop up. It places it in vram, moving it up one tile each frame, not clearing the previous row of tiles so they fill the blank space as it moves up.
         {
-            const int bottom_of_screen = 19;
-            int y = bottom_of_screen - timer;
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_UP, SE_UP);
 
-            // 1st row
-            const unsigned short tile_map1[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x0026, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0027, 0x0426};
-            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map1, sizeof(tile_map1));
-
-            // 2nd row
-            y += 1;
-            if (y > bottom_of_screen) break;
-            const unsigned short tile_map2[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x002A, 0x042D, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x002D, 0x042A};
-            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map2, sizeof(tile_map2));
-
-            // 3rd row
-            y += 1;
-            if (y > bottom_of_screen) break;
-            unsigned short tile_map3[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x002A, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042A};
-            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map3, sizeof(tile_map3));
-
-            // 4th row
-            y += 1;
-            if (y > bottom_of_screen) break;
-            tile_map3[0] = se_mem[MAIN_BG_SBB][8 + 32 * y];
-            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map3, sizeof(tile_map3));
-
-            // 5th row
-            y += 1;
-            if (y > bottom_of_screen) break;
-            tile_map3[0] = se_mem[MAIN_BG_SBB][8 + 32 * y];
-            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map3, sizeof(tile_map3));
-
-            // 6th row
-            y += 1;
-            if (y > bottom_of_screen) break;
-            const unsigned short tile_map4[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x002A, 0x0055, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0455, 0x042A};
-            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map4, sizeof(tile_map4));
-
-            // 7th row
-            y += 1;
-            if (y > bottom_of_screen) break;
-            const unsigned short tile_map5[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x002A, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x042A};
-            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map5, sizeof(tile_map5));
-
-            if (timer >= 12)
+            if (timer == 13)
             {
                 state = 2;
                 timer = 0;
@@ -1674,13 +1681,13 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             
             tte_printf("#{P:%d,%d; cx:0xE000}%d", ROUND_END_BLIND_REQ_RECT.left, ROUND_END_BLIND_REQ_RECT.top, blind_get_requirement(current_blind, ante));
 
-            int y = 13;
-
-            const unsigned short tile_map1[17] = {se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x002A, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042A};
-            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], tile_map1, sizeof(tile_map1));
-
-            const unsigned short tile_map2[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x002A, 0x0055, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0455, 0x042A};
-            memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map2, sizeof(tile_map2));
+            if (timer == 1)
+            {
+                Rect single_line_rect = ROUND_END_MENU_RECT;
+                single_line_rect.top = 11;
+                single_line_rect.bottom = single_line_rect.top + 1;
+                main_bg_se_copy_rect_1_tile_vert(single_line_rect, SE_DOWN);
+            }
 
             if (timer >= 30)
             {
@@ -1691,11 +1698,15 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
         }
         case 3: // Sequentially display the "score min" text over the next 4 frames
         {
-            // "Score Min" text
-            const unsigned short tile_map3[4] = {0x003E, 0x003F, 0x0040, 0x0041};
+            int timer_offset = timer - 1;
 
-            int temp_offset = timer;
-            memcpy(&se_mem[MAIN_BG_SBB][12 + temp_offset + 32 * 11], &tile_map3[temp_offset - 1], sizeof(tile_map3[0]));
+            int x_from = 0;
+            int y_from = 29;
+
+            int x_to = 13;
+            int y_to = 11;
+
+            memcpy16(&se_mem[MAIN_BG_SBB][x_to + timer_offset + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + timer_offset + 32 * y_from], 1);
 
             if (timer >= 4)
             {
@@ -1710,121 +1721,56 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
 
             // TODO: Add sound effect here
 
-            sequence_step++;
-
-            blind_reward--;
-            tte_printf("#{P:%d,%d; cx:0xC000}$%d", BLIND_REWARD_RECT.left , BLIND_REWARD_RECT.top, blind_reward);
-            tte_printf("#{P:%d,%d; cx:0xC000}$%d", ROUND_END_BLIND_REWARD_RECT.left, ROUND_END_BLIND_REQ_RECT.top, blind_get_reward(current_blind) - blind_reward);
-
-            if (blind_reward <= 0)
+            if (blind_reward > 0)
+            {
+                blind_reward--;
+                tte_printf("#{P:%d,%d; cx:0xC000}$%d", BLIND_REWARD_RECT.left , BLIND_REWARD_RECT.top, blind_reward);
+                tte_printf("#{P:%d,%d; cx:0xC000}$%d", ROUND_END_BLIND_REWARD_RECT.left, ROUND_END_BLIND_REQ_RECT.top, blind_get_reward(current_blind) - blind_reward);
+            }
+            else if (timer > FRAMES(20))
             {
                 tte_erase_rect_wrapper(BLIND_REWARD_RECT);
+                tte_erase_rect_wrapper(BLIND_REQ_TEXT_RECT);
                 obj_hide(playing_blind_token->obj);
                 state = 5;
-                sequence_step = 0;
                 timer = 0;
             }
             break;
         }
-        case 5: // This is just an incredibly convoluted way to slide the "small blind" panel out of view. It was made this way because I didn't know the better way at the time AND because I was being a perfectionist and wanted to make the bottom row of tiles on the panel not connected to the "SCORE" panel.
+        case 5: // Slide the "small blind" panel out of view
         {
-            if (timer < FRAMES(20)) break;
-
-            sequence_step++;
+            if (timer < 8)
             {
-                int y = 5;
+                main_bg_se_copy_rect_1_tile_vert(SHOP_ICON_RECT, SE_UP);
 
-                if (sequence_step == 1) // Erase the score text from the small blind panel and move it all up by one tile
+                if (timer == 1) // Copied from shop. Feels slightly too niche of a function for me personally to make one.
                 {
-                    tte_erase_rect(40, 16, 64, 40);
-
-                    const unsigned short tile_map1[10] = {0x0064, 0x0065, 0x0065, 0x0066, 0x0067, 0x0067, 0x0067, 0x0068, 0x0464, se_mem[MAIN_BG_SBB][32 * y + 9]}; // Swaps the top of the score panel tiles with ones that aren't connected to the small blind panel
-                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map1, sizeof(tile_map1));
-
-                    y -= 1;
-                    const unsigned short tile_map2[10] = {0x006F, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x0070, 0x046F, se_mem[MAIN_BG_SBB][32 * y + 9]}; // Swaps the bottom of the small blind panel tiles with ones that aren't connected to the score panel
-                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map2, sizeof(tile_map2));
-
-                    // These just move everything else up by one tile
-                    y = 1;
-                    const unsigned short tile_map3[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
-                    y -= 1;
-                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map3, sizeof(tile_map3));
-
-                    y = 2;
-                    const unsigned short tile_map4[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
-                    y -= 1;
-                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map4, sizeof(tile_map4));
-
-                    y = 3;
-                    const unsigned short tile_map5[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
-                    y -= 1;
-                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map5, sizeof(tile_map5));
+                    int y = 6;
+                    memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0006, 1);
+                    memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0007, 2);
+                    memset16(&se_mem[MAIN_BG_SBB][3 + 32 * (y - 1)], 0x0008, 1);
+                    memset16(&se_mem[MAIN_BG_SBB][4 + 32 * (y - 1)], 0x0009, 4);
+                    memset16(&se_mem[MAIN_BG_SBB][7 + 32 * (y - 1)], 0x000A, 1);
+                    memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0406, 1);
                 }
-                else if (sequence_step == 2)
+                else if (timer == 2)
                 {
-                       
-                    y = 1;
-                    const unsigned short tile_map3[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
-                    y -= 1;
-                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map3, sizeof(tile_map3));
-                    
-                    y = 2;
-                    const unsigned short tile_map4[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
-                    y -= 1;
-                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map4, sizeof(tile_map4));
-
-                    y = 3;
-                    const unsigned short tile_map5[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
-                    y -= 1;
-                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map5, sizeof(tile_map5));
-
-                    y = 4;
-                    const unsigned short tile_map6[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
-                    y -= 1;
-                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map6, sizeof(tile_map6));
-
-                    y = 4;
-                    const unsigned short tile_map2[10] = {0x046B, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x001F, 0x006B, se_mem[MAIN_BG_SBB][32 * y + 9]}; // This sets the uncleared bottom row of the small blind panel to empty tiles that match the stats panel
-                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map2, sizeof(tile_map2));
+                    int y = 5;
+                    memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0001, 1);
+                    memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0002, 7);
+                    memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0401, 1); 
                 }
-                else // The rest of this just moves the panel tiles up in vram until they're gone
-                {
-                    y = 1;
-                    const unsigned short tile_map3[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
-                    y -= 1;
-                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map3, sizeof(tile_map3));
-                    
-                    y = 2;
-                    const unsigned short tile_map4[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
-                    y -= 1;
-                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map4, sizeof(tile_map4));
-
-                    y = 3;
-                    const unsigned short tile_map5[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
-                    y -= 1;
-                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map5, sizeof(tile_map5));
-
-                    y = 4;
-                    const unsigned short tile_map6[10] = {se_mem[MAIN_BG_SBB][32 * y], se_mem[MAIN_BG_SBB][32 * y + 1], se_mem[MAIN_BG_SBB][32 * y + 2], se_mem[MAIN_BG_SBB][32 * y + 3], se_mem[MAIN_BG_SBB][32 * y + 4], se_mem[MAIN_BG_SBB][32 * y + 5], se_mem[MAIN_BG_SBB][32 * y + 6], se_mem[MAIN_BG_SBB][32 * y + 7], se_mem[MAIN_BG_SBB][32 * y + 8], se_mem[MAIN_BG_SBB][32 * (y - 1) + 9]};
-                    y -= 1;
-                    memcpy(&se_mem[MAIN_BG_SBB][32 * y], &tile_map6, sizeof(tile_map6));
-                }
-            }
-
-            if (sequence_step == 6)
+            }   
+            else if (timer > FRAMES(20))
             {
                 memset16(&pal_bg_mem[18], 0x1483, 1);
                 state = 6;
                 timer = 0;
-                sequence_step = 0;
             }
             break;
         }
         case 6: // This state handles displaying the rewards earned from the completed round
         {
-            if (timer < FRAMES(20)) break;
-
             int hand_y = 0;
             int interest_y = 0;
 
@@ -1839,39 +1785,33 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
             //     interest_y = 1 + hand_y;
             // }
 
-            if (sequence_step == 0) // Expand the black part of the panel down by one tile
+            if (timer == 1) // Expand the black part of the panel down by one tile
             {
-                int y = 14;
-
-                const unsigned short tile_map1[17] = {se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x002A, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042A};
-                memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], tile_map1, sizeof(tile_map1));
-
-                const unsigned short tile_map2[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x002A, 0x0055, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0455, 0x042A};
-                memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map2, sizeof(tile_map2));
+                Rect single_line_rect = ROUND_END_MENU_RECT;
+                single_line_rect.top = 12;
+                single_line_rect.bottom = single_line_rect.top + 1;
+                main_bg_se_copy_rect_1_tile_vert(single_line_rect, SE_DOWN);
             }
-            else if (sequence_step < 15) // Use TTE to print '.' until the end of the panel width
+            else if (timer < 16) // Use TTE to print '.' until the end of the panel width
             {
                 // Print the separator dots
-                int x = (9 + sequence_step) * 8;
+                int x = (8 + timer) * 8;
                 int y = (13) * 8;
 
                 tte_printf("#{P:%d,%d; cx:0xF000}.", x, y); 
             }
-            else if (sequence_step >= 30 && hand_reward > 0) // Wait an additional 15 frames since the last sequenced action
+            else if (timer >= 30 && hand_reward > 0) // Wait an additional 15 frames since the last sequenced action
             {
-                if (sequence_step == 30) // Expand the black part of the panel down by one tile again
+                if (timer == 30) // Expand the black part of the panel down by one tile again
                 {
-                    int y = 14 + hand_y; // This was intended for modularity so that I can add interest rewards later
-
-                    const unsigned short tile_map1[17] = {se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x002A, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x0014, 0x042A};
-                    memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], tile_map1, sizeof(tile_map1));
-
-                    const unsigned short tile_map2[17] = {se_mem[MAIN_BG_SBB][8 + 32 * y], 0x002A, 0x0055, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0056, 0x0455, 0x042A};
-                    memcpy(&se_mem[MAIN_BG_SBB][8 + 32 * y], tile_map2, sizeof(tile_map2));
+                    Rect single_line_rect = ROUND_END_MENU_RECT;
+                    single_line_rect.top = 12 + hand_y;
+                    single_line_rect.bottom = single_line_rect.top + 1;
+                    main_bg_se_copy_rect_1_tile_vert(single_line_rect, SE_DOWN);
 
                     tte_printf("#{P:%d,%d; cx:0xD000}%d #{cx:0xF000}Hands", ROUND_END_NUM_HANDS_RECT.left, ROUND_END_NUM_HANDS_RECT.top, hand_reward); // Print the hand reward
                 }
-                else if (sequence_step > 45 && timer % FRAMES(20) == 0) // After 15 frames, every 20 frames, increment the hand reward text until the hand reward variable is depleted
+                else if (timer > 45 && timer % FRAMES(20) == 0) // After 15 frames, every 20 frames, increment the hand reward text until the hand reward variable is depleted
                 {
                     int y = (13 + hand_y) * 8;
                     hand_reward--;
@@ -1879,11 +1819,8 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
                 }
             }
 
-            sequence_step++;
-
             if (hand_reward <= 0 && interest_reward <= 0) // Once all rewards are accounted for go to the next state
             {
-                sequence_step = 0;
                 timer = 0; // Reset the timer
                 state = 7; // Go to the next state
             }
@@ -1894,31 +1831,31 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
         {
             if (timer == FRAMES(40)) // Put the "cash out" button onto the round end panel
             {
-                int y = 8;
+                Rect left_rect = {4, 29, 5, 33};
+                main_bg_se_copy_rect(left_rect, 10, 8);
 
-                // 1st row
-                const unsigned short tile_map1[14] = {0x002B, 0x002C, 0x002C, 0x002C, 0x002C, 0x002C, 0x002C, 0x002C, 0x002C, 0x002C, 0x002C, 0x002C, 0x002C, 0x042B};
-                memcpy(&se_mem[MAIN_BG_SBB][10 + 32 * y], tile_map1, sizeof(tile_map1));
+                Rect right = {7, 29, 8, 33};
+                main_bg_se_copy_rect(right, 23, 8);
 
-                // 2nd row
-                y += 1;
-                const unsigned short tile_map2[14] = {0x0030, 0x0031, 0x0031, 0x0031, 0x0031, 0x0031, 0x0031, 0x0031, 0x0031, 0x0031, 0x0031, 0x0031, 0x0031, 0x0430};
-                memcpy(&se_mem[MAIN_BG_SBB][10 + 32 * y], tile_map2, sizeof(tile_map2));
+                Rect top = {11, 8, 23, 9};
+                main_bg_se_copy_tile_to_rect(main_bg_se_get_tile(6, 29), top);
 
-                // 3rd row
-                y += 1;
-                unsigned short tile_map3[14] = {0x0037, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0038, 0x0437};
-                memcpy(&se_mem[MAIN_BG_SBB][10 + 32 * y], tile_map3, sizeof(tile_map3));
+                Rect middle = {11, 9, 23, 10};
+                main_bg_se_copy_tile_to_rect(main_bg_se_get_tile(6, 30), middle);
+
+                Rect bottom = {11, 10, 23, 11};
+                main_bg_se_copy_tile_to_rect(main_bg_se_get_tile(6, 31), bottom);
 
                 tte_printf("#{P:%d, %d; cx:0xF000}Cash Out: $%d", CASHOUT_RECT.left, CASHOUT_RECT.top, hands + blind_get_reward(current_blind)); // Print the cash out amount
             }
             else if (timer > FRAMES(40) && key_hit(KEY_A)) // Wait until the player presses A to cash out
-            {   
-                state = 8; // Go to the next state
-                money += hands + blind_get_reward(current_blind); // Reward the player
-                set_money(money);
-                memset16(&pal_bg_mem[6], 0x0174, 1);
+            {
+                game_round_end_cashout();
 
+                state = 8; // Go to the next state
+                timer = 0; // Reset the timer
+            
+                memset16(&pal_bg_mem[6], 0x0174, 1);
                 obj_hide(round_end_blind_token->obj); // Hide the blind token object
                 tte_erase_rect_wrapper(BLIND_TOKEN_TEXT_RECT); // Erase the blind token text
             }
@@ -1927,19 +1864,17 @@ void game_round_end() // Writing this kind a made me want to kms. If somewone wa
         }
         case 8: // Shift the round end panel back out of view and go to the next state
         {
-            sequence_step++;
             main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
 
-            if (sequence_step >= 20)
+            if (timer >= 20)
             {
-                sequence_step = 0;
                 timer = 0; 
                 state = 9;
             }
             break;
         }   
         default:
-            sequence_step = 0;
+            timer = 0;
             state = 0;
             blind_reward = 0;
             hand_reward = 0;
@@ -1967,7 +1902,7 @@ void game_shop()
 
     if (timer % 20 == 0) // Shift palette around the border of the shop icon
     {
-        unsigned short shifted_palette[4];
+        COLOR shifted_palette[4];
         memcpy16(&shifted_palette[0], &pal_bg_mem[14], 1);
         memcpy16(&shifted_palette[1], &pal_bg_mem[17], 1);
         memcpy16(&shifted_palette[2], &pal_bg_mem[22], 1);
@@ -1998,12 +1933,12 @@ void game_shop()
             {
                 int timer_offset = timer - 6;
 
-                // TODO: Extract to generic function?
                 for (int y = 0; y < timer_offset; y++)
                 {
                     int y_from = 26 + y - timer_offset;
                     int y_to = 0 + y;
-                    memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
+                    Rect from = {0, y_from, 9, y_from + 1};
+                    main_bg_se_copy_rect(from, 0, y_to);
                 }
             }
 
@@ -2136,8 +2071,6 @@ void game_shop()
 
 void game_blind_select()
 {
-    change_background(BG_ID_BLIND_SELECT);
-
     static int state = 0;
 
     static bool top_row = true; // There's only one row in this game state, but this is here for consistency with the shop state if we make these variables global or something
@@ -2146,6 +2079,7 @@ void game_blind_select()
     {
         case 0: // Intro sequence (menu coming into frame)
         {           
+            change_background(BG_ID_BLIND_SELECT);
             main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_UP, SE_UP);
 
             for (int i = 0; i < MAX_BLINDS; i++)
@@ -2155,7 +2089,7 @@ void game_blind_select()
 
             if (timer == 12)
             {
-                state = 1;
+                state++;
                 timer = 0; // Reset the timer
             }
 
@@ -2174,10 +2108,11 @@ void game_blind_select()
             }
             else if (key_hit(KEY_A))
             {
-                if (top_row)
+                if (top_row) // Blind selected
                 {
-                    state = 2;
+                    state++;
                     timer = 0;
+                    set_round(++round);
                 }
                 else if (current_blind != BOSS_BLIND)
                 {
@@ -2186,7 +2121,7 @@ void game_blind_select()
                     background = -1; // Force refresh of the background
                     change_background(BG_ID_BLIND_SELECT);
 
-                    for (int i = 0; i < 12; i++)
+                    for (int i = 0; i < 12; i++) // This shouldn't be direct accessing vram to do this because it causes flickering. Ideally, in the future, we should use a buffer and then copy it to VRAM in one go.
                     {
                         main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_UP, SE_UP);
                     }
@@ -2219,25 +2154,73 @@ void game_blind_select()
             {
                 main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
 
+                main_bg_se_clear_rect(BLIND_SELECT_MENU_CLIP_RECT);
+
                 for (int i = 0; i < MAX_BLINDS; i++)
                 {
                     sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y + 8);
                 }
             }
-            // TODO: Currently selecting other blinds crashes, remove this condition once fixed
-            else if (current_blind == SMALL_BLIND && timer >= MENU_POP_OUT_ANIM_FRAMES)
+            else if (timer >= MENU_POP_OUT_ANIM_FRAMES)
             {
                 for (int i = 0; i < MAX_BLINDS; i++)
                 {
                     obj_hide(blind_select_tokens[i]->obj);
                 }
 
-                game_set_state(GAME_PLAYING);
-                state = 0; // Reset the state
+                state++; // Reset the state
+                timer = 0; // Reset the timer
             }
             break;
         }
+        case 3: // Move the blind panel into view
+        {
+            if (timer < 7)
+            {
+                if (timer == 1) // Switches to the selecting background and clears the blind panel area
+                {
+                    change_background(BG_ID_CARD_SELECTING);
+
+                    main_bg_se_clear_rect(POP_MENU_ANIM_RECT_DOWN);
+
+                    for (int y = 0; y < 5; y++)
+                    {
+                        int y_from = 28;
+                        int y_to = 0 + y;
+                        Rect from = {0, y_from, 9, y_from + 1};
+                        main_bg_se_copy_rect(from, 0, y_to);
+                    }
+
+                    int y = 6;
+                    memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0006, 1);
+                    memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0007, 2);
+                    memset16(&se_mem[MAIN_BG_SBB][3 + 32 * (y - 1)], 0x0008, 1);
+                    memset16(&se_mem[MAIN_BG_SBB][4 + 32 * (y - 1)], 0x0009, 4);
+                    memset16(&se_mem[MAIN_BG_SBB][7 + 32 * (y - 1)], 0x000A, 1);
+                    memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0406, 1); 
+                }
+
+                for (int y = 0; y < timer; y++) // Shift the blind panel down onto screen
+                {
+                    int y_from = 26 + y - timer;
+                    int y_to = 0 + y;
+                    Rect from = {0, y_from, 9, y_from + 1};
+                    main_bg_se_copy_rect(from, 0, y_to);
+                }
+            }
+            else
+            {
+                state++;
+            }
+
+            break;
+        }
         default:
+            state = 0;
+            timer = 0;
+            top_row = true;
+            background = -1;
+            game_set_state(GAME_PLAYING);
             break;
     }
 }
@@ -2245,6 +2228,15 @@ void game_blind_select()
 void game_update()
 {
     timer++;
+
+    if (seeded == false)
+    {
+        rng_seed++;
+        if (key_curr_state() != key_prev_state()) // If the keys have changed, make it more pseudo-random
+        {
+            rng_seed *= 2;
+        }
+    }
 
     switch (game_state)
     {
