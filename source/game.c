@@ -1762,7 +1762,7 @@ void game_round_end()
             }   
             else if (timer > FRAMES(20))
             {
-                memset16(&pal_bg_mem[18], 0x1483, 1);
+                memset16(&pal_bg_mem[17], 0x1483, 1);
                 state = 6;
                 timer = 0;
             }
@@ -1784,7 +1784,12 @@ void game_round_end()
             //     interest_y = 1 + hand_y;
             // }
 
-            if (timer == 1) // Expand the black part of the panel down by one tile
+            if (hand_reward <= 0 && interest_reward <= 0) // Once all rewards are accounted for go to the next state
+            {
+                timer = 0; // Reset the timer
+                state = 7; // Go to the next state
+            }
+            else if (timer == 1) // Expand the black part of the panel down by one tile
             {
                 Rect single_line_rect = ROUND_END_MENU_RECT;
                 single_line_rect.top = 12;
@@ -1816,12 +1821,6 @@ void game_round_end()
                     hand_reward--;
                     tte_printf("#{P:%d, %d; cx:0xC000}$%d", HAND_REWARD_RECT.left, y, hands - hand_reward); // Print the hand reward
                 }
-            }
-
-            if (hand_reward <= 0 && interest_reward <= 0) // Once all rewards are accounted for go to the next state
-            {
-                timer = 0; // Reset the timer
-                state = 7; // Go to the next state
             }
 
             break;
