@@ -11,7 +11,6 @@
 // Graphics
 #include "deck_gfx.h"
 #include "background_gfx.h"
-#include "background_play_gfx.h"
 #include "affine_background_gfx.h"
 
 // Audio

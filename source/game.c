@@ -13,7 +13,6 @@
 #include "tonc_video.h"
 
 #include "background_gfx.h"
-#include "background_round_end_gfx.h"
 #include "background_shop_gfx.h"
 #include "background_blind_select_gfx.h"
 
