@@ -640,6 +640,11 @@ void set_round(int value)
     tte_printf("#{P:%d,%d; cx:0xC000}%d", ROUND_TEXT_RECT.left, ROUND_TEXT_RECT.top, round);
 }
 
+void set_ante(int value)
+{
+    tte_printf("#{P:%d,%d; cx:0xC000}%d#{cx:0xF000}/%d", ANTE_TEXT_RECT.left, ANTE_TEXT_RECT.top, value, MAX_ANTE);
+}
+
 void set_hands(int value)
 {
     //tte_erase_rect_wrapper(HANDS_TEXT_RECT);
@@ -1546,6 +1551,11 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                                 if (score >= blind_get_requirement(current_blind, ante))
                                 {
                                     hand_state = HAND_SHUFFLING;
+
+                                    if (current_blind == BOSS_BLIND)
+                                    {
+                                        set_ante(++ante);
+                                    }
                                 }
                                 else
                                 {
@@ -1696,7 +1706,10 @@ void game_round_end()
         {
             obj_unhide(round_end_blind_token->obj, 0);
             
-            tte_printf("#{P:%d,%d; cx:0xE000}%d", ROUND_END_BLIND_REQ_RECT.left, ROUND_END_BLIND_REQ_RECT.top, blind_get_requirement(current_blind, ante));
+            int current_ante = ante;
+            if (current_blind == BOSS_BLIND) current_ante--; // Beating the boss blind increases the ante, so we need to display the previous ante value
+
+            tte_printf("#{P:%d,%d; cx:0xE000}%d", ROUND_END_BLIND_REQ_RECT.left, ROUND_END_BLIND_REQ_RECT.top, blind_get_requirement(current_blind, current_ante));
 
             if (timer == 1)
             {
