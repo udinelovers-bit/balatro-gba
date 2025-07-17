@@ -23,9 +23,9 @@ static void clip_se_rect_to_screenblock(Rect* rect)
     clip_se_rect_to_bounding_rect(rect, &FULL_SCREENBLOCK_RECT);
 }
 
-u16 main_bg_se_get_tile(int x, int y)
+u16 main_bg_se_get_tile(BG_POINT pos)
 {
-    return se_mem[MAIN_BG_SBB][x + SE_ROW_LEN * y];
+    return se_mem[MAIN_BG_SBB][pos.x + SE_ROW_LEN * pos.y];
 }
 
 // Clips a rect of screenblock entries to be within one step of 
@@ -80,9 +80,18 @@ void main_bg_se_move_rect_1_tile_vert(Rect se_rect, int direction)
     {
         return;
     }
+
+    // Clip to avoid read/write overflow of the screenblock
+    clip_se_rect_within_step_of_full_screen_vert(&se_rect);
+
+    int deleted_y = (direction == SE_UP) ? se_rect.bottom : se_rect.top;
+
+    main_bg_se_copy_rect_1_tile_vert(se_rect, direction);
+
+    memset16(&se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * (deleted_y)], 0x0000, rect_width(&se_rect));
 }
 
-void main_bg_se_copy_rect(Rect se_rect, int x, int y)
+void main_bg_se_copy_rect(Rect se_rect, BG_POINT pos)
 {
     if (se_rect.left > se_rect.right || se_rect.top > se_rect.bottom)
         return;
@@ -90,22 +99,27 @@ void main_bg_se_copy_rect(Rect se_rect, int x, int y)
     // Clip to avoid screenblock overflow
     clip_se_rect_to_screenblock(&se_rect);
 
-    u16 tile_map[se_rect.bottom - se_rect.top][se_rect.right - se_rect.left];
+    int width = rect_width(&se_rect);
+    int height = rect_height(&se_rect);
+    u16 tile_map[height][width];
 
     // Copy the rect to the tile map
-    for (int sy = 0; sy < se_rect.bottom - se_rect.top; sy++)
+    for (int sy = 0; sy < height; sy++)
     {
-        for (int sx = 0; sx < se_rect.right - se_rect.left; sx++)
+        for (int sx = 0; sx < width; sx++)
         {
-            tile_map[sy][sx] = main_bg_se_get_tile(se_rect.left + sx, se_rect.top + sy);
+            BG_POINT pt;
+            pt.x = se_rect.left + sx;
+            pt.y = se_rect.top + sy;
+            tile_map[sy][sx] = main_bg_se_get_tile(pt);
         }
     }
 
-    for (int sy = 0; sy < se_rect.bottom - se_rect.top; sy++)
+    for (int sy = 0; sy < height; sy++)
     {
-        memcpy16(&se_mem[MAIN_BG_SBB][x + SE_ROW_LEN * (y + sy)],
+        memcpy16(&se_mem[MAIN_BG_SBB][pos.x + SE_ROW_LEN * (pos.y + sy)],
                  &tile_map[sy][0],
-                 se_rect.right - se_rect.left);
+                 width);
     }
 }
 
@@ -117,9 +131,12 @@ void main_bg_se_copy_tile_to_rect(u16 tile, Rect se_rect)
     // Clip to avoid screenblock overflow
     clip_se_rect_to_screenblock(&se_rect);
 
-    for (int sy = 0; sy < se_rect.bottom - se_rect.top; sy++)
+    int width = rect_width(&se_rect);
+    int height = rect_height(&se_rect);
+
+    for (int sy = 0; sy < height; sy++)
     {
-        memset16(&se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * (se_rect.top + sy)], tile, se_rect.right - se_rect.left);
+        memset16(&se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * (se_rect.top + sy)], tile, width);
     }
 }
 

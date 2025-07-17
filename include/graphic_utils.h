@@ -15,7 +15,7 @@
  *  Screen Base Block is the base for the screenblock entries i.e. tilemap
  *  Character Base Block is the base for the tiles themselves
  */
-#define MAIN_BG_SBB 31 
+#define MAIN_BG_SBB 29 
 #define MAIN_BG_CBB 1
 #define TTE_SBB 30
 #define TTE_CBB 0
@@ -53,7 +53,7 @@ typedef struct
  * x and y are in number of tiles.
  * Returns the screenblock tile.
  */
-u16 main_bg_se_get_tile(int x, int y);
+u16 main_bg_se_get_tile(BG_POINT pos);
 
 INLINE int rect_width(const Rect* rect)
 {
@@ -83,7 +83,7 @@ void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction);
  * se_rect dimensions are in number of tiles.
  * x and y are the coordinates in number of tiles.
  */
-void main_bg_se_copy_rect(Rect se_rect, int x, int y);
+void main_bg_se_copy_rect(Rect se_rect, BG_POINT pos);
 
 /* Copies a tile to a rect in the main background.
  * se_rect dimensions are in number of tiles.

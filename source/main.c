@@ -22,9 +22,9 @@ BG_AFFINE bgaff;
 AFF_SRC_EX asx = {32<<8, 64<<8, 120, 80, 0x0100, 0x0100, 0};
 
 
-void init_map() // Temp function ripped from libtonc example
+void init_map() // Temp function derived from libtonc example
 {   
-    // Grit is fucking garbage and doesn't allow you to have a palette offset, they all get loaded at 0x0000. I have no manually change each tile's palette bank
+    // Grit is fucking garbage and doesn't allow you to have a palette offset, they all get loaded at 0x0000. I have to manually change each tile's palette bank
 
     unsigned int correctedTiles[affine_background_gfxTilesLen / 4];
     for (int i = 0; i < affine_background_gfxTilesLen / 4; i++)

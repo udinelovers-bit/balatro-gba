@@ -124,20 +124,35 @@ static inline Card *discard_pop()
 // Screenblock rects
 static const Rect ROUND_END_MENU_RECT       = {9,       7,      24,     20 }; 
 
+// These need to be here because moving tiles down below 30 bleeds memory into the next screenblock I think
 static const Rect POP_MENU_ANIM_RECT_DOWN   = {9,       6,      24,     30 };
 static const Rect POP_MENU_ANIM_RECT_UP     = {9,       7,      24,     31 };
-static const Rect BLIND_SELECT_MENU_CLIP_RECT = {9,     6,      24,      7 };
-// The rects for popping menu animations (round end, shop, blinds) 
+
+// The rect for popping menu animations (round end, shop, blinds) 
 // - extends beyond the visible screen to the end of the screenblock
 // It includes both the target and source position rects. 
 // This is because when popping, the target position is blank so we just animate 
 // the whole rect so we don't have to track its position
-// 
-// In the down version we include another row above the menu assuming it's blank so it's copied into it
 
 static const Rect SINGLE_BLIND_SELECT_RECT = { 9,       7,      13,     32 };
 
-static const Rect SHOP_ICON_RECT            = { 0,      0,      8,     4 };
+static const Rect HAND_BG_RECT_SELECTING    = {9,       11,     24,     15 };
+// TODO: Currently unused, remove?
+//static const Rect HAND_BG_RECT_PLAYING      = {9,       14,     24,     18 };
+
+static const Rect TOP_LEFT_ITEM_SRC_RECT    = {0,       20,     8,      25 };
+static const BG_POINT TOP_LEFT_PANEL_POINT  = {0,       0, };
+static const Rect TOP_LEFT_PANEL_ANIM_RECT  = {0,       0,      8,      4  };
+/* Contains the shop icon/current blind etc. 
+ * The difference between TOP_LEFT_PANEL_ANIM_RECT and TOP_LEFT_PANEL_RECT 
+ * is due to an overlap between the bottom of the top left panel
+ * and the top of the score panel in the tiles connecting them.
+ * TOP_LEFT_PANEL_ANIM_RECT should be used for animations, 
+ * TOP_LEFT_PANEL_RECT for copies etc. but mind the overlap
+ */
+static const BG_POINT TOP_LEFT_BLIND_TITLE_POINT = {0,  21, };
+static const Rect BIG_BLIND_TITLE_SRC_RECT  = {0,       26,     8,      26 };
+static const Rect BOSS_BLIND_TITLE_SRC_RECT = {0,       27,     8,      27 };
 
 // Rects for TTE (in pixels)
 static const Rect HAND_SIZE_RECT            = {128,     128,    152,    160 }; // Seems to include both SELECT and PLAYING
@@ -169,7 +184,7 @@ static const Rect ROUND_END_NUM_HANDS_RECT  = {88,      116,    UNDEFINED, UNDEF
 static const Rect HAND_REWARD_RECT          = {168,     UNDEFINED, UNDEFINED, UNDEFINED };
 static const Rect CASHOUT_RECT              = {88,      72,     UNDEFINED, UNDEFINED };
 
-//TODO: Different number ? 11 ?
+//TODO: Properly define and use
 #define MENU_POP_OUT_ANIM_FRAMES 20
 
 // General functions
@@ -373,6 +388,14 @@ enum HandType hand_get_type()
     return res_hand_type;
 }
 
+/* Copies the appropriate item into the top left panel (blind/shop icon)
+ * from where it was put outside the screenview
+ */
+void bg_copy_current_item_to_top_left_panel()
+{
+    main_bg_se_copy_rect(TOP_LEFT_ITEM_SRC_RECT, TOP_LEFT_PANEL_POINT);
+}
+
 void change_background(int id)
 {
     if (background == id)
@@ -390,28 +413,16 @@ void change_background(int id)
 
         tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
 
-        for (int y = 0; y < 6; y++) // Copies the blind panel from the bottom of the screen to the top. This code is identical to the one used in game_shop()
-        {
-            int y_from = 20 + y;
-            int y_to = 0 + y;
-            memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
-        }
-
         if (current_blind == BIG_BLIND) // Change text and palette depending on blind type
         {
-            int y_from = 26;
-            int y_to = 1;
-            memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
+            main_bg_se_copy_rect(BIG_BLIND_TITLE_SRC_RECT, TOP_LEFT_BLIND_TITLE_POINT);
         }
         else if (current_blind == BOSS_BLIND)
         {
-            int y_from = 27;
-            int y_to = 1;
-            memcpy16(&se_mem[MAIN_BG_SBB][32 * y_to], &se_mem[MAIN_BG_SBB][32 * y_from], 9);
+            main_bg_se_copy_rect(BOSS_BLIND_TITLE_SRC_RECT, TOP_LEFT_BLIND_TITLE_POINT);
         }
 
-        Rect rect = {0, 1, 9, 2};
-        main_bg_se_copy_rect(rect, 0, 21); // Copy the blind name to the bottom of the screen. This is used for the blind panel animation in game_blind_select()
+        bg_copy_current_item_to_top_left_panel();
 
         // This would change the palette of the background to match the blind, but the backgroun doesn't use the blind token's exact colors so a different approach is required
         memset16(&pal_bg_mem[17], blind_get_color(current_blind, BLIND_BACKGROUND_MAIN_COLOR_INDEX), 1);
@@ -426,10 +437,13 @@ void change_background(int id)
             background = BG_ID_CARD_PLAYING;
         }
 
+        Rect curr_hand_bg_rect = HAND_BG_RECT_SELECTING;
         for (int i = 0; i <= 2; i++)
         {
-            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
-        }        
+            main_bg_se_move_rect_1_tile_vert(curr_hand_bg_rect, SE_DOWN);
+            curr_hand_bg_rect.top++;
+            curr_hand_bg_rect.bottom++;
+        }
 
         tte_erase_rect_wrapper(HAND_SIZE_RECT_SELECT);
     }
@@ -472,7 +486,7 @@ void change_background(int id)
         obj_unhide(blind_select_tokens[BIG_BLIND]->obj, 0);
         obj_unhide(blind_select_tokens[BOSS_BLIND]->obj, 0);
 
-        const int default_y = 89 + (8 * 12); // Default y position for the blind select tokens. 8 is the size of a tile and 12 is the amound of tiles the background is shifted down by
+        const int default_y = 89 + (TILE_SIZE * 12); // Default y position for the blind select tokens. 8 is the size of a tile and 12 is the amound of tiles the background is shifted down by
         sprite_position(blind_select_tokens[SMALL_BLIND], 80, default_y);
         sprite_position(blind_select_tokens[BIG_BLIND], 120, default_y);
         sprite_position(blind_select_tokens[BOSS_BLIND], 160, default_y);
@@ -493,6 +507,7 @@ void change_background(int id)
         {
             if (blinds[i] != BLIND_CURRENT && (i == SMALL_BLIND || i == BIG_BLIND)) // Make the skip button gray
             {
+                // TODO: Switch all the copies here to use main_bg_se_copy_rect()
                 int x_from = 0;
                 int y_from = 24 + (i * 4);
 
@@ -514,9 +529,9 @@ void change_background(int id)
 
                 Rect blind_rect = SINGLE_BLIND_SELECT_RECT;
 
-                // + 1 to get to the start of the next blind, no gap between them
-                blind_rect.left += i * (SINGLE_BLIND_SELECT_RECT.right - SINGLE_BLIND_SELECT_RECT.left + 1);
-                blind_rect.right += i * (SINGLE_BLIND_SELECT_RECT.right - SINGLE_BLIND_SELECT_RECT.left + 1);
+                // There's no gap between them
+                blind_rect.left += i * rect_width(&SINGLE_BLIND_SELECT_RECT);
+                blind_rect.right += i * rect_width(&SINGLE_BLIND_SELECT_RECT);
                 main_bg_se_copy_rect_1_tile_vert(blind_rect, SE_UP);
 
                 int x_to = blind_rect.left;
@@ -532,9 +547,12 @@ void change_background(int id)
                     y_from = 30;
                 }
 
-                memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 5);
+                // Copy plain tiles onto the bottom of the raised blind panel to fill the gap created by the raise
+                Rect gap_fill_rect = {x_from, y_from, x_from + 5, y_from};
+                BG_POINT gap_fill_point = {x_to, y_to};
+                main_bg_se_copy_rect(gap_fill_rect, gap_fill_point);
 
-                sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y - 8); // Move token up by a tile
+                sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y - TILE_SIZE); // Move token up by a tile
             }
             else if (blinds[i] == BLIND_UPCOMING) // Change the select icon to "NEXT" 
             {
@@ -1740,7 +1758,7 @@ void game_round_end()
         {
             if (timer < 8)
             {
-                main_bg_se_copy_rect_1_tile_vert(SHOP_ICON_RECT, SE_UP);
+                main_bg_se_copy_rect_1_tile_vert(TOP_LEFT_PANEL_ANIM_RECT, SE_UP);
 
                 if (timer == 1) // Copied from shop. Feels slightly too niche of a function for me personally to make one.
                 {
@@ -1799,8 +1817,8 @@ void game_round_end()
             else if (timer < 16) // Use TTE to print '.' until the end of the panel width
             {
                 // Print the separator dots
-                int x = (8 + timer) * 8;
-                int y = (13) * 8;
+                int x = (8 + timer) * TILE_SIZE;
+                int y = (13) * TILE_SIZE;
 
                 tte_printf("#{P:%d,%d; cx:0xF000}.", x, y); 
             }
@@ -1817,7 +1835,7 @@ void game_round_end()
                 }
                 else if (timer > 45 && timer % FRAMES(20) == 0) // After 15 frames, every 20 frames, increment the hand reward text until the hand reward variable is depleted
                 {
-                    int y = (13 + hand_y) * 8;
+                    int y = (13 + hand_y) * TILE_SIZE;
                     hand_reward--;
                     tte_printf("#{P:%d, %d; cx:0xC000}$%d", HAND_REWARD_RECT.left, y, hands - hand_reward); // Print the hand reward
                 }
@@ -1829,20 +1847,25 @@ void game_round_end()
         {
             if (timer == FRAMES(40)) // Put the "cash out" button onto the round end panel
             {
-                Rect left_rect = {4, 29, 5, 33};
-                main_bg_se_copy_rect(left_rect, 10, 8);
+                Rect left_rect = {4, 29, 4, 31};
+                BG_POINT left_point = {10, 8};
+                main_bg_se_copy_rect(left_rect, left_point);
 
-                Rect right = {7, 29, 8, 33};
-                main_bg_se_copy_rect(right, 23, 8);
+                Rect right_rect = {7, 29, 7, 31};
+                BG_POINT right_point = {23, 8};
+                main_bg_se_copy_rect(right_rect, right_point);
 
-                Rect top = {11, 8, 23, 9};
-                main_bg_se_copy_tile_to_rect(main_bg_se_get_tile(6, 29), top);
+                Rect top_rect = {11, 8, 22, 8};
+                BG_POINT top_point = {6, 29};
+                main_bg_se_copy_tile_to_rect(main_bg_se_get_tile(top_point), top_rect);
 
-                Rect middle = {11, 9, 23, 10};
-                main_bg_se_copy_tile_to_rect(main_bg_se_get_tile(6, 30), middle);
+                Rect middle_rect = {11, 9, 22, 9};
+                BG_POINT middle_point = {6, 30};
+                main_bg_se_copy_tile_to_rect(main_bg_se_get_tile(middle_point), middle_rect);
 
-                Rect bottom = {11, 10, 23, 11};
-                main_bg_se_copy_tile_to_rect(main_bg_se_get_tile(6, 31), bottom);
+                Rect bottom_rect = {11, 10, 22, 10};
+                BG_POINT bottom_point = {6, 31};
+                main_bg_se_copy_tile_to_rect(main_bg_se_get_tile(bottom_point), bottom_rect);
 
                 tte_printf("#{P:%d, %d; cx:0xF000}Cash Out: $%d", CASHOUT_RECT.left, CASHOUT_RECT.top, hands + blind_get_reward(current_blind)); // Print the cash out amount
             }
@@ -1861,8 +1884,10 @@ void game_round_end()
             break;
         }
         case 8: // Shift the round end panel back out of view and go to the next state
-        {
-            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
+        {   
+            Rect round_end_down = ROUND_END_MENU_RECT;
+            round_end_down.top--;
+            main_bg_se_copy_rect_1_tile_vert(round_end_down, SE_DOWN);
 
             if (timer >= 20)
             {
@@ -1931,12 +1956,16 @@ void game_shop()
             {
                 int timer_offset = timer - 6;
 
+                // TODO: Extract to generic function?
                 for (int y = 0; y < timer_offset; y++)
                 {
                     int y_from = 26 + y - timer_offset;
                     int y_to = 0 + y;
-                    Rect from = {0, y_from, 9, y_from + 1};
-                    main_bg_se_copy_rect(from, 0, y_to);
+
+                    Rect from = {0, y_from, 8, y_from};
+                    BG_POINT to = {0, y_to};
+
+                    main_bg_se_copy_rect(from, to);
                 }
             }
 
@@ -2024,9 +2053,9 @@ void game_shop()
         case 2: // Outro sequence (menu and shop icon going out of frame)
         {
             // Shift the shop panel
-            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
+            main_bg_se_move_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
 
-            main_bg_se_copy_rect_1_tile_vert(SHOP_ICON_RECT, SE_UP);
+            main_bg_se_copy_rect_1_tile_vert(TOP_LEFT_PANEL_ANIM_RECT, SE_UP);
             
             if (timer == 1)
             {
@@ -2116,17 +2145,18 @@ void game_blind_select()
                 {
                     increment_blind(BLIND_SKIPPED);
                     
-                    background = -1; // Force refresh of the background
+                    background = UNDEFINED; // Force refresh of the background
                     change_background(BG_ID_BLIND_SELECT);
 
-                    for (int i = 0; i < 12; i++) // This shouldn't be direct accessing vram to do this because it causes flickering. Ideally, in the future, we should use a buffer and then copy it to VRAM in one go.
+                    // TODO: Create a generic vertical move by any number of tiles to avoid for loops?
+                    for (int i = 0; i < 12; i++)
                     {
                         main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_UP, SE_UP);
                     }
 
                     for (int i = 0; i < MAX_BLINDS; i++)
                     {
-                        sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y - (8 * 12));
+                        sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y - (TILE_SIZE * 12));
                     }
 
                     timer = 0;
@@ -2150,13 +2180,11 @@ void game_blind_select()
         {
             if (timer < 15)
             {
-                main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
-
-                main_bg_se_clear_rect(BLIND_SELECT_MENU_CLIP_RECT);
+                main_bg_se_move_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
 
                 for (int i = 0; i < MAX_BLINDS; i++)
                 {
-                    sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y + 8);
+                    sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y + TILE_SIZE);
                 }
             }
             else if (timer >= MENU_POP_OUT_ANIM_FRAMES)
@@ -2179,14 +2207,17 @@ void game_blind_select()
                 {
                     change_background(BG_ID_CARD_SELECTING);
 
-                    main_bg_se_clear_rect(POP_MENU_ANIM_RECT_DOWN);
+                    main_bg_se_clear_rect(ROUND_END_MENU_RECT);
 
                     for (int y = 0; y < 5; y++)
                     {
                         int y_from = 28;
                         int y_to = 0 + y;
-                        Rect from = {0, y_from, 9, y_from + 1};
-                        main_bg_se_copy_rect(from, 0, y_to);
+
+                        Rect from = {0, y_from, 8, y_from + 1};
+                        BG_POINT to = {0, y_to};
+
+                        main_bg_se_copy_rect(from, to);
                     }
 
                     int y = 6;
@@ -2202,8 +2233,11 @@ void game_blind_select()
                 {
                     int y_from = 26 + y - timer;
                     int y_to = 0 + y;
-                    Rect from = {0, y_from, 9, y_from + 1};
-                    main_bg_se_copy_rect(from, 0, y_to);
+
+                    Rect from = {0, y_from, 8, y_from};
+                    BG_POINT to = {0, y_to};
+
+                    main_bg_se_copy_rect(from, to);
                 }
             }
             else
@@ -2217,7 +2251,7 @@ void game_blind_select()
             state = 0;
             timer = 0;
             top_row = true;
-            background = -1;
+            background = UNDEFINED;
             game_set_state(GAME_PLAYING);
             break;
     }
