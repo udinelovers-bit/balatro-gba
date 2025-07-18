@@ -38,16 +38,17 @@ GRAPHICS	:= graphics
 #---------------------------------------------------------------------------------
 ARCH	:=	-mthumb -mthumb-interwork
 
-CFLAGS	:=	-g -Wall -O2\
-		-mcpu=arm7tdmi -mtune=arm7tdmi\
-		$(ARCH)
+CFLAGS	:=	-O3 -Wall \
+        -mcpu=arm7tdmi -mtune=arm7tdmi \
+        -ffast-math -fomit-frame-pointer -funroll-loops -flto \
+        $(ARCH)
 
 CFLAGS	+=	$(INCLUDE)
 
 CXXFLAGS	:=	$(CFLAGS) -fno-rtti -fno-exceptions
 
 ASFLAGS	:=	-g $(ARCH)
-LDFLAGS	=	-g $(ARCH) -Wl,-Map,$(notdir $*.map)
+LDFLAGS	=	-g $(ARCH) -Wl,-Map,$(notdir $*.map) -flto
 
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project

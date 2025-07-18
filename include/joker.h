@@ -2,7 +2,11 @@
 #define JOKER_H
 
 #define JOKER_TID 880 // Tile ID for the starting index in the tile memory
+#define JOKER_SPRITE_OFFSET 16 // Offset for the joker sprites
 #define JOKER_PB 4 // Palette bank for the default jokers
+#define JOKER_STARTING_LAYER 27
+
+#include <maxmod.h>
 
 #include "sprite.h"
 #include "card.h"
@@ -19,6 +23,7 @@
 #define LEGENDARY_JOKER 3
 
 #define MAX_JOKERS 2 // The current maximum jokers added
+#define MAX_JOKER_OBJECTS 32 // The maximum number of joker objects that can be created at once
 
 #define DEFAULT_JOKER_ID 0
 #define GREEDY_JOKER_ID 1 // This is just an example to show the patern of making joker IDs
@@ -44,6 +49,7 @@ typedef struct // copy of CardObject in card.h
     FIXED trotation;
     FIXED rotation;
     FIXED vrotation;
+    bool selected;
 } JokerObject;
 
 typedef struct  // These jokers are triggered after the played hand has finished scoring.
@@ -74,6 +80,9 @@ void joker_destroy(Joker **joker);
 IndependentEffect joker_independent_effect(Joker *joker);
 OnScoredEffect joker_on_scored(Joker *joker, Card *scored_card);
 
-void joker_object_score(JokerObject *joker_object); // This doesn't actually score anything, it just performs an animation and plays a sound effect
+JokerObject *joker_object_new(Joker *joker);
+void joker_object_destroy(JokerObject **joker_object);
+void joker_object_update(JokerObject *joker_object);
+void joker_object_score(JokerObject *joker_object, mm_word sound_id); // This doesn't actually score anything, it just performs an animation and plays a sound effect
 
 #endif // JOKER_H

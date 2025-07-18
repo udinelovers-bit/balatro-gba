@@ -9,6 +9,7 @@
 #include "sprite.h"
 #include "card.h"
 #include "blind.h"
+#include "joker.h"
 #include "graphic_utils.h"
 #include "tonc_video.h"
 
@@ -79,6 +80,9 @@ static int deck_top = -1;
 static Card *discard_pile[MAX_DECK_SIZE] = {NULL};
 static int discard_top = -1;
 
+static JokerObject *jokers[MAX_JOKERS] = {NULL};
+static int jokers_top = -1;
+
 // Played stack
 static inline void played_push(CardObject *card_object)
 {
@@ -116,6 +120,18 @@ static inline Card *discard_pop()
 {
     if (discard_top < 0) return NULL;
     return discard_pile[discard_top--];
+}
+
+static inline void joker_push(JokerObject *joker)
+{
+    if (jokers_top >= MAX_JOKERS_SIZE - 1) return;
+    jokers[++jokers_top] = joker;
+}
+
+static inline JokerObject *joker_pop()
+{
+    if (jokers_top < 0) return NULL;
+    return jokers[jokers_top--];
 }
 
 // Consts
@@ -877,13 +893,13 @@ void game_round_init()
     cards_drawn = 0;
     hand_selections = 0;
 
-    playing_blind_token = blind_token_new(current_blind, 8, 18, 33); // Create the blind token sprite at the top left corner
+    playing_blind_token = blind_token_new(current_blind, 8, 18, MAX_SELECTION_SIZE + MAX_HAND_SIZE + 1); // Create the blind token sprite at the top left corner
     // TODO: Hide blind token and display it after sliding blind rect animation
     //if (playing_blind_token != NULL)
     //{
     //    obj_hide(playing_blind_token->obj); // Hide the blind token sprite for now
     //}
-    round_end_blind_token = blind_token_new(current_blind, 82, 86, 34); // Create the blind token sprite for round end
+    round_end_blind_token = blind_token_new(current_blind, 82, 86, MAX_SELECTION_SIZE + MAX_HAND_SIZE + 2); // Create the blind token sprite for round end
 
     if (round_end_blind_token != NULL)
     {
@@ -930,9 +946,9 @@ void game_init()
     hands = max_hands;
     discards = max_discards;
 
-    blind_select_tokens[SMALL_BLIND] = blind_token_new(SMALL_BLIND, 8, 18, 35);
-    blind_select_tokens[BIG_BLIND] = blind_token_new(BIG_BLIND, 8, 18, 36);
-    blind_select_tokens[BOSS_BLIND] = blind_token_new(BOSS_BLIND, 8, 18, 37);
+    blind_select_tokens[SMALL_BLIND] = blind_token_new(SMALL_BLIND, 8, 18, MAX_SELECTION_SIZE + MAX_HAND_SIZE + 3);
+    blind_select_tokens[BIG_BLIND] = blind_token_new(BIG_BLIND, 8, 18, MAX_SELECTION_SIZE + MAX_HAND_SIZE + 4);
+    blind_select_tokens[BOSS_BLIND] = blind_token_new(BOSS_BLIND, 8, 18, MAX_SELECTION_SIZE + MAX_HAND_SIZE + 5);
 
     obj_hide(blind_select_tokens[SMALL_BLIND]->obj);
     obj_hide(blind_select_tokens[BIG_BLIND]->obj);
@@ -1471,12 +1487,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                                     tte_write(score_buffer);
 
                                     *played_selections = scored_cards;
-                                    //played[j]->vy += (3 << FIX_SHIFT);
-                                    played[played_top - j]->vscale = float2fx(0.3f); // Scale down the card when it's scored
-                                    played[played_top - j]->vrotation = float2fx(8.0f); // Rotate the card when it's scored
-
-                                    mm_sound_effect sfx_select = {{SFX_CARD_SELECT}, 1024, 0, 255, 128,};
-                                    mmEffectEx(&sfx_select);
+                                    card_object_score(played[played_top - j], SFX_CARD_SELECT);
 
                                     // Relocated card scoring logic here
                                     chips += card_get_value(played[played_top - j]->card);
@@ -1616,6 +1627,31 @@ static void game_round_end_cashout()
 
     score = 0;
     set_score(score); // Set the score display
+}
+
+static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
+{
+    for (int i = 0; i < MAX_SHOP_JOKERS; i++)
+    {
+        if (shop_jokers[i] != NULL)
+        {
+            joker_object_destroy(&shop_jokers[i]); // Destroy the joker object if it exists
+        }
+        
+        shop_jokers[i] = joker_object_new(joker_new(DEFAULT_JOKER_ID));
+        shop_jokers[i]->x = int2fx(120 + i * 32);
+        shop_jokers[i]->y = int2fx(160);
+        shop_jokers[i]->tx = shop_jokers[i]->x;
+        shop_jokers[i]->ty = int2fx(71);
+
+        if (first_time == false)
+        {
+            shop_jokers[i]->y = shop_jokers[i]->ty; // If it's not the first time, set the y position to the target position
+            joker_object_score(shop_jokers[i], UNDEFINED); // Give the joker a little wiggle animation
+        }
+
+        sprite_position(shop_jokers[i]->sprite, fx2int(shop_jokers[i]->x), fx2int(shop_jokers[i]->y));
+    }
 }
 
 void game_playing()
@@ -1923,6 +1959,16 @@ void game_shop()
     // TODO: Later move these static variables somewhere else so they can be reused for each game state
     static int state = 0;
 
+    static JokerObject *shop_jokers[MAX_SHOP_JOKERS] = {NULL};
+
+    for (int i = 0; i < MAX_SHOP_JOKERS; i++)
+    {
+        if (shop_jokers[i] != NULL)
+        {
+            joker_object_update(shop_jokers[i]);
+        }
+    }
+
     // these are for controlling the shop menu
     static bool top_row = true;
     static ushort selection_x = 0;
@@ -1959,6 +2005,11 @@ void game_shop()
         case 0: // Intro sequence (menu and shop icon coming into frame)
         {           
             main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_UP, SE_UP);
+
+            if (timer == 1)
+            {
+                game_shop_create_items(shop_jokers, true);
+            }
 
             if (timer >= 7) // Shift the shop icon
             {
@@ -2052,7 +2103,7 @@ void game_shop()
 
                 if (key_hit(KEY_A))
                 {
-                    // Do shop re-roll for money
+                    game_shop_create_items(shop_jokers, false);
                 }
             }
 
@@ -2067,20 +2118,28 @@ void game_shop()
             
             if (timer == 1)
             {
+                for (int i = 0; i < MAX_SHOP_JOKERS; i++)
+                {
+                    if (shop_jokers[i] != NULL)
+                    {
+                        shop_jokers[i]->ty = int2fx(160);
+                    }
+                }
+
                 int y = 6;
                 memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0006, 1);
                 memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0007, 2);
                 memset16(&se_mem[MAIN_BG_SBB][3 + 32 * (y - 1)], 0x0008, 1);
                 memset16(&se_mem[MAIN_BG_SBB][4 + 32 * (y - 1)], 0x0009, 4);
                 memset16(&se_mem[MAIN_BG_SBB][7 + 32 * (y - 1)], 0x000A, 1);
-                memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0406, 1); 
+                memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0406, 1);
             }
             else if (timer == 2)
             {
                 int y = 5;
                 memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0001, 1);
                 memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0002, 7);
-                memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0401, 1); 
+                memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0401, 1);
             }
 
             if (timer >= MENU_POP_OUT_ANIM_FRAMES)
@@ -2096,6 +2155,11 @@ void game_shop()
 
             selection_x = 0; // Reset the selection
             top_row = true; // Reset the top row selection
+
+            for (int i = 0; i < MAX_SHOP_JOKERS; i++)
+            {
+                joker_object_destroy(&shop_jokers[i]); // Destroy the joker objects
+            }
 
             increment_blind(BLIND_DEFEATED);
             game_set_state(GAME_BLIND_SELECT); // If we reach here, we should go to the blind select state
