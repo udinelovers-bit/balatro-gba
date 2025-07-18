@@ -52,6 +52,9 @@ typedef struct
     bool selected;
 } CardObject;
 
+// Card functions
+void card_init();
+
 // Card methods
 Card *card_new(u8 suit, u8 rank);
 void card_destroy(Card **card);

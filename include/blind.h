@@ -38,7 +38,7 @@ enum BlindState
     BLIND_SKIPPED
 };
 
-void blinds_init();
+void blind_init();
 
 int blind_get_requirement(int type, int ante);
 int blind_get_reward(int type);

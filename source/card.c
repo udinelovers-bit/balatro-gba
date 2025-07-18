@@ -3,6 +3,8 @@
 #include <maxmod.h>
 #include <stdlib.h>
 
+#include "deck_gfx.h"
+
 // Audio
 #include "soundbank.h"
 
@@ -13,6 +15,12 @@ const static u16 card_sprite_lut[NUM_SUITS][NUM_RANKS] = {
     {416, 432, 448, 464, 480, 496, 512, 528, 544, 560, 576, 592, 608},
     {624, 640, 656, 672, 688, 704, 720, 736, 752, 768, 784, 800, 816}
 };
+
+void card_init()
+{
+    GRIT_CPY(&tile_mem[4], deck_gfxTiles);
+    GRIT_CPY(pal_obj_mem, deck_gfxPal);
+}
 
 // Card methods
 Card *card_new(u8 suit, u8 rank)

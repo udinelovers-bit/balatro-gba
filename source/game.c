@@ -776,11 +776,6 @@ void hand_set_focus(int index)
     mmEffectEx(&sfx_focus);
 }
 
-int hand_get_focus()
-{
-    return card_focused;
-}
-
 void hand_select()
 {
     if (hand_state != HAND_SELECT || hand[card_focused] == NULL) return;
@@ -978,11 +973,11 @@ static void game_playing_process_input_and_state()
     {
         if (key_hit(KEY_LEFT))
         {
-            hand_set_focus(hand_get_focus() + 1); // The reason why this adds 1 is because the hand is drawn from right to left. There is no particular reason for this, it's just how I did it.
+            hand_set_focus(card_focused + 1); // The reason why this adds 1 is because the hand is drawn from right to left. There is no particular reason for this, it's just how I did it.
         }
         else if (key_hit(KEY_RIGHT))
         {
-            hand_set_focus(hand_get_focus() - 1);
+            hand_set_focus(card_focused - 1);
         }
 
         if (key_hit(KEY_A))
