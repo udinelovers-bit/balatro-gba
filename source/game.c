@@ -2138,33 +2138,17 @@ void game_shop()
                 {
                     if (i == selection_x - 1 && top_row)
                     {
-                        shop_jokers[i]->selected = true;
+                        shop_jokers[i]->ty = int2fx(61);
 
                         if (key_hit(KEY_A) && jokers_top < MAX_JOKERS_SIZE - 1)
                         {
                             joker_push(shop_jokers[i]);
-                            shop_jokers[i]->selected = false;
                             shop_jokers[i] = NULL; // Remove the joker from the shop
                         }
                     }
                     else
                     {
-                        shop_jokers[i]->selected = false;
-                    }
-                }
-            }
-
-            for (int i = 0; i < MAX_SHOP_JOKERS; i++)
-            {
-                if (shop_jokers[i] != NULL)
-                {
-                    if (shop_jokers[i]->selected)
-                    {
-                        shop_jokers[i]->ty = int2fx(61);
-                    }
-                    else
-                    {
-                        shop_jokers[i]->ty = int2fx(71); // Reset the y position to the default position
+                        shop_jokers[i]->ty = int2fx(71);
                     }
                 }
             }
