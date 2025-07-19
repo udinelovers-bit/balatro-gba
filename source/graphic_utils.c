@@ -4,7 +4,7 @@
 
 #include "graphic_utils.h"
 
-const Rect FULL_SCREENBLOCK_RECT = { 0, 0, SE_ROW_LEN, SE_COL_LEN };
+const Rect FULL_SCREENBLOCK_RECT = { 0, 0, SE_ROW_LEN - 1, SE_COL_LEN - 1};
 
 // Clips a rect of screenblock entries to a specified rect
 // The bounding rect is not required to be within screenblock boundaries
@@ -29,12 +29,19 @@ u16 main_bg_se_get_tile(BG_POINT pos)
 }
 
 // Clips a rect of screenblock entries to be within one step of 
-// screenblock boundaries vertically (1 step from top, 1 step from bottom.
-static void clip_se_rect_within_step_of_full_screen_vert(Rect* se_rect)
+// screenblock boundaries vertically depending on direction.
+static void clip_se_rect_within_step_of_full_screen_vert(Rect* se_rect, int direction)
 {
     Rect bounding_rect = FULL_SCREENBLOCK_RECT;
-    bounding_rect.top += 1;
-    bounding_rect.bottom -= -1;
+    if (direction == SE_UP)
+    {
+        bounding_rect.top += 1;
+    }
+    else if (direction == SE_DOWN)
+    {
+        bounding_rect.bottom -= 1;
+    }
+    
     clip_se_rect_to_bounding_rect(se_rect, &bounding_rect);
 }
 
@@ -51,7 +58,9 @@ void main_bg_se_clear_rect(Rect se_rect)
     }
 }
 
-void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction)
+
+// Internal static function to merge implementation of move/copy functions.
+static void main_bg_se_copy_or_move_rect_1_tile_vert(Rect se_rect, int direction, bool move)
 {
     if (se_rect.left > se_rect.right
         || (direction != SE_UP && direction != SE_DOWN))
@@ -60,7 +69,7 @@ void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction)
     }
 
     // Clip to avoid read/write overflow of the screenblock
-    clip_se_rect_within_step_of_full_screen_vert(&se_rect);
+    clip_se_rect_within_step_of_full_screen_vert(&se_rect, direction);
 
     int start = (direction == SE_UP) ? se_rect.top : se_rect.bottom;
     int end = (direction == SE_UP) ? se_rect.bottom : se_rect.top;
@@ -68,27 +77,24 @@ void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction)
     for (int y = start; y != end - direction; y -= direction)
     {
         memcpy16(&se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * (y + direction)],
-                 &se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * y], 
+                 &se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * y],
                  rect_width(&se_rect));
     }
+
+    if (move)
+    {
+        memset16(&se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * (end)], 0x0000, rect_width(&se_rect));
+    }
+}
+
+void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction)
+{
+    main_bg_se_copy_or_move_rect_1_tile_vert(se_rect, direction, false);
 }
 
 void main_bg_se_move_rect_1_tile_vert(Rect se_rect, int direction)
 {
-    if (se_rect.left > se_rect.right
-        || (direction != SE_UP && direction != SE_DOWN))
-    {
-        return;
-    }
-
-    // Clip to avoid read/write overflow of the screenblock
-    clip_se_rect_within_step_of_full_screen_vert(&se_rect);
-
-    int deleted_y = (direction == SE_UP) ? se_rect.bottom : se_rect.top;
-
-    main_bg_se_copy_rect_1_tile_vert(se_rect, direction);
-
-    memset16(&se_mem[MAIN_BG_SBB][se_rect.left + SE_ROW_LEN * (deleted_y)], 0x0000, rect_width(&se_rect));
+    main_bg_se_copy_or_move_rect_1_tile_vert(se_rect, direction, true);
 }
 
 void main_bg_se_copy_rect(Rect se_rect, BG_POINT pos)
