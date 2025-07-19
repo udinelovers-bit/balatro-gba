@@ -27,7 +27,7 @@ static uint timer = 0; // This might already exist in libtonc but idk so i'm jus
 static int game_speed = 1;
 static int background = 0;
 
-static enum GameState game_state = GAME_BLIND_SELECT; // The current game state, this is used to determine what the game is doing at any given time
+static enum GameState game_state = GAME_SHOP; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
 
@@ -1592,6 +1592,29 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
     }
 }
 
+static void held_jokers_update_loop()
+{
+    const int spacing_lut[MAX_HAND_SIZE] = { 26, 26, 26, 26, 20 };
+
+    FIXED hand_x = int2fx(108);
+    FIXED hand_y = int2fx(10);
+
+    for (int i = 0; i < jokers_top + 1; i++)
+    {
+        if (jokers[i] == NULL) continue;
+
+        jokers[i]->tx = hand_x + (int2fx(i) - int2fx(jokers_top) / 2) * -spacing_lut[jokers_top]; 
+        jokers[i]->ty = hand_y;
+
+        if (jokers[i]->selected)
+        {
+            jokers[i]->ty -= (10 << FIX_SHIFT);
+        }
+
+        joker_object_update(jokers[i]);
+    }
+}
+
 static void game_playing_ui_text_update()
 {
     static int last_hand_size = 0;
@@ -1974,7 +1997,7 @@ void game_shop()
     static ushort selection_x = 0;
 
     // temp variables for future implementation
-    const ushort max_items_top = 0; 
+    const ushort max_items_top = MAX_SHOP_JOKERS; 
     const ushort max_items_bottom = 0;
 
     if (timer % 20 == 0) // Shift palette around the border of the shop icon
@@ -2076,10 +2099,13 @@ void game_shop()
                 }
             }
 
+            memcpy16(&pal_bg_mem[7], &pal_bg_mem[3], 1);
+            memcpy16(&pal_bg_mem[5], &pal_bg_mem[16], 1);
+
             // Shop selection logic
             if (selection_x == 0 && top_row)
             {
-                memcpy16(&pal_bg_mem[7], &pal_bg_mem[3], 1);
+               
                 memset16(&pal_bg_mem[5], 0xFFFF, 1);
 
                 if (key_hit(KEY_A))
@@ -2099,11 +2125,47 @@ void game_shop()
             else if (selection_x == 0 && !top_row)
             {
                 memset16(&pal_bg_mem[7], 0xFFFF, 1);
-                memcpy16(&pal_bg_mem[5], &pal_bg_mem[16], 1);
 
                 if (key_hit(KEY_A))
                 {
                     game_shop_create_items(shop_jokers, false);
+                }
+            }
+
+            for (int i = 0; i < MAX_SHOP_JOKERS; i++)
+            {
+                if (shop_jokers[i] != NULL)
+                {
+                    if (i == selection_x - 1 && top_row)
+                    {
+                        shop_jokers[i]->selected = true;
+
+                        if (key_hit(KEY_A) && jokers_top < MAX_JOKERS_SIZE - 1)
+                        {
+                            joker_push(shop_jokers[i]);
+                            shop_jokers[i]->selected = false;
+                            shop_jokers[i] = NULL; // Remove the joker from the shop
+                        }
+                    }
+                    else
+                    {
+                        shop_jokers[i]->selected = false;
+                    }
+                }
+            }
+
+            for (int i = 0; i < MAX_SHOP_JOKERS; i++)
+            {
+                if (shop_jokers[i] != NULL)
+                {
+                    if (shop_jokers[i]->selected)
+                    {
+                        shop_jokers[i]->ty = int2fx(61);
+                    }
+                    else
+                    {
+                        shop_jokers[i]->ty = int2fx(71); // Reset the y position to the default position
+                    }
                 }
             }
 
@@ -2341,6 +2403,8 @@ void game_update()
             rng_seed *= 2;
         }
     }
+
+    held_jokers_update_loop();
 
     switch (game_state)
     {
