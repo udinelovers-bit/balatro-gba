@@ -548,7 +548,7 @@ void change_background(int id)
                 }
 
                 // Copy plain tiles onto the bottom of the raised blind panel to fill the gap created by the raise
-                Rect gap_fill_rect = {x_from, y_from, x_from + 5, y_from};
+                Rect gap_fill_rect = {x_from, y_from, x_from + rect_width(&SINGLE_BLIND_SELECT_RECT) - 1, y_from}; // - 1 to stay within rect boundaries
                 BG_POINT gap_fill_point = {x_to, y_to};
                 main_bg_se_copy_rect(gap_fill_rect, gap_fill_point);
 
