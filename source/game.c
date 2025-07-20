@@ -124,10 +124,7 @@ static inline Card *discard_pop()
 // Screenblock rects
 static const Rect ROUND_END_MENU_RECT       = {9,       7,      24,     20 }; 
 
-// These need to be here because moving tiles down below 30 bleeds memory into the next screenblock I think
-static const Rect POP_MENU_ANIM_RECT_DOWN   = {9,       6,      24,     30 };
-static const Rect POP_MENU_ANIM_RECT_UP     = {9,       7,      24,     31 };
-
+static const Rect POP_MENU_ANIM_RECT        = {9,       7,      24,     31 };
 // The rect for popping menu animations (round end, shop, blinds) 
 // - extends beyond the visible screen to the end of the screenblock
 // It includes both the target and source position rects. 
@@ -1698,7 +1695,7 @@ void game_round_end()
         }
         case 1: // This creates the top 16 by 7 tiles of the pop up. It places it in vram, moving it up one tile each frame, not clearing the previous row of tiles so they fill the blank space as it moves up.
         {
-            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_UP, SE_UP);
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
 
             if (timer == 13)
             {
@@ -1972,7 +1969,7 @@ void game_shop()
     {
         case 0: // Intro sequence (menu and shop icon coming into frame)
         {           
-            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_UP, SE_UP);
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
 
             if (timer >= 7) // Shift the shop icon
             {
@@ -2075,7 +2072,7 @@ void game_shop()
         case 2: // Outro sequence (menu and shop icon going out of frame)
         {
             // Shift the shop panel
-            main_bg_se_move_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
+            main_bg_se_move_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
 
             main_bg_se_copy_rect_1_tile_vert(TOP_LEFT_PANEL_ANIM_RECT, SE_UP);
             
@@ -2129,7 +2126,7 @@ void game_blind_select()
         case 0: // Intro sequence (menu coming into frame)
         {           
             change_background(BG_ID_BLIND_SELECT);
-            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_UP, SE_UP);
+            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
 
             for (int i = 0; i < MAX_BLINDS; i++)
             {
@@ -2173,7 +2170,7 @@ void game_blind_select()
                     // TODO: Create a generic vertical move by any number of tiles to avoid for loops?
                     for (int i = 0; i < 12; i++)
                     {
-                        main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT_UP, SE_UP);
+                        main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
                     }
 
                     for (int i = 0; i < MAX_BLINDS; i++)
@@ -2202,7 +2199,9 @@ void game_blind_select()
         {
             if (timer < 15)
             {
-                main_bg_se_move_rect_1_tile_vert(POP_MENU_ANIM_RECT_DOWN, SE_DOWN);
+                Rect blinds_rect = POP_MENU_ANIM_RECT;
+                blinds_rect.top -= 1; // Because of the raised blind
+                main_bg_se_move_rect_1_tile_vert(blinds_rect, SE_DOWN);
 
                 for (int i = 0; i < MAX_BLINDS; i++)
                 {
