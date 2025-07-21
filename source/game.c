@@ -184,6 +184,7 @@ static const Rect CHIPS_TEXT_RECT           = {8,       80,     32,     88  };
 static const Rect MULT_TEXT_RECT            = {40,      80,     64,     88  };
 static const Rect BLIND_REWARD_RECT         = {40,      32,     64,     40  };
 static const Rect BLIND_REQ_TEXT_RECT       = {32,      24,     64,     32  };
+static const Rect SHOP_PRICES_TEXT_RECT     = {72,      56,     192,    160 };
 
 // Rects with UNDEFINED are only used in tte_printf, they need to be fully defined
 // to be used with tte_erase_rect_wrapper()
@@ -1720,6 +1721,8 @@ static void game_round_end_cashout()
 
 static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
 {
+    tte_erase_rect_wrapper(SHOP_PRICES_TEXT_RECT);
+
     for (int i = 0; i < MAX_SHOP_JOKERS; i++)
     {
         if (shop_jokers[i] != NULL)
@@ -1732,6 +1735,10 @@ static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
         shop_jokers[i]->y = int2fx(160);
         shop_jokers[i]->tx = shop_jokers[i]->x;
         shop_jokers[i]->ty = int2fx(71);
+
+        int x = fx2int(shop_jokers[i]->tx) + TILE_SIZE - (get_digits_even(shop_jokers[i]->joker->value) - 1) * TILE_SIZE;
+        int y = fx2int(shop_jokers[i]->ty);
+        tte_printf("#{P:%d,%d; cx:0xC000}$%d", x, y, shop_jokers[i]->joker->value);
 
         if (first_time == false)
         {
@@ -2210,9 +2217,20 @@ void game_shop()
                     {
                         shop_jokers[i]->ty = int2fx(61);
 
-                        if (key_hit(KEY_A) && jokers_top < MAX_JOKERS_HELD_SIZE - 1)
+                        if (key_hit(KEY_A) && jokers_top < MAX_JOKERS_HELD_SIZE - 1 && money >= shop_jokers[i]->joker->value)
                         {
                             joker_push(shop_jokers[i]);
+                            money -= shop_jokers[i]->joker->value; // Deduct the money spent on the joker
+                            set_money(money); // Update the money display
+
+                            Rect joker_price_rect;
+                            joker_price_rect.left = fx2int(shop_jokers[i]->tx);
+                            joker_price_rect.top = fx2int(shop_jokers[i]->ty) + TILE_SIZE;
+                            joker_price_rect.right = joker_price_rect.left + TILE_SIZE * 3;
+                            joker_price_rect.bottom = joker_price_rect.top + TILE_SIZE;
+
+                            tte_erase_rect_wrapper(joker_price_rect);
+
                             shop_jokers[i] = NULL; // Remove the joker from the shop
                         }
                     }
@@ -2234,6 +2252,8 @@ void game_shop()
             
             if (timer == 1)
             {
+                tte_erase_rect_wrapper(SHOP_PRICES_TEXT_RECT); // Erase the shop prices text
+
                 for (int i = 0; i < MAX_SHOP_JOKERS; i++)
                 {
                     if (shop_jokers[i] != NULL)
