@@ -37,6 +37,7 @@ Joker *joker_new(u8 id)
     joker->modifier = BASE_EDITION; // TODO: Make this random later
     joker->value = joker_data_lut[id][1];
     joker->rarity = joker_data_lut[id][0];
+    joker->proccessed = false;
 
     return joker;
 }
@@ -46,6 +47,25 @@ void joker_destroy(Joker **joker)
     if (*joker == NULL) return;
     free(*joker);
     *joker = NULL;
+}
+
+IndependentEffect joker_independent_effect(Joker *joker)
+{
+    IndependentEffect effect = {0};
+
+    switch (joker->id)
+    {
+        case DEFAULT_JOKER_ID: // Default Joker
+            effect.mult = 4;
+            break;
+        case GREEDY_JOKER_ID: // Greedy Joker
+            // Nothing because this joker is a scored type
+            break;
+        default:
+            break;
+    }
+
+    return effect;
 }
 
 // JokerObject methods
@@ -85,6 +105,7 @@ JokerObject *joker_object_new(Joker *joker)
     joker_object->trotation = float2fx(0.0f); // Target rotation
     joker_object->rotation = float2fx(0.0f);
     joker_object->vrotation = float2fx(0.0f);
+    joker_object->selected = false;
 
     return joker_object;
 }

@@ -34,6 +34,7 @@ typedef struct
     u8 modifier; // base, foil, holo, poly, negative
     u8 value;
     u8 rarity;
+    bool proccessed;
 } Joker;
 
 typedef struct // copy of CardObject in card.h

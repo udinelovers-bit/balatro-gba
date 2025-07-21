@@ -68,6 +68,9 @@ static int card_focused = 0;
 static bool sort_by_suit = false;
 
 // Stacks
+static JokerObject *jokers[MAX_JOKERS_HELD_SIZE] = {NULL};
+static int jokers_top = -1;
+
 static CardObject *played[MAX_SELECTION_SIZE] = {NULL};
 static int played_top = -1;
 
@@ -80,8 +83,18 @@ static int deck_top = -1;
 static Card *discard_pile[MAX_DECK_SIZE] = {NULL};
 static int discard_top = -1;
 
-static JokerObject *jokers[MAX_JOKERS] = {NULL};
-static int jokers_top = -1;
+// Joker stack
+static inline void joker_push(JokerObject *joker)
+{
+    if (jokers_top >= MAX_JOKERS_HELD_SIZE - 1) return;
+    jokers[++jokers_top] = joker;
+}
+
+static inline JokerObject *joker_pop()
+{
+    if (jokers_top < 0) return NULL;
+    return jokers[jokers_top--];
+}
 
 // Played stack
 static inline void played_push(CardObject *card_object)
@@ -120,18 +133,6 @@ static inline Card *discard_pop()
 {
     if (discard_top < 0) return NULL;
     return discard_pile[discard_top--];
-}
-
-static inline void joker_push(JokerObject *joker)
-{
-    if (jokers_top >= MAX_JOKERS_SIZE - 1) return;
-    jokers[++jokers_top] = joker;
-}
-
-static inline JokerObject *joker_pop()
-{
-    if (jokers_top < 0) return NULL;
-    return jokers[jokers_top--];
 }
 
 // Consts
@@ -1156,15 +1157,15 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
             case HAND_SELECT:
                 if (i == card_focused && !hand[i]->selected)
                 {
-                    hand_y -= (10 << FIX_SHIFT);
+                    hand_y -= int2fx(10);
                 }
                 else if (i != card_focused && hand[i]->selected)
                 {
-                    hand_y -= (15 << FIX_SHIFT);
+                    hand_y -= int2fx(15);
                 }
                 else if (i == card_focused && hand[i]->selected)
                 {
-                    hand_y -= (20 << FIX_SHIFT);
+                    hand_y -= int2fx(20);
                 }
 
                 if (i != card_focused && hand[i]->y > hand_y)
@@ -1214,11 +1215,11 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                     {
                         if (hand_state == HAND_DISCARD)
                         {
-                            hand_y -= (15 << FIX_SHIFT); // Don't raise the card if we're mass discarding, it looks stupid.
+                            hand_y -= int2fx(15); // Don't raise the card if we're mass discarding, it looks stupid.
                         }
                         else
                         {
-                            hand_y += (24 << FIX_SHIFT);
+                            hand_y += int2fx(24);
                         }
                         hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
                     }
@@ -1241,7 +1242,7 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                 break;
             case HAND_PLAY:
                 hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
-                hand_y += (24 << FIX_SHIFT);
+                hand_y += int2fx(24);
 
                 if (hand[i]->selected && *discarded_card == false && timer % FRAMES(10) == 0)
                 {
@@ -1417,7 +1418,7 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                 break;
             case HAND_PLAYING: // Don't need to do anything here, just wait for the player to select cards
                 hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
-                hand_y += (24 << FIX_SHIFT);
+                hand_y += int2fx(24);
                 break;
             }
 
@@ -1464,7 +1465,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
                     if (played[i]->selected && played_top - i >= *played_selections)
                     {
-                        played_y -= (10 << FIX_SHIFT);
+                        played_y -= int2fx(10);
                     }
                     break;
                 case PLAY_SCORING:
@@ -1501,6 +1502,64 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                             if (j == 0 && scored_cards == *played_selections) // Check if it's the last card 
                             {
                                 tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
+
+                                for (int k = 0; k <= jokers_top; k++)
+                                {
+                                    if (jokers[k]->joker->proccessed == false)
+                                    {   
+                                        IndependentEffect joker_effect = joker_independent_effect(jokers[k]->joker);
+                                        IndependentEffect zero_effect = {0};
+
+                                        if (memcmp(&joker_effect, &zero_effect, sizeof(IndependentEffect)) != 0)
+                                        {
+                                            chips += joker_effect.chips;
+                                            set_chips(chips);
+                                            mult += joker_effect.mult;
+                                            set_mult(mult);
+                                            // TODO: XMult
+                                            money += joker_effect.money;
+                                            set_money(money);
+                                            // TODO: Retrigger
+
+
+                                            tte_set_pos(fx2int(jokers[k]->x) + 8, 48); // Offset of 16 pixels to center the text on the card
+
+                                            char score_buffer[12];
+
+                                            if (joker_effect.chips > 0)
+                                            {
+                                                tte_set_special(0xD000); // Blue
+                                                snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.chips);
+                                            }
+                                            else if (joker_effect.mult > 0)
+                                            {
+                                                tte_set_special(0xE000); // Red
+                                                snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.mult);
+                                            }
+                                            else if (joker_effect.money > 0)
+                                            {
+                                                tte_set_special(0xC000); // Yellow
+                                                snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.money);
+                                            }
+
+                                            tte_write(score_buffer);
+
+                                            jokers[k]->joker->proccessed = true; // Mark the joker as processed
+                                            joker_object_score(jokers[k], SFX_CARD_SELECT);
+
+                                            return; // Returning was just the easiest way to break out of the loop
+                                        }
+                                    }
+                                }
+
+                                for (int k = 0; k <= jokers_top; k++)
+                                {
+                                    if (jokers[k] != NULL)
+                                    {
+                                        jokers[k]->joker->proccessed = false; // Reset the joker's processed state for the next round
+                                    }
+                                }
+
                                 play_state = PLAY_ENDING;
                                 timer = 0;
                                 *played_selections = played_top + 1; // Reset the played selections to the top of the played stack
@@ -1511,7 +1570,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
                     if (played[i]->selected)
                     {
-                        played_y -= (10 << FIX_SHIFT);
+                        played_y -= int2fx(10);
                     }
                     break;
                 case PLAY_ENDING: // This is the reverse of PLAY_PLAYING. The cards get reset back to their neutral position sequentially
@@ -1528,7 +1587,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
                     if (played[i]->selected && played_top - i <= *played_selections - 1)
                     {
-                        played_y -= (10 << FIX_SHIFT);
+                        played_y -= int2fx(10);
                     }
                     break;
                 case PLAY_ENDED: // Basically a copy of HAND_DISCARD
@@ -1596,21 +1655,26 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
 static void held_jokers_update_loop()
 {
-    const int spacing_lut[MAX_HAND_SIZE] = { 26, 26, 26, 26, 20 };
+    const int spacing_lut[MAX_JOKERS_HELD_SIZE][MAX_JOKERS_HELD_SIZE] = 
+    {
+        {0, 0, 0, 0, 0},
+        {13, -13, 0, 0, 0},
+        {26, 0, -26, 0, 0},
+        {39, 13, -13, -39, 0},
+        {40, 20, 0, -20, -40}
+    };
 
     FIXED hand_x = int2fx(108);
     FIXED hand_y = int2fx(10);
 
-    for (int i = 0; i < jokers_top + 1; i++)
+    for (int i = jokers_top; i >= 0; i--)
     {
-        if (jokers[i] == NULL) continue;
-
-        jokers[i]->tx = hand_x + (int2fx(i) - int2fx(jokers_top) / 2) * -spacing_lut[jokers_top]; 
+        jokers[i]->tx = hand_x - int2fx(spacing_lut[jokers_top][i]); 
         jokers[i]->ty = hand_y;
 
         if (jokers[i]->selected)
         {
-            jokers[i]->ty -= (10 << FIX_SHIFT);
+            jokers[i]->ty -= int2fx(10);
         }
 
         joker_object_update(jokers[i]);
@@ -2146,7 +2210,7 @@ void game_shop()
                     {
                         shop_jokers[i]->ty = int2fx(61);
 
-                        if (key_hit(KEY_A) && jokers_top < MAX_JOKERS_SIZE - 1)
+                        if (key_hit(KEY_A) && jokers_top < MAX_JOKERS_HELD_SIZE - 1)
                         {
                             joker_push(shop_jokers[i]);
                             shop_jokers[i] = NULL; // Remove the joker from the shop
