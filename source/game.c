@@ -490,9 +490,13 @@ void change_background(int id)
 
         REG_DISPCNT &= ~DCNT_WIN0;
 
-        memcpy(pal_bg_mem, background_blind_select_gfxPal, 64);
+        memcpy16(pal_bg_mem, background_blind_select_gfxPal, 64);
         GRIT_CPY(&tile_mem[MAIN_BG_CBB], background_blind_select_gfxTiles);
         GRIT_CPY(&se_mem[MAIN_BG_SBB], background_blind_select_gfxMap);
+
+        // Copy boss blind colors to blind select palette
+        memset16(&pal_bg_mem[1], blind_get_color(BOSS_BLIND, BLIND_BACKGROUND_MAIN_COLOR_INDEX), 1);
+        memset16(&pal_bg_mem[7], blind_get_color(BOSS_BLIND, BLIND_BACKGROUND_SHADOW_COLOR_INDEX), 1);
 
         // Disable the button highlight colors
         // Select button PID is 15 and the outline is 18
