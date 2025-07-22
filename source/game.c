@@ -30,6 +30,7 @@ static int background = 0;
 static enum GameState game_state = GAME_BLIND_SELECT; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
+static int state = 0; // General state variable, used for switch statements in each game state related function
 
 static enum HandType hand_type = NONE;
 
@@ -480,7 +481,7 @@ void change_background(int id)
     }
     else if (id == BG_ID_ROUND_END)
     {
-        if (background != BG_ID_CARD_SELECTING || background != BG_ID_CARD_PLAYING)
+        if (background != BG_ID_CARD_SELECTING && background != BG_ID_CARD_PLAYING)
         {
             change_background(BG_ID_CARD_SELECTING);
             background = BG_ID_ROUND_END;
@@ -1579,7 +1580,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
                                 for (int k = 0; k <= jokers_top; k++)
                                 {
-                                    if (jokers[k]->joker->proccessed == false)
+                                    if (jokers[k]->joker->processed == false)
                                     {   
                                         IndependentEffect joker_effect = joker_independent_effect(jokers[k]->joker);
                                         IndependentEffect zero_effect = {0};
@@ -1618,7 +1619,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
                                             tte_write(score_buffer);
 
-                                            jokers[k]->joker->proccessed = true; // Mark the joker as processed
+                                            jokers[k]->joker->processed = true; // Mark the joker as processed
                                             joker_object_score(jokers[k], SFX_CARD_SELECT);
 
                                             return; // Returning was just the easiest way to break out of the loop
@@ -1630,7 +1631,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                                 {
                                     if (jokers[k] != NULL)
                                     {
-                                        jokers[k]->joker->proccessed = false; // Reset the joker's processed state for the next round
+                                        jokers[k]->joker->processed = false; // Reset the joker's processed state for the next round
                                     }
                                 }
 
@@ -1871,8 +1872,6 @@ void game_round_end_cleanup()
 
 void game_round_end()
 {
-    static int state = 0;
-
     static int blind_reward = 0;
     static int hand_reward = 0;
     static int interest_reward = 0; 

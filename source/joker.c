@@ -46,7 +46,7 @@ Joker *joker_new(u8 id)
     joker->modifier = BASE_EDITION; // TODO: Make this random later
     joker->value = joker_data_lut[id][1] + edition_price_lut[joker->modifier]; // Base value + edition price
     joker->rarity = joker_data_lut[id][0];
-    joker->proccessed = false;
+    joker->processed = false;
 
     return joker;
 }
