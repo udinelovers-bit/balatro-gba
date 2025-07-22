@@ -6,7 +6,7 @@
 
 static const u16 small_blind_token_palette[PAL_ROW_LEN] = {0x0000, 0x7FFF, 0x34A1, 0x5DCB, 0x5104, 0x55A0, 0x2D01, 0x34E0};
 static const u16 big_blind_token_palette[PAL_ROW_LEN] = {0x0000, 0x2527, 0x15F5, 0x36FC, 0x1E9C, 0x01B4, 0x0D0A, 0x010E};
-static const u16 boss_blind_token_palette[PAL_ROW_LEN] = {0x0000, 0x2CC9, 0x3D0D, 0x5E14, 0x5171}; // This variable is temporary, each boss blind will have its own unique palette
+static const u16 boss_blind_token_palette[PAL_ROW_LEN] = {0x0000, 0x2CC9, 0x3D0D, 0x5E14, 0x5171, 0x4D0F, 0x2CC8, 0x3089}; // This variable is temporary, each boss blind will have its own unique palette
 
 void blinds_init()
 {
