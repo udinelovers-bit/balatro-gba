@@ -2141,9 +2141,6 @@ void game_shop()
     const int reroll_base_cost = 5; // Base cost for rerolling the shop items
     static int reroll_cost = reroll_base_cost;
 
-    // these are for controlling the shop menu
-    static bool top_row = true;
-
     // temp variables for future implementation
     const ushort max_items_top = MAX_SHOP_JOKERS; 
     const ushort max_items_bottom = 0;
@@ -2217,7 +2214,7 @@ void game_shop()
             // Shop input logic
             if (key_hit(KEY_UP))
             {
-                top_row = true;
+                selection_y = 0;
 
                 if (selection_x > max_items_top)
                 {
@@ -2226,7 +2223,7 @@ void game_shop()
             }
             else if (key_hit(KEY_DOWN))
             {
-                top_row = false;
+                selection_y = 1;
 
                 if (selection_x > max_items_bottom)
                 {
@@ -2242,11 +2239,11 @@ void game_shop()
             }
             else if (key_hit(KEY_RIGHT))
             {
-                if (top_row && selection_x < max_items_top)
+                if (selection_y == 0 && selection_x < max_items_top)
                 {
                     selection_x++;
                 }
-                else if (!top_row && selection_x < max_items_bottom)
+                else if (selection_y == 1 && selection_x < max_items_bottom)
                 {
                     selection_x++;
                 }
@@ -2256,7 +2253,7 @@ void game_shop()
             memcpy16(&pal_bg_mem[5], &pal_bg_mem[16], 1);
 
             // Shop selection logic
-            if (selection_x == 0 && top_row)
+            if (selection_x == 0 && selection_y == 0)
             {
                 memset16(&pal_bg_mem[5], 0xFFFF, 1);
 
@@ -2274,7 +2271,7 @@ void game_shop()
                     // And I don't care enough to fix it right now.
                 }
             }
-            else if (selection_x == 0 && !top_row)
+            else if (selection_x == 0 && selection_y == 1)
             {
                 memset16(&pal_bg_mem[7], 0xFFFF, 1);
 
@@ -2294,7 +2291,7 @@ void game_shop()
             {
                 if (shop_jokers[i] != NULL)
                 {
-                    if (i == selection_x - 1 && top_row)
+                    if (i == selection_x - 1 && selection_y == 0)
                     {
                         shop_jokers[i]->ty = int2fx(61);
 
@@ -2372,7 +2369,7 @@ void game_shop()
             reroll_cost = reroll_base_cost;
 
             selection_x = 0; // Reset the selection
-            top_row = true; // Reset the top row selection
+            selection_y = 0; // Reset the selection
 
             for (int i = 0; i < MAX_SHOP_JOKERS; i++)
             {
@@ -2388,8 +2385,6 @@ void game_shop()
 
 void game_blind_select()
 {
-    static bool top_row = true; // There's only one row in this game state, but this is here for consistency with the shop state if we make these variables global or something
-
     switch (state) // I'm only using magic numbers here for the sake of simplicity since it's just sequential, but you can replace them with named constants or enums if it makes it clearer
     {
         case 0: // Intro sequence (menu coming into frame)
@@ -2412,18 +2407,23 @@ void game_blind_select()
         }
         case 1: // Blind select input and selection
         {
+            if (timer == 1 && current_blind == BOSS_BLIND)
+            {
+                selection_y = 0;
+            }
+
             // Blind select input logic
             if (key_hit(KEY_UP))
             {
-                top_row = true;
+                selection_y = 0;
             }
-            else if (key_hit(KEY_DOWN))
+            else if (key_hit(KEY_DOWN) && current_blind != BOSS_BLIND)
             {
-                top_row = false;
+                selection_y = 1;
             }
             else if (key_hit(SELECT_CARD))
             {
-                if (top_row) // Blind selected
+                if (selection_y == 0) // Blind selected
                 {
                     state++;
                     timer = 0;
@@ -2451,7 +2451,7 @@ void game_blind_select()
                 }
             }
 
-            if (top_row)
+            if (selection_y == 0)
             {
                 memset16(&pal_bg_mem[18], 0xFFFF, 1);
                 memcpy16(&pal_bg_mem[10], &pal_bg_mem[5], 1);
@@ -2540,7 +2540,7 @@ void game_blind_select()
         default:
             state = 0;
             timer = 0;
-            top_row = true;
+            selection_y = 0;
             background = UNDEFINED;
             game_set_state(GAME_PLAYING);
             break;
