@@ -175,7 +175,7 @@ static const Rect DISCARDS_TEXT_RECT        = {48,      104,    UNDEFINED, UNDEF
 static const Rect DECK_SIZE_RECT            = {200,     152,    UNDEFINED, UNDEFINED };
 static const Rect ROUND_TEXT_RECT           = {48,      144,    UNDEFINED, UNDEFINED };
 static const Rect ANTE_TEXT_RECT            = {8,       144,    UNDEFINED, UNDEFINED };
-static const Rect ROUND_END_BLIND_REQ_RECT  = {112,     96,     136,       UNDEFINED };
+static const Rect ROUND_END_BLIND_REQ_RECT  = {104,     96,     136,       UNDEFINED };
 static const Rect ROUND_END_BLIND_REWARD_RECT = { 168,  96,     UNDEFINED, UNDEFINED };
 static const Rect ROUND_END_NUM_HANDS_RECT  = {88,      116,    UNDEFINED, UNDEFINED };
 static const Rect HAND_REWARD_RECT          = {168,     UNDEFINED, UNDEFINED, UNDEFINED };
@@ -890,7 +890,7 @@ void game_round_init()
     //{
     //    obj_hide(playing_blind_token->obj); // Hide the blind token sprite for now
     //}
-    round_end_blind_token = blind_token_new(current_blind, 82, 86, 34); // Create the blind token sprite for round end
+    round_end_blind_token = blind_token_new(current_blind, 81, 86, 34); // Create the blind token sprite for round end
 
     if (round_end_blind_token != NULL)
     {
