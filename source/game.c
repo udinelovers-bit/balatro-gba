@@ -27,7 +27,7 @@ static uint timer = 0; // This might already exist in libtonc but idk so i'm jus
 static int game_speed = 1;
 static int background = 0;
 
-static enum GameState game_state = GAME_SHOP; // The current game state, this is used to determine what the game is doing at any given time
+static enum GameState game_state = GAME_BLIND_SELECT; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
 
@@ -64,6 +64,7 @@ static int cards_drawn = 0;
 static int hand_selections = 0;
 
 static int card_focused = 0;
+static int selection_y = 0;
 
 static bool sort_by_suit = false;
 
@@ -150,7 +151,7 @@ static const Rect POP_MENU_ANIM_RECT        = {9,       7,      24,     31 };
 
 static const Rect SINGLE_BLIND_SELECT_RECT = { 9,       7,      13,     32 };
 
-static const Rect HAND_BG_RECT_SELECTING    = {9,       11,     24,     18 };
+static const Rect HAND_BG_RECT_SELECTING    = {9,       11,     24,     17 };
 // TODO: Currently unused, remove?
 //static const Rect HAND_BG_RECT_PLAYING      = {9,       14,     24,     18 };
 
@@ -422,12 +423,10 @@ void change_background(int id)
     {
         if (background == BG_ID_CARD_PLAYING)
         {
-            for (int i = 0; i <= 2; i++)
-            {
-                main_bg_se_move_rect_1_tile_vert(HAND_BG_RECT_SELECTING, SE_UP);
-            }
-
+            int offset = 12;
+            memcpy16(&se_mem[MAIN_BG_SBB][SE_ROW_LEN * offset], &background_gfxMap[SE_ROW_LEN * offset], SE_ROW_LEN * 8);
             tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
+            REG_WIN0V = (REG_WIN0V << 8) | 0x80;
         }
         else
         {
@@ -452,9 +451,13 @@ void change_background(int id)
             bg_copy_current_item_to_top_left_panel();
 
             // This would change the palette of the background to match the blind, but the backgroun doesn't use the blind token's exact colors so a different approach is required
-            memset16(&pal_bg_mem[17], blind_get_color(current_blind, BLIND_BACKGROUND_MAIN_COLOR_INDEX), 1);
-            memset16(&pal_bg_mem[16], blind_get_color(current_blind, BLIND_BACKGROUND_SECONDARY_COLOR_INDEX), 1);
-            memset16(&pal_bg_mem[5], blind_get_color(current_blind, BLIND_BACKGROUND_SHADOW_COLOR_INDEX), 1);
+            memset16(&pal_bg_mem[19], blind_get_color(current_blind, BLIND_BACKGROUND_MAIN_COLOR_INDEX), 1);
+            memset16(&pal_bg_mem[5], blind_get_color(current_blind, BLIND_BACKGROUND_SECONDARY_COLOR_INDEX), 1);
+            memset16(&pal_bg_mem[2], blind_get_color(current_blind, BLIND_BACKGROUND_SHADOW_COLOR_INDEX), 1);
+
+            // Copy the Play Hand and Discard button colors to their selection highlights
+            memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1);
+            memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1);
         }
     }
     else if (id == BG_ID_CARD_PLAYING)
@@ -464,6 +467,8 @@ void change_background(int id)
             change_background(BG_ID_CARD_SELECTING);
             background = BG_ID_CARD_PLAYING;
         }
+
+        REG_WIN0V = (REG_WIN0V << 8) | 0xA0;
 
         for (int i = 0; i <= 2; i++)
         {
@@ -849,6 +854,7 @@ bool hand_discard()
     if (hand_state != HAND_SELECT || hand_selections == 0) return false;
     hand_state = HAND_DISCARD;
     card_focused = 0;
+    selection_y = 0;
     return true;
 }
 
@@ -857,6 +863,7 @@ bool hand_play()
     if (hand_state != HAND_SELECT || hand_selections == 0) return false;
     hand_state = HAND_PLAY;
     card_focused = 0;
+    selection_y = 0;
     return true;
 }
 
@@ -1007,35 +1014,84 @@ static void game_playing_process_input_and_state()
     {
         if (key_hit(KEY_LEFT))
         {
-            hand_set_focus(card_focused + 1); // The reason why this adds 1 is because the hand is drawn from right to left. There is no particular reason for this, it's just how I did it.
+            if (selection_y == 0)
+            {
+                hand_set_focus(card_focused + 1); // The reason why this adds 1 is because the hand is drawn from right to left. There is no particular reason for this, it's just how I did it.
+            }
+            else
+            {
+                card_focused = -2; // Play button
+            }
         }
         else if (key_hit(KEY_RIGHT))
         {
-            hand_set_focus(card_focused - 1);
+            if (selection_y == 0)
+            {
+                hand_set_focus(card_focused - 1);
+            }
+            else
+            {
+                card_focused = -3; // Discard button
+            }
+        }
+        else if (key_hit(KEY_UP) && selection_y != 0)
+        {
+            selection_y = 0;
+            card_focused = 0;
+        }
+        else if (key_hit(KEY_DOWN) && selection_y != 1)
+        {
+            selection_y = 1;
+
+            if (card_focused > hand_top / 2)
+            {
+                card_focused = -2; // Play button
+            }
+            else
+            {
+                card_focused = -3; // Discard button
+            }
         }
 
-        if (key_hit(KEY_A))
+        if (card_focused == -2) // Play button logic
+        {
+            memset16(&pal_bg_mem[1], 0xFFFF, 1);
+            memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1);
+
+            if (key_hit(SELECT_CARD) && hands > 0 && hand_play() && card_focused == -2)
+            {
+                hands--;
+                tte_printf("#{P:%d,%d; cx:0xD000}%d", HANDS_TEXT_RECT.left, HANDS_TEXT_RECT.top, hands);
+            }
+        }
+        else if (card_focused == -3) // Discard button logic
+        {
+            memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1);
+            memset16(&pal_bg_mem[9], 0xFFFF, 1);
+
+            if (key_hit(SELECT_CARD) && discards > 0 && hand_discard() && card_focused == -3)
+            {
+                set_hand();
+                discards--;
+                tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards);
+            }
+        }
+        
+        if (card_focused >= 0)
+        {
+            memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1); // Play button highlight color
+            memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1); // Discard button highlight color
+        }
+
+        if (key_hit(SELECT_CARD))
         {
             hand_select();
             set_hand();
         }
 
-        if (key_hit(KEY_B))
+        if (key_hit(SORT_HAND))
         {
             hand_change_sort();
-        }
-
-        if (key_hit(KEY_SELECT) && discards > 0 && hand_discard())
-        {
-            set_hand();
-            discards--;
-            tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards);
-        }
-
-        if (key_hit(KEY_START) && hands > 0 && hand_play())
-        {
-            hands--;
-            tte_printf("#{P:%d,%d; cx:0xD000}%d", HANDS_TEXT_RECT.left, HANDS_TEXT_RECT.top, hands);
         }
     }
     else if (play_state == PLAY_ENDING)
@@ -1938,7 +1994,7 @@ void game_round_end()
             }   
             else if (timer > FRAMES(20))
             {
-                memset16(&pal_bg_mem[17], 0x1483, 1);
+                memset16(&pal_bg_mem[19], 0x1483, 1);
                 state = 6;
                 timer = 0;
             }
@@ -2027,7 +2083,7 @@ void game_round_end()
 
                 tte_printf("#{P:%d, %d; cx:0xF000}Cash Out: $%d", CASHOUT_RECT.left, CASHOUT_RECT.top, hands + blind_get_reward(current_blind)); // Print the cash out amount
             }
-            else if (timer > FRAMES(40) && key_hit(KEY_A)) // Wait until the player presses A to cash out
+            else if (timer > FRAMES(40) && key_hit(SELECT_CARD)) // Wait until the player presses A to cash out
             {
                 game_round_end_cashout();
 
@@ -2204,10 +2260,9 @@ void game_shop()
             // Shop selection logic
             if (selection_x == 0 && top_row)
             {
-               
                 memset16(&pal_bg_mem[5], 0xFFFF, 1);
 
-                if (key_hit(KEY_A))
+                if (key_hit(SELECT_CARD))
                 {
                     // Go to next blind selection game state
                     state = 2; // Go to the outro sequence state
@@ -2225,7 +2280,7 @@ void game_shop()
             {
                 memset16(&pal_bg_mem[7], 0xFFFF, 1);
 
-                if (key_hit(KEY_A) && money >= reroll_cost)
+                if (key_hit(SELECT_CARD) && money >= reroll_cost)
                 {
                     money -= reroll_cost;
                     set_money(money); // Update the money display
@@ -2245,7 +2300,7 @@ void game_shop()
                     {
                         shop_jokers[i]->ty = int2fx(61);
 
-                        if (key_hit(KEY_A) && jokers_top < MAX_JOKERS_HELD_SIZE - 1 && money >= shop_jokers[i]->joker->value)
+                        if (key_hit(SELECT_CARD) && jokers_top < MAX_JOKERS_HELD_SIZE - 1 && money >= shop_jokers[i]->joker->value)
                         {
                             joker_push(shop_jokers[i]);
                             money -= shop_jokers[i]->joker->value; // Deduct the money spent on the joker
@@ -2370,7 +2425,7 @@ void game_blind_select()
             {
                 top_row = false;
             }
-            else if (key_hit(KEY_A))
+            else if (key_hit(SELECT_CARD))
             {
                 if (top_row) // Blind selected
                 {

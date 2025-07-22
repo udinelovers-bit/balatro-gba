@@ -71,7 +71,7 @@ void init()
     int win1_left = 72;
     int win1_top = 44;
     int win1_right = 200;
-    int win1_bottom = 160;
+    int win1_bottom = 128;
 
     int win2_left = 72;
     int win2_top = 0;

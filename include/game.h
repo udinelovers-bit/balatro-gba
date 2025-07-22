@@ -15,6 +15,13 @@
 #define BG_ID_SHOP 4
 #define BG_ID_BLIND_SELECT 5
 
+// Input bindings
+#define SELECT_CARD KEY_A
+#define DESELECT_CARDS KEY_B
+#define PEEK_DECK KEY_L // Not implemented
+#define SORT_HAND KEY_R
+#define PAUSE_GAME KEY_START // Not implemented
+
 enum GameState
 {
     GAME_PLAYING,
