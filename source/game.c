@@ -64,7 +64,7 @@ static int hand_size = 8; // Default hand size is 8
 static int cards_drawn = 0;
 static int hand_selections = 0;
 
-static int card_focused = 0;
+static int selection_x = 0;
 static int selection_y = 0;
 
 static bool sort_by_suit = false;
@@ -805,7 +805,7 @@ void card_draw()
 void hand_set_focus(int index)
 {
     if (index < 0 || index > hand_top || hand_state != HAND_SELECT) return;
-    card_focused = index;
+    selection_x = index;
 
     mm_sound_effect sfx_focus = {{SFX_CARD_FOCUS}, 1024 + rand() % 512, 0, 255, 128,};
     mmEffectEx(&sfx_focus);
@@ -813,11 +813,11 @@ void hand_set_focus(int index)
 
 void hand_select()
 {
-    if (hand_state != HAND_SELECT || hand[card_focused] == NULL) return;
+    if (hand_state != HAND_SELECT || hand[selection_x] == NULL) return;
 
-    if (hand[card_focused]->selected)
+    if (hand[selection_x]->selected)
     {
-        hand[card_focused]->selected = false;
+        hand[selection_x]->selected = false;
         hand_selections--;
 
         mm_sound_effect sfx_select = {{SFX_CARD_SELECT}, 1024, 0, 255, 128,};
@@ -825,7 +825,7 @@ void hand_select()
     }
     else if (hand_selections < MAX_SELECTION_SIZE)
     {
-        hand[card_focused]->selected = true;
+        hand[selection_x]->selected = true;
         hand_selections++;
 
         mm_sound_effect sfx_deselect = {{SFX_CARD_DESELECT}, 1024, 0, 255, 128,};
@@ -1012,7 +1012,7 @@ static void game_playing_process_input_and_state()
         {
             if (selection_y == 0)
             {
-                hand_set_focus(card_focused + 1); // The reason why this adds 1 is because the hand is drawn from right to left. There is no particular reason for this, it's just how I did it.
+                hand_set_focus(selection_x + 1); // The reason why this adds 1 is because the hand is drawn from right to left. There is no particular reason for this, it's just how I did it.
             }
             else
             {
@@ -1023,7 +1023,7 @@ static void game_playing_process_input_and_state()
         {
             if (selection_y == 0)
             {
-                hand_set_focus(card_focused - 1);
+                hand_set_focus(selection_x - 1);
             }
             else
             {
@@ -1038,7 +1038,7 @@ static void game_playing_process_input_and_state()
         {
             selection_y = 1;
 
-            if (card_focused > hand_top / 2)
+            if (selection_x > hand_top / 2)
             {
                 discard_button_highlighted = false; // Play button
             }
@@ -1058,9 +1058,8 @@ static void game_playing_process_input_and_state()
                 if (key_hit(SELECT_CARD) && hands > 0 && hand_play())
                 {
                     hand_state = HAND_PLAY;
-                    card_focused = 0;
+                    selection_x = 0;
                     selection_y = 0;
-                    previous_card_focused = 0;
                     set_hands(--hands);
                 }
             }
@@ -1072,9 +1071,8 @@ static void game_playing_process_input_and_state()
                 if (key_hit(SELECT_CARD) && discards > 0 && hand_discard())
                 {
                     hand_state = HAND_DISCARD;
-                    card_focused = 0;
+                    selection_x = 0;
                     selection_y = 0;
-                    previous_card_focused = 0;
                     set_hands(--discards);
                     set_hand();
                     tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards);
@@ -1231,7 +1229,7 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                 hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
                 break;
             case HAND_SELECT:
-                bool is_focused = (i == card_focused && selection_y == 0);
+                bool is_focused = (i == selection_x && selection_y == 0);
 
                 if (is_focused && !hand[i]->selected)
                 {
@@ -1246,7 +1244,7 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                     hand_y -= int2fx(20);
                 }
 
-                if (i != card_focused && hand[i]->y > hand_y)
+                if (i != selection_x && hand[i]->y > hand_y)
                 {
                     hand[i]->y = hand_y;
                     hand[i]->vy = 0;
@@ -2145,7 +2143,6 @@ void game_shop()
 
     // these are for controlling the shop menu
     static bool top_row = true;
-    static ushort selection_x = 0;
 
     // temp variables for future implementation
     const ushort max_items_top = MAX_SHOP_JOKERS; 
