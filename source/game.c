@@ -423,12 +423,13 @@ void change_background(int id)
     }
     else if (id == BG_ID_CARD_SELECTING)
     {
+        tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
+        REG_WIN0V = (REG_WIN0V << 8) | 0x80; // Set window 0 top to 128
+
         if (background == BG_ID_CARD_PLAYING)
         {
             int offset = 11;
             memcpy16(&se_mem[MAIN_BG_SBB][SE_ROW_LEN * offset], &background_gfxMap[SE_ROW_LEN * offset], SE_ROW_LEN * 8);
-            tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
-            REG_WIN0V = (REG_WIN0V << 8) | 0x80;
         }
         else
         {
@@ -438,8 +439,6 @@ void change_background(int id)
             memcpy(pal_bg_mem, background_gfxPal, 64); // This '64" isn't a specific number, I'm just using it to prevent the text colors from being overridden
             GRIT_CPY(&tile8_mem[MAIN_BG_CBB], background_gfxTiles); // Deadass i have no clue how any of these memory things work but I just messed with them until stuff worked
             GRIT_CPY(&se_mem[MAIN_BG_SBB], background_gfxMap);
-
-            tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
 
             if (current_blind == BIG_BLIND) // Change text and palette depending on blind type
             {
@@ -470,7 +469,7 @@ void change_background(int id)
             background = BG_ID_CARD_PLAYING;
         }
 
-        REG_WIN0V = (REG_WIN0V << 8) | 0xA0;
+        REG_WIN0V = (REG_WIN0V << 8) | 0xA0; // Set window 0 bottom to 160
 
         for (int i = 0; i <= 2; i++)
         {
@@ -2126,9 +2125,6 @@ void game_round_end()
 void game_shop()
 {
     change_background(BG_ID_SHOP);
-    
-    // TODO: Later move these static variables somewhere else so they can be reused for each game state
-    static int state = 0;
 
     static JokerObject *shop_jokers[MAX_SHOP_JOKERS] = {NULL};
 
@@ -2391,8 +2387,6 @@ void game_shop()
 
 void game_blind_select()
 {
-    static int state = 0;
-
     static bool top_row = true; // There's only one row in this game state, but this is here for consistency with the shop state if we make these variables global or something
 
     switch (state) // I'm only using magic numbers here for the sake of simplicity since it's just sequential, but you can replace them with named constants or enums if it makes it clearer
