@@ -150,7 +150,7 @@ static const Rect POP_MENU_ANIM_RECT        = {9,       7,      24,     31 };
 
 static const Rect SINGLE_BLIND_SELECT_RECT = { 9,       7,      13,     32 };
 
-static const Rect HAND_BG_RECT_SELECTING    = {9,       11,     24,     15 };
+static const Rect HAND_BG_RECT_SELECTING    = {9,       11,     24,     18 };
 // TODO: Currently unused, remove?
 //static const Rect HAND_BG_RECT_PLAYING      = {9,       14,     24,     18 };
 
@@ -419,30 +419,42 @@ void change_background(int id)
     }
     else if (id == BG_ID_CARD_SELECTING)
     {
-        REG_DISPCNT |= DCNT_WIN0; // Enable window 0 to make hand background transparent
-        // Load the tiles and palette
-        // Background
-        memcpy(pal_bg_mem, background_gfxPal, 64); // This '64" isn't a specific number, I'm just using it to prevent the text colors from being overridden
-        GRIT_CPY(&tile8_mem[MAIN_BG_CBB], background_gfxTiles); // Deadass i have no clue how any of these memory things work but I just messed with them until stuff worked
-        GRIT_CPY(&se_mem[MAIN_BG_SBB], background_gfxMap);
-
-        tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
-
-        if (current_blind == BIG_BLIND) // Change text and palette depending on blind type
+        if (background == BG_ID_CARD_PLAYING)
         {
-            main_bg_se_copy_rect(BIG_BLIND_TITLE_SRC_RECT, TOP_LEFT_BLIND_TITLE_POINT);
+            for (int i = 0; i <= 2; i++)
+            {
+                main_bg_se_move_rect_1_tile_vert(HAND_BG_RECT_SELECTING, SE_UP);
+            }
+
+            tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
         }
-        else if (current_blind == BOSS_BLIND)
+        else
         {
-            main_bg_se_copy_rect(BOSS_BLIND_TITLE_SRC_RECT, TOP_LEFT_BLIND_TITLE_POINT);
+            REG_DISPCNT |= DCNT_WIN0; // Enable window 0 to make hand background transparent
+            // Load the tiles and palette
+            // Background
+            memcpy(pal_bg_mem, background_gfxPal, 64); // This '64" isn't a specific number, I'm just using it to prevent the text colors from being overridden
+            GRIT_CPY(&tile8_mem[MAIN_BG_CBB], background_gfxTiles); // Deadass i have no clue how any of these memory things work but I just messed with them until stuff worked
+            GRIT_CPY(&se_mem[MAIN_BG_SBB], background_gfxMap);
+
+            tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
+
+            if (current_blind == BIG_BLIND) // Change text and palette depending on blind type
+            {
+                main_bg_se_copy_rect(BIG_BLIND_TITLE_SRC_RECT, TOP_LEFT_BLIND_TITLE_POINT);
+            }
+            else if (current_blind == BOSS_BLIND)
+            {
+                main_bg_se_copy_rect(BOSS_BLIND_TITLE_SRC_RECT, TOP_LEFT_BLIND_TITLE_POINT);
+            }
+
+            bg_copy_current_item_to_top_left_panel();
+
+            // This would change the palette of the background to match the blind, but the backgroun doesn't use the blind token's exact colors so a different approach is required
+            memset16(&pal_bg_mem[17], blind_get_color(current_blind, BLIND_BACKGROUND_MAIN_COLOR_INDEX), 1);
+            memset16(&pal_bg_mem[16], blind_get_color(current_blind, BLIND_BACKGROUND_SECONDARY_COLOR_INDEX), 1);
+            memset16(&pal_bg_mem[5], blind_get_color(current_blind, BLIND_BACKGROUND_SHADOW_COLOR_INDEX), 1);
         }
-
-        bg_copy_current_item_to_top_left_panel();
-
-        // This would change the palette of the background to match the blind, but the backgroun doesn't use the blind token's exact colors so a different approach is required
-        memset16(&pal_bg_mem[17], blind_get_color(current_blind, BLIND_BACKGROUND_MAIN_COLOR_INDEX), 1);
-        memset16(&pal_bg_mem[16], blind_get_color(current_blind, BLIND_BACKGROUND_SECONDARY_COLOR_INDEX), 1);
-        memset16(&pal_bg_mem[5], blind_get_color(current_blind, BLIND_BACKGROUND_SHADOW_COLOR_INDEX), 1);
     }
     else if (id == BG_ID_CARD_PLAYING)
     {
@@ -452,19 +464,16 @@ void change_background(int id)
             background = BG_ID_CARD_PLAYING;
         }
 
-        Rect curr_hand_bg_rect = HAND_BG_RECT_SELECTING;
         for (int i = 0; i <= 2; i++)
         {
-            main_bg_se_move_rect_1_tile_vert(curr_hand_bg_rect, SE_DOWN);
-            curr_hand_bg_rect.top++;
-            curr_hand_bg_rect.bottom++;
+            main_bg_se_move_rect_1_tile_vert(HAND_BG_RECT_SELECTING, SE_DOWN);
         }
 
         tte_erase_rect_wrapper(HAND_SIZE_RECT_SELECT);
     }
     else if (id == BG_ID_ROUND_END)
     {
-        if (background != BG_ID_CARD_SELECTING)
+        if (background != BG_ID_CARD_SELECTING || background != BG_ID_CARD_PLAYING)
         {
             change_background(BG_ID_CARD_SELECTING);
             background = BG_ID_ROUND_END;
