@@ -50,7 +50,7 @@ static int discards = 0;
 
 static int round = 0;
 static int ante = 1;
-static int money = 10;
+static int money = 4;
 static int score = 0;
 static int temp_score = 0; // This is the score that shows in the same spot as the hand type.
 static FIXED lerped_score = 0;
@@ -64,6 +64,7 @@ static int cards_drawn = 0;
 static int hand_selections = 0;
 
 static int card_focused = 0;
+static int previous_card_focused = 0;
 static int selection_y = 0;
 
 static bool sort_by_suit = false;
@@ -423,7 +424,7 @@ void change_background(int id)
     {
         if (background == BG_ID_CARD_PLAYING)
         {
-            int offset = 12;
+            int offset = 11;
             memcpy16(&se_mem[MAIN_BG_SBB][SE_ROW_LEN * offset], &background_gfxMap[SE_ROW_LEN * offset], SE_ROW_LEN * 8);
             tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
             REG_WIN0V = (REG_WIN0V << 8) | 0x80;
@@ -696,7 +697,7 @@ static void print_hand_type(const char* hand_type_str)
 {
     if (hand_type_str == NULL)
         return; // NULL-checking paranoia
-    tte_printf("#{P:%d,%d;}%s", HAND_TYPE_RECT.left, HAND_TYPE_RECT.top, hand_type_str);
+    tte_printf("#{P:%d,%d; cx:0xF000}%s", HAND_TYPE_RECT.left, HAND_TYPE_RECT.top, hand_type_str);
 }
 
 void set_hand()
@@ -852,18 +853,12 @@ int hand_get_max_size()
 bool hand_discard()
 {
     if (hand_state != HAND_SELECT || hand_selections == 0) return false;
-    hand_state = HAND_DISCARD;
-    card_focused = 0;
-    selection_y = 0;
     return true;
 }
 
 bool hand_play()
 {
     if (hand_state != HAND_SELECT || hand_selections == 0) return false;
-    hand_state = HAND_PLAY;
-    card_focused = 0;
-    selection_y = 0;
     return true;
 }
 
@@ -1037,11 +1032,12 @@ static void game_playing_process_input_and_state()
         else if (key_hit(KEY_UP) && selection_y != 0)
         {
             selection_y = 0;
-            card_focused = 0;
+            card_focused = previous_card_focused;
         }
         else if (key_hit(KEY_DOWN) && selection_y != 1)
         {
             selection_y = 1;
+            previous_card_focused = card_focused;
 
             if (card_focused > hand_top / 2)
             {
@@ -1058,10 +1054,13 @@ static void game_playing_process_input_and_state()
             memset16(&pal_bg_mem[1], 0xFFFF, 1);
             memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1);
 
-            if (key_hit(SELECT_CARD) && hands > 0 && hand_play() && card_focused == -2)
+            if (key_hit(SELECT_CARD) && hands > 0 && hand_play())
             {
-                hands--;
-                tte_printf("#{P:%d,%d; cx:0xD000}%d", HANDS_TEXT_RECT.left, HANDS_TEXT_RECT.top, hands);
+                hand_state = HAND_PLAY;
+                card_focused = 0;
+                selection_y = 0;
+                previous_card_focused = 0;
+                set_hands(--hands);
             }
         }
         else if (card_focused == -3) // Discard button logic
@@ -1069,10 +1068,14 @@ static void game_playing_process_input_and_state()
             memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1);
             memset16(&pal_bg_mem[9], 0xFFFF, 1);
 
-            if (key_hit(SELECT_CARD) && discards > 0 && hand_discard() && card_focused == -3)
+            if (key_hit(SELECT_CARD) && discards > 0 && hand_discard())
             {
+                hand_state = HAND_DISCARD;
+                card_focused = 0;
+                selection_y = 0;
+                previous_card_focused = 0;
+                set_hands(--discards);
                 set_hand();
-                discards--;
                 tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards);
             }
         }
@@ -2090,7 +2093,6 @@ void game_round_end()
                 state = 8; // Go to the next state
                 timer = 0; // Reset the timer
             
-                memset16(&pal_bg_mem[6], 0x0174, 1);
                 obj_hide(round_end_blind_token->obj); // Hide the blind token object
                 tte_erase_rect_wrapper(BLIND_TOKEN_TEXT_RECT); // Erase the blind token text
             }
