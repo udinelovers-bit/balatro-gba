@@ -135,6 +135,7 @@ void joker_object_update(JokerObject *joker_object)
 {
     // Re-use the card object update logic by casting the JokerObject to a CardObject temporarily
     // This works because card_object_update doesn't use any card data, which is why CardObject should've been generic. my bad
+    // TODO: Refactor and separate the relevant fields to a generic struct, maybe to Sprite or make a SpriteObject
     CardObject *card_object = (CardObject *)joker_object;
     card_object_update(card_object);
 }
