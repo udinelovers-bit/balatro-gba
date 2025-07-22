@@ -155,11 +155,11 @@ void tte_erase_rect_wrapper(Rect rect)
 void update_text_rect_to_right_align_num(Rect* rect, int num, int overflow_direction)
 {
     int num_digits = get_digits(num);
-    if (overflow_direction == OVERFLOW_RIGHT)
+    if (overflow_direction == OVERFLOW_LEFT)
     {
         rect->left = max(0, rect->right - num_digits * TILE_SIZE);
     }
-    else if (overflow_direction == OVERFLOW_LEFT)
+    else if (overflow_direction == OVERFLOW_RIGHT)
     {
         int num_fitting_digits = rect_width(rect) / TILE_SIZE;
         if (num_digits < num_fitting_digits)
