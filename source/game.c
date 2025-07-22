@@ -179,7 +179,7 @@ static const Rect SCORE_RECT                = {32,      48,     64,     56  };
 
 static const Rect PLAYED_CARDS_SCORES_RECT  = {72,      48,     240,    56  };
 static const Rect BLIND_TOKEN_TEXT_RECT     = {80,      72,     200,    160 };
-static const Rect MONEY_TEXT_RECT           = {8,       120,    64,     120 };
+static const Rect MONEY_TEXT_RECT           = {8,       120,    64,     128 };
 static const Rect CHIPS_TEXT_RECT           = {8,       80,     32,     88  };
 static const Rect MULT_TEXT_RECT            = {40,      80,     64,     88  };
 static const Rect BLIND_REWARD_RECT         = {40,      32,     64,     40  };
