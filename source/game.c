@@ -65,7 +65,6 @@ static int cards_drawn = 0;
 static int hand_selections = 0;
 
 static int card_focused = 0;
-static int previous_card_focused = 0;
 static int selection_y = 0;
 
 static bool sort_by_suit = false;
@@ -1007,6 +1006,8 @@ static void game_playing_process_input_and_state()
 {
     if (hand_state == HAND_SELECT)
     {
+        static bool discard_button_highlighted = false; // true = play button highlighted, false = discard button highlighted
+
         if (key_hit(KEY_LEFT))
         {
             if (selection_y == 0)
@@ -1015,7 +1016,7 @@ static void game_playing_process_input_and_state()
             }
             else
             {
-                card_focused = -2; // Play button
+                discard_button_highlighted = false; // Play button
             }
         }
         else if (key_hit(KEY_RIGHT))
@@ -1026,61 +1027,62 @@ static void game_playing_process_input_and_state()
             }
             else
             {
-                card_focused = -3; // Discard button
+                discard_button_highlighted = true; // Discard button
             }
         }
         else if (key_hit(KEY_UP) && selection_y != 0)
         {
             selection_y = 0;
-            card_focused = previous_card_focused;
         }
         else if (key_hit(KEY_DOWN) && selection_y != 1)
         {
             selection_y = 1;
-            previous_card_focused = card_focused;
 
             if (card_focused > hand_top / 2)
             {
-                card_focused = -2; // Play button
+                discard_button_highlighted = false; // Play button
             }
             else
             {
-                card_focused = -3; // Discard button
+                discard_button_highlighted = true; // Discard button
             }
         }
 
-        if (card_focused == -2) // Play button logic
+        if (selection_y == 1) // On row of play/discard buttons
         {
-            memset16(&pal_bg_mem[1], 0xFFFF, 1);
-            memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1);
-
-            if (key_hit(SELECT_CARD) && hands > 0 && hand_play())
+            if (discard_button_highlighted == false) // Play button logic
             {
-                hand_state = HAND_PLAY;
-                card_focused = 0;
-                selection_y = 0;
-                previous_card_focused = 0;
-                set_hands(--hands);
+                memset16(&pal_bg_mem[1], 0xFFFF, 1);
+                memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1);
+
+                if (key_hit(SELECT_CARD) && hands > 0 && hand_play())
+                {
+                    hand_state = HAND_PLAY;
+                    card_focused = 0;
+                    selection_y = 0;
+                    previous_card_focused = 0;
+                    set_hands(--hands);
+                }
             }
-        }
-        else if (card_focused == -3) // Discard button logic
-        {
-            memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1);
-            memset16(&pal_bg_mem[9], 0xFFFF, 1);
-
-            if (key_hit(SELECT_CARD) && discards > 0 && hand_discard())
+            else // Discard button logic
             {
-                hand_state = HAND_DISCARD;
-                card_focused = 0;
-                selection_y = 0;
-                previous_card_focused = 0;
-                set_hands(--discards);
-                set_hand();
-                tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards);
+                memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1);
+                memset16(&pal_bg_mem[9], 0xFFFF, 1);
+
+                if (key_hit(SELECT_CARD) && discards > 0 && hand_discard())
+                {
+                    hand_state = HAND_DISCARD;
+                    card_focused = 0;
+                    selection_y = 0;
+                    previous_card_focused = 0;
+                    set_hands(--discards);
+                    set_hand();
+                    tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards);
+                }
             }
         }
         
-        if (card_focused >= 0)
+        if (selection_y == 0) // On row of cards
         {
             memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1); // Play button highlight color
             memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1); // Discard button highlight color
@@ -1229,15 +1231,17 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                 hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
                 break;
             case HAND_SELECT:
-                if (i == card_focused && !hand[i]->selected)
+                bool is_focused = (i == card_focused && selection_y == 0);
+
+                if (is_focused && !hand[i]->selected)
                 {
                     hand_y -= int2fx(10);
                 }
-                else if (i != card_focused && hand[i]->selected)
+                else if (!is_focused && hand[i]->selected)
                 {
                     hand_y -= int2fx(15);
                 }
-                else if (i == card_focused && hand[i]->selected)
+                else if (is_focused && hand[i]->selected)
                 {
                     hand_y -= int2fx(20);
                 }
