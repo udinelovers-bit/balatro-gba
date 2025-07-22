@@ -14,6 +14,15 @@ const static u8 joker_data_lut[MAX_JOKERS][2] = // Rarity, Value
     {COMMON_JOKER, 5}, // Greedy Joker
 };
 
+const static u8 edition_price_lut[MAX_EDITIONS] =
+{
+    0, // BASE_EDITION
+    2, // FOIL_EDITION
+    3, // HOLO_EDITION
+    5, // POLY_EDITION
+    5, // NEGATIVE_EDITION
+};
+
 /* So for the card objects, I needed them to be properly sorted
    which is why they let you specify the layer index when creating a new card object.
    Since the cards would overlap a lot in your hand, If they weren't sorted properly, it would look like a mess.
@@ -35,7 +44,7 @@ Joker *joker_new(u8 id)
 
     joker->id = id; // TODO: Make this random later
     joker->modifier = BASE_EDITION; // TODO: Make this random later
-    joker->value = joker_data_lut[id][1];
+    joker->value = joker_data_lut[id][1] + edition_price_lut[joker->modifier]; // Base value + edition price
     joker->rarity = joker_data_lut[id][0];
     joker->proccessed = false;
 

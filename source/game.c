@@ -27,7 +27,7 @@ static uint timer = 0; // This might already exist in libtonc but idk so i'm jus
 static int game_speed = 1;
 static int background = 0;
 
-static enum GameState game_state = GAME_BLIND_SELECT; // The current game state, this is used to determine what the game is doing at any given time
+static enum GameState game_state = GAME_SHOP; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
 
@@ -50,7 +50,7 @@ static int discards = 0;
 
 static int round = 0;
 static int ante = 1;
-static int money = 4;
+static int money = 10;
 static int score = 0;
 static int temp_score = 0; // This is the score that shows in the same spot as the hand type.
 static FIXED lerped_score = 0;
@@ -198,6 +198,7 @@ static const Rect ROUND_END_BLIND_REWARD_RECT = { 168,  96,     UNDEFINED, UNDEF
 static const Rect ROUND_END_NUM_HANDS_RECT  = {88,      116,    UNDEFINED, UNDEFINED };
 static const Rect HAND_REWARD_RECT          = {168,     UNDEFINED, UNDEFINED, UNDEFINED };
 static const Rect CASHOUT_RECT              = {88,      72,     UNDEFINED, UNDEFINED };
+static const Rect SHOP_REROLL_RECT          = {88,      96,    UNDEFINED, UNDEFINED };
 
 //TODO: Properly define and use
 #define MENU_POP_OUT_ANIM_FRAMES 20
@@ -2082,6 +2083,9 @@ void game_shop()
         }
     }
 
+    const int reroll_base_cost = 5; // Base cost for rerolling the shop items
+    static int reroll_cost = reroll_base_cost;
+
     // these are for controlling the shop menu
     static bool top_row = true;
     static ushort selection_x = 0;
@@ -2151,6 +2155,11 @@ void game_shop()
         }    
         case 1: // Shop menu input and selection
         {
+            if (timer == 1)
+            {
+                tte_printf("#{P:%d,%d; cx:0xF000}$%d", SHOP_REROLL_RECT.left, SHOP_REROLL_RECT.top, reroll_cost);
+            }
+
             // Shop input logic
             if (key_hit(KEY_UP))
             {
@@ -2216,9 +2225,15 @@ void game_shop()
             {
                 memset16(&pal_bg_mem[7], 0xFFFF, 1);
 
-                if (key_hit(KEY_A))
+                if (key_hit(KEY_A) && money >= reroll_cost)
                 {
+                    money -= reroll_cost;
+                    set_money(money); // Update the money display
+                
                     game_shop_create_items(shop_jokers, false);
+
+                    reroll_cost++;
+                    tte_printf("#{P:%d,%d; cx:0xF000}$%d", SHOP_REROLL_RECT.left, SHOP_REROLL_RECT.top, reroll_cost);
                 }
             }
 
@@ -2301,6 +2316,7 @@ void game_shop()
         }
         default:
             state = 0; // Reset the state
+            reroll_cost = reroll_base_cost;
 
             selection_x = 0; // Reset the selection
             top_row = true; // Reset the top row selection

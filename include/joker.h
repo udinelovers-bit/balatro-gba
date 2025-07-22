@@ -17,6 +17,8 @@
 #define POLY_EDITION 3
 #define NEGATIVE_EDITION 4
 
+#define MAX_EDITIONS 5
+
 #define COMMON_JOKER 0
 #define UNCOMMON_JOKER 1
 #define RARE_JOKER 2
