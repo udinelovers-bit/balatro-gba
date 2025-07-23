@@ -9,6 +9,7 @@
 #include "sprite.h"
 #include "card.h"
 #include "blind.h"
+#include "joker.h"
 #include "graphic_utils.h"
 #include "tonc_video.h"
 
@@ -29,6 +30,7 @@ static int background = 0;
 static enum GameState game_state = GAME_BLIND_SELECT; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
+static int state = 0; // General state variable, used for switch statements in each game state related function
 
 static enum HandType hand_type = NONE;
 
@@ -62,11 +64,15 @@ static int hand_size = 8; // Default hand size is 8
 static int cards_drawn = 0;
 static int hand_selections = 0;
 
-static int card_focused = 0;
+static int selection_x = 0;
+static int selection_y = 0;
 
 static bool sort_by_suit = false;
 
 // Stacks
+static JokerObject *jokers[MAX_JOKERS_HELD_SIZE] = {NULL};
+static int jokers_top = -1;
+
 static CardObject *played[MAX_SELECTION_SIZE] = {NULL};
 static int played_top = -1;
 
@@ -78,6 +84,19 @@ static int deck_top = -1;
 
 static Card *discard_pile[MAX_DECK_SIZE] = {NULL};
 static int discard_top = -1;
+
+// Joker stack
+static inline void joker_push(JokerObject *joker)
+{
+    if (jokers_top >= MAX_JOKERS_HELD_SIZE - 1) return;
+    jokers[++jokers_top] = joker;
+}
+
+static inline JokerObject *joker_pop()
+{
+    if (jokers_top < 0) return NULL;
+    return jokers[jokers_top--];
+}
 
 // Played stack
 static inline void played_push(CardObject *card_object)
@@ -133,7 +152,7 @@ static const Rect POP_MENU_ANIM_RECT        = {9,       7,      24,     31 };
 
 static const Rect SINGLE_BLIND_SELECT_RECT = { 9,       7,      13,     32 };
 
-static const Rect HAND_BG_RECT_SELECTING    = {9,       11,     24,     15 };
+static const Rect HAND_BG_RECT_SELECTING    = {9,       11,     24,     17 };
 // TODO: Currently unused, remove?
 //static const Rect HAND_BG_RECT_PLAYING      = {9,       14,     24,     18 };
 
@@ -162,11 +181,12 @@ static const Rect SCORE_RECT                = {32,      48,     64,     56  };
 
 static const Rect PLAYED_CARDS_SCORES_RECT  = {72,      48,     240,    56  };
 static const Rect BLIND_TOKEN_TEXT_RECT     = {80,      72,     200,    160 };
-static const Rect MONEY_TEXT_RECT           = {8,       120,    64,     120 };
+static const Rect MONEY_TEXT_RECT           = {8,       120,    64,     128 };
 static const Rect CHIPS_TEXT_RECT           = {8,       80,     32,     88  };
 static const Rect MULT_TEXT_RECT            = {40,      80,     64,     88  };
 static const Rect BLIND_REWARD_RECT         = {40,      32,     64,     40  };
 static const Rect BLIND_REQ_TEXT_RECT       = {32,      24,     64,     32  };
+static const Rect SHOP_PRICES_TEXT_RECT     = {72,      56,     192,    160 };
 
 // Rects with UNDEFINED are only used in tte_printf, they need to be fully defined
 // to be used with tte_erase_rect_wrapper()
@@ -180,6 +200,7 @@ static const Rect ROUND_END_BLIND_REWARD_RECT = { 168,  96,     UNDEFINED, UNDEF
 static const Rect ROUND_END_NUM_HANDS_RECT  = {88,      116,    UNDEFINED, UNDEFINED };
 static const Rect HAND_REWARD_RECT          = {168,     UNDEFINED, UNDEFINED, UNDEFINED };
 static const Rect CASHOUT_RECT              = {88,      72,     UNDEFINED, UNDEFINED };
+static const Rect SHOP_REROLL_RECT          = {88,      96,    UNDEFINED, UNDEFINED };
 
 //TODO: Properly define and use
 #define MENU_POP_OUT_ANIM_FRAMES 20
@@ -401,30 +422,43 @@ void change_background(int id)
     }
     else if (id == BG_ID_CARD_SELECTING)
     {
-        REG_DISPCNT |= DCNT_WIN0; // Enable window 0 to make hand background transparent
-        // Load the tiles and palette
-        // Background
-        memcpy(pal_bg_mem, background_gfxPal, 64); // This '64" isn't a specific number, I'm just using it to prevent the text colors from being overridden
-        GRIT_CPY(&tile8_mem[MAIN_BG_CBB], background_gfxTiles); // Deadass i have no clue how any of these memory things work but I just messed with them until stuff worked
-        GRIT_CPY(&se_mem[MAIN_BG_SBB], background_gfxMap);
-
         tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
+        REG_WIN0V = (REG_WIN0V << 8) | 0x80; // Set window 0 top to 128
 
-        if (current_blind == BIG_BLIND) // Change text and palette depending on blind type
+        if (background == BG_ID_CARD_PLAYING)
         {
-            main_bg_se_copy_rect(BIG_BLIND_TITLE_SRC_RECT, TOP_LEFT_BLIND_TITLE_POINT);
+            int offset = 11;
+            memcpy16(&se_mem[MAIN_BG_SBB][SE_ROW_LEN * offset], &background_gfxMap[SE_ROW_LEN * offset], SE_ROW_LEN * 8);
         }
-        else if (current_blind == BOSS_BLIND)
+        else
         {
-            main_bg_se_copy_rect(BOSS_BLIND_TITLE_SRC_RECT, TOP_LEFT_BLIND_TITLE_POINT);
+            REG_DISPCNT |= DCNT_WIN0; // Enable window 0 to make hand background transparent
+            // Load the tiles and palette
+            // Background
+            memcpy(pal_bg_mem, background_gfxPal, 64); // This '64" isn't a specific number, I'm just using it to prevent the text colors from being overridden
+            GRIT_CPY(&tile8_mem[MAIN_BG_CBB], background_gfxTiles); // Deadass i have no clue how any of these memory things work but I just messed with them until stuff worked
+            GRIT_CPY(&se_mem[MAIN_BG_SBB], background_gfxMap);
+
+            if (current_blind == BIG_BLIND) // Change text and palette depending on blind type
+            {
+                main_bg_se_copy_rect(BIG_BLIND_TITLE_SRC_RECT, TOP_LEFT_BLIND_TITLE_POINT);
+            }
+            else if (current_blind == BOSS_BLIND)
+            {
+                main_bg_se_copy_rect(BOSS_BLIND_TITLE_SRC_RECT, TOP_LEFT_BLIND_TITLE_POINT);
+            }
+
+            bg_copy_current_item_to_top_left_panel();
+
+            // This would change the palette of the background to match the blind, but the backgroun doesn't use the blind token's exact colors so a different approach is required
+            memset16(&pal_bg_mem[19], blind_get_color(current_blind, BLIND_BACKGROUND_MAIN_COLOR_INDEX), 1);
+            memset16(&pal_bg_mem[5], blind_get_color(current_blind, BLIND_BACKGROUND_SECONDARY_COLOR_INDEX), 1);
+            memset16(&pal_bg_mem[2], blind_get_color(current_blind, BLIND_BACKGROUND_SHADOW_COLOR_INDEX), 1);
+
+            // Copy the Play Hand and Discard button colors to their selection highlights
+            memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1);
+            memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1);
         }
-
-        bg_copy_current_item_to_top_left_panel();
-
-        // This would change the palette of the background to match the blind, but the backgroun doesn't use the blind token's exact colors so a different approach is required
-        memset16(&pal_bg_mem[17], blind_get_color(current_blind, BLIND_BACKGROUND_MAIN_COLOR_INDEX), 1);
-        memset16(&pal_bg_mem[16], blind_get_color(current_blind, BLIND_BACKGROUND_SECONDARY_COLOR_INDEX), 1);
-        memset16(&pal_bg_mem[5], blind_get_color(current_blind, BLIND_BACKGROUND_SHADOW_COLOR_INDEX), 1);
     }
     else if (id == BG_ID_CARD_PLAYING)
     {
@@ -434,19 +468,18 @@ void change_background(int id)
             background = BG_ID_CARD_PLAYING;
         }
 
-        Rect curr_hand_bg_rect = HAND_BG_RECT_SELECTING;
+        REG_WIN0V = (REG_WIN0V << 8) | 0xA0; // Set window 0 bottom to 160
+
         for (int i = 0; i <= 2; i++)
         {
-            main_bg_se_move_rect_1_tile_vert(curr_hand_bg_rect, SE_DOWN);
-            curr_hand_bg_rect.top++;
-            curr_hand_bg_rect.bottom++;
+            main_bg_se_move_rect_1_tile_vert(HAND_BG_RECT_SELECTING, SE_DOWN);
         }
 
         tte_erase_rect_wrapper(HAND_SIZE_RECT_SELECT);
     }
     else if (id == BG_ID_ROUND_END)
     {
-        if (background != BG_ID_CARD_SELECTING)
+        if (background != BG_ID_CARD_SELECTING && background != BG_ID_CARD_PLAYING)
         {
             change_background(BG_ID_CARD_SELECTING);
             background = BG_ID_ROUND_END;
@@ -604,15 +637,31 @@ void set_temp_score(int value)
 
 void set_score(int value)
 {
-    if (value == 0) // Clear if 0
+    // Clear the existing text before redrawing
+    tte_erase_rect_wrapper(SCORE_RECT);
+    
+    char score_suffix = ' ';
+    int display_value = value;
+    
+    if(value >= 10000)
     {
-        Rect rect = SCORE_RECT;
-        rect.left += 1;
-        tte_erase_rect_wrapper(rect);
+        score_suffix = 'k';
+        display_value = value / 1000; // 12,986 = 12k
     }
-
-    int x_offset = 32;
-    tte_printf("#{P:%d,48; cx:0xF000}%d", x_offset, value);
+    
+    // Calculate text width: digits + suffix character (if 'k')
+    int num_digits = get_digits(display_value);
+    int text_width = num_digits * TILE_SIZE;
+    if(score_suffix == 'k')
+    {
+        text_width += TILE_SIZE; // Add width for 'k' suffix
+    }
+    
+    // Calculate center position within SCORE_RECT
+    int rect_width = SCORE_RECT.right - SCORE_RECT.left;
+    int x_offset = SCORE_RECT.left + (rect_width - text_width) / 2;
+    
+    tte_printf("#{P:%d,48; cx:0xF000}%d%c", x_offset, display_value, score_suffix);
 }
 
 void set_money(int value)
@@ -663,7 +712,7 @@ static void print_hand_type(const char* hand_type_str)
 {
     if (hand_type_str == NULL)
         return; // NULL-checking paranoia
-    tte_printf("#{P:%d,%d;}%s", HAND_TYPE_RECT.left, HAND_TYPE_RECT.top, hand_type_str);
+    tte_printf("#{P:%d,%d; cx:0xF000}%s", HAND_TYPE_RECT.left, HAND_TYPE_RECT.top, hand_type_str);
 }
 
 void set_hand()
@@ -772,24 +821,19 @@ void card_draw()
 void hand_set_focus(int index)
 {
     if (index < 0 || index > hand_top || hand_state != HAND_SELECT) return;
-    card_focused = index;
+    selection_x = index;
 
     mm_sound_effect sfx_focus = {{SFX_CARD_FOCUS}, 1024 + rand() % 512, 0, 255, 128,};
     mmEffectEx(&sfx_focus);
 }
 
-int hand_get_focus()
-{
-    return card_focused;
-}
-
 void hand_select()
 {
-    if (hand_state != HAND_SELECT || hand[card_focused] == NULL) return;
+    if (hand_state != HAND_SELECT || hand[selection_x] == NULL) return;
 
-    if (hand[card_focused]->selected)
+    if (hand[selection_x]->selected)
     {
-        hand[card_focused]->selected = false;
+        hand[selection_x]->selected = false;
         hand_selections--;
 
         mm_sound_effect sfx_select = {{SFX_CARD_SELECT}, 1024, 0, 255, 128,};
@@ -797,7 +841,7 @@ void hand_select()
     }
     else if (hand_selections < MAX_SELECTION_SIZE)
     {
-        hand[card_focused]->selected = true;
+        hand[selection_x]->selected = true;
         hand_selections++;
 
         mm_sound_effect sfx_deselect = {{SFX_CARD_DESELECT}, 1024, 0, 255, 128,};
@@ -824,16 +868,12 @@ int hand_get_max_size()
 bool hand_discard()
 {
     if (hand_state != HAND_SELECT || hand_selections == 0) return false;
-    hand_state = HAND_DISCARD;
-    card_focused = 0;
     return true;
 }
 
 bool hand_play()
 {
     if (hand_state != HAND_SELECT || hand_selections == 0) return false;
-    hand_state = HAND_PLAY;
-    card_focused = 0;
     return true;
 }
 
@@ -884,13 +924,13 @@ void game_round_init()
     cards_drawn = 0;
     hand_selections = 0;
 
-    playing_blind_token = blind_token_new(current_blind, 8, 18, 33); // Create the blind token sprite at the top left corner
+    playing_blind_token = blind_token_new(current_blind, 8, 18, MAX_SELECTION_SIZE + MAX_HAND_SIZE + 1); // Create the blind token sprite at the top left corner
     // TODO: Hide blind token and display it after sliding blind rect animation
     //if (playing_blind_token != NULL)
     //{
     //    obj_hide(playing_blind_token->obj); // Hide the blind token sprite for now
     //}
-    round_end_blind_token = blind_token_new(current_blind, 81, 86, 34); // Create the blind token sprite for round end
+    round_end_blind_token = blind_token_new(current_blind, 81, 86, MAX_SELECTION_SIZE + MAX_HAND_SIZE + 2); // Create the blind token sprite for round end
 
     if (round_end_blind_token != NULL)
     {
@@ -899,9 +939,27 @@ void game_round_init()
 
     Rect blind_req_text_rect = BLIND_REQ_TEXT_RECT;
     int blind_requirement = blind_get_requirement(current_blind, ante);
+    
+    char score_suffix = ' ';
+    if(blind_requirement >= 10000)
+    {
+        // clear existing text
+        tte_erase_rect_wrapper(blind_req_text_rect);
+        
+        score_suffix = 'k';
+        blind_requirement /= 1000; // 11,000 = 11k
+    }
+    
+    // Update text rect for right alignment AFTER shortening the number
     update_text_rect_to_right_align_num(&blind_req_text_rect, blind_requirement, OVERFLOW_RIGHT);
     
-    tte_printf("#{P:%d,%d; cx:0xE000}%d", blind_req_text_rect.left, blind_req_text_rect.top, blind_requirement); // Blind requirement
+    // If we added a suffix, adjust position to account for the extra character
+    if(score_suffix == 'k')
+    {
+        blind_req_text_rect.left -= TILE_SIZE; // Move left by one character width to make room for 'k'
+    }
+
+    tte_printf("#{P:%d,%d; cx:0xE000}%d%c", blind_req_text_rect.left, blind_req_text_rect.top, blind_requirement, score_suffix); // Blind requirement
     tte_printf("#{P:%d,%d; cx:0xC000}$%d", BLIND_REWARD_RECT.left, BLIND_REWARD_RECT.top, blind_get_reward(current_blind)); // Blind reward
 
     deck_shuffle(); // Shuffle the deck at the start of the round
@@ -941,9 +999,9 @@ void game_init()
     hands = max_hands;
     discards = max_discards;
 
-    blind_select_tokens[SMALL_BLIND] = blind_token_new(SMALL_BLIND, 8, 18, 35);
-    blind_select_tokens[BIG_BLIND] = blind_token_new(BIG_BLIND, 8, 18, 36);
-    blind_select_tokens[BOSS_BLIND] = blind_token_new(BOSS_BLIND, 8, 18, 37);
+    blind_select_tokens[SMALL_BLIND] = blind_token_new(SMALL_BLIND, 8, 18, MAX_SELECTION_SIZE + MAX_HAND_SIZE + 3);
+    blind_select_tokens[BIG_BLIND] = blind_token_new(BIG_BLIND, 8, 18, MAX_SELECTION_SIZE + MAX_HAND_SIZE + 4);
+    blind_select_tokens[BOSS_BLIND] = blind_token_new(BOSS_BLIND, 8, 18, MAX_SELECTION_SIZE + MAX_HAND_SIZE + 5);
 
     obj_hide(blind_select_tokens[SMALL_BLIND]->obj);
     obj_hide(blind_select_tokens[BIG_BLIND]->obj);
@@ -982,37 +1040,95 @@ static void game_playing_process_input_and_state()
 {
     if (hand_state == HAND_SELECT)
     {
+        static bool discard_button_highlighted = false; // true = play button highlighted, false = discard button highlighted
+
         if (key_hit(KEY_LEFT))
         {
-            hand_set_focus(hand_get_focus() + 1); // The reason why this adds 1 is because the hand is drawn from right to left. There is no particular reason for this, it's just how I did it.
+            if (selection_y == 0)
+            {
+                hand_set_focus(selection_x + 1); // The reason why this adds 1 is because the hand is drawn from right to left. There is no particular reason for this, it's just how I did it.
+            }
+            else
+            {
+                discard_button_highlighted = false; // Play button
+            }
         }
         else if (key_hit(KEY_RIGHT))
         {
-            hand_set_focus(hand_get_focus() - 1);
+            if (selection_y == 0)
+            {
+                hand_set_focus(selection_x - 1);
+            }
+            else
+            {
+                discard_button_highlighted = true; // Discard button
+            }
+        }
+        else if (key_hit(KEY_UP) && selection_y != 0)
+        {
+            selection_y = 0;
+        }
+        else if (key_hit(KEY_DOWN) && selection_y != 1)
+        {
+            selection_y = 1;
+
+            if (selection_x > hand_top / 2)
+            {
+                discard_button_highlighted = false; // Play button
+            }
+            else
+            {
+                discard_button_highlighted = true; // Discard button
+            }
         }
 
-        if (key_hit(KEY_A))
+        if (selection_y == 1) // On row of play/discard buttons
+        {
+            if (discard_button_highlighted == false) // Play button logic
+            {
+                memset16(&pal_bg_mem[1], 0xFFFF, 1);
+                memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1);
+
+                if (key_hit(SELECT_CARD) && hands > 0 && hand_play())
+                {
+                    hand_state = HAND_PLAY;
+                    selection_x = 0;
+                    selection_y = 0;
+                    set_hands(--hands);
+                }
+            }
+            else // Discard button logic
+            {
+                memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1);
+                memset16(&pal_bg_mem[9], 0xFFFF, 1);
+
+                if (key_hit(SELECT_CARD) && discards > 0 && hand_discard())
+                {
+                    hand_state = HAND_DISCARD;
+                    selection_x = 0;
+                    selection_y = 0;
+                    set_hands(--discards);
+                    set_hand();
+                    tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards);
+                }
+            }
+        }
+        
+        if (selection_y == 0) // On row of cards
+        {
+            memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1); // Play button highlight color
+            memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1); // Discard button highlight color
+        }
+
+        if (key_hit(SELECT_CARD))
         {
             hand_select();
             set_hand();
         }
 
-        if (key_hit(KEY_B))
+        if (key_hit(SORT_HAND))
         {
             hand_change_sort();
-        }
-
-        if (key_hit(KEY_SELECT) && discards > 0 && hand_discard())
-        {
-            set_hand();
-            discards--;
-            tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards);
-        }
-
-        if (key_hit(KEY_START) && hands > 0 && hand_play())
-        {
-            hands--;
-            tte_printf("#{P:%d,%d; cx:0xD000}%d", HANDS_TEXT_RECT.left, HANDS_TEXT_RECT.top, hands);
         }
     }
     else if (play_state == PLAY_ENDING)
@@ -1147,20 +1263,22 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                 hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
                 break;
             case HAND_SELECT:
-                if (i == card_focused && !hand[i]->selected)
+                bool is_focused = (i == selection_x && selection_y == 0);
+
+                if (is_focused && !hand[i]->selected)
                 {
-                    hand_y -= (10 << FIX_SHIFT);
+                    hand_y -= int2fx(10);
                 }
-                else if (i != card_focused && hand[i]->selected)
+                else if (!is_focused && hand[i]->selected)
                 {
-                    hand_y -= (15 << FIX_SHIFT);
+                    hand_y -= int2fx(15);
                 }
-                else if (i == card_focused && hand[i]->selected)
+                else if (is_focused && hand[i]->selected)
                 {
-                    hand_y -= (20 << FIX_SHIFT);
+                    hand_y -= int2fx(20);
                 }
 
-                if (i != card_focused && hand[i]->y > hand_y)
+                if (i != selection_x && hand[i]->y > hand_y)
                 {
                     hand[i]->y = hand_y;
                     hand[i]->vy = 0;
@@ -1207,11 +1325,11 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                     {
                         if (hand_state == HAND_DISCARD)
                         {
-                            hand_y -= (15 << FIX_SHIFT); // Don't raise the card if we're mass discarding, it looks stupid.
+                            hand_y -= int2fx(15); // Don't raise the card if we're mass discarding, it looks stupid.
                         }
                         else
                         {
-                            hand_y += (24 << FIX_SHIFT);
+                            hand_y += int2fx(24);
                         }
                         hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
                     }
@@ -1234,7 +1352,7 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                 break;
             case HAND_PLAY:
                 hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
-                hand_y += (24 << FIX_SHIFT);
+                hand_y += int2fx(24);
 
                 if (hand[i]->selected && *discarded_card == false && timer % FRAMES(10) == 0)
                 {
@@ -1410,7 +1528,7 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                 break;
             case HAND_PLAYING: // Don't need to do anything here, just wait for the player to select cards
                 hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
-                hand_y += (24 << FIX_SHIFT);
+                hand_y += int2fx(24);
                 break;
             }
 
@@ -1457,7 +1575,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
                     if (played[i]->selected && played_top - i >= *played_selections)
                     {
-                        played_y -= (10 << FIX_SHIFT);
+                        played_y -= int2fx(10);
                     }
                     break;
                 case PLAY_SCORING:
@@ -1465,40 +1583,81 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                     {
                         // So pretend "played_selections" is now called "scored_cards" and it counts the number of cards that have been scored
                         int scored_cards = 0;
-                        for (int j = played_top; j >= 0; j--)
+                        for (int j = 0; j <= played_top; j++)
                         {
-                            if (played[played_top - j]->selected)
+                            tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
+
+                            if (*played_selections > 0)
                             {
-                                scored_cards++;
+                                for (int k = 0; k <= jokers_top; k++)
+                                {
+                                    if (joker_object_score(jokers[k], played[*played_selections - 1]->card, &chips, &mult, NULL, &money, NULL)) // NULLs aren't implemented yet
+                                    {
+                                        set_chips(chips);
+                                        set_mult(mult);
+                                        set_money(money);
+
+                                        return; 
+                                    }
+                                }
+                            }
+
+                            if (played[j]->selected)
+                            {
+                                scored_cards = j + 1; // Count the number of cards that have been scored
                                 if (scored_cards > *played_selections)
                                 {
-                                    tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
-                                    tte_set_pos(fx2int(played[played_top - j]->x) + 8, 48); // Offset of 16 pixels to center the text on the card
+                                    for (int k = 0; k <= jokers_top; k++)
+                                    {
+                                        if (jokers[k] != NULL)
+                                        {
+                                            jokers[k]->joker->processed = false; // Reset the joker's processed state for the next score
+                                        }
+                                    }
+
+                                    tte_set_pos(fx2int(played[j]->x) + 8, 48); // Offset of 16 pixels to center the text on the card
                                     tte_set_special(0xD000); // Set text color to blue from background memory
 
                                     // Write the score to a character buffer variable
                                     char score_buffer[5]; // Assuming the maximum score is 99, we need 4 characters (2 digits + null terminator)
-                                    snprintf(score_buffer, sizeof(score_buffer), "+%d", card_get_value(played[played_top - j]->card));
+                                    snprintf(score_buffer, sizeof(score_buffer), "+%d", card_get_value(played[j]->card));
                                     tte_write(score_buffer);
 
                                     *played_selections = scored_cards;
-                                    //played[j]->vy += (3 << FIX_SHIFT);
-                                    played[played_top - j]->vscale = float2fx(0.3f); // Scale down the card when it's scored
-                                    played[played_top - j]->vrotation = float2fx(8.0f); // Rotate the card when it's scored
-
-                                    mm_sound_effect sfx_select = {{SFX_CARD_SELECT}, 1024, 0, 255, 128,};
-                                    mmEffectEx(&sfx_select);
+                                    card_object_shake(played[j], SFX_CARD_SELECT);
 
                                     // Relocated card scoring logic here
-                                    chips += card_get_value(played[played_top - j]->card);
+                                    chips += card_get_value(played[j]->card);
                                     set_chips(chips);
+
                                     break;
                                 }
                             }
 
-                            if (j == 0 && scored_cards == *played_selections) // Check if it's the last card 
+                            if (j == played_top && scored_cards == *played_selections) // Check if it's the last card 
                             {
                                 tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
+
+                                for (int k = 0; k <= jokers_top; k++) // Independent joker scoring loop
+                                {
+                                    if (joker_object_score(jokers[k], NULL, &chips, &mult, NULL, &money, NULL)) // NULLs aren't implemented yet
+                                    {
+                                        set_chips(chips);
+                                        set_mult(mult);
+                                        set_money(money);
+
+                                        return; // Returning was just the easiest way to break out of the loop
+                                    }
+                                }
+
+                                for (int k = 0; k <= jokers_top; k++)
+                                {
+                                    if (jokers[k] != NULL)
+                                    {
+                                        jokers[k]->joker->processed = false; // Reset the joker's processed state for the next round
+                                    }
+                                }
+
                                 play_state = PLAY_ENDING;
                                 timer = 0;
                                 *played_selections = played_top + 1; // Reset the played selections to the top of the played stack
@@ -1509,7 +1668,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
                     if (played[i]->selected)
                     {
-                        played_y -= (10 << FIX_SHIFT);
+                        played_y -= int2fx(10);
                     }
                     break;
                 case PLAY_ENDING: // This is the reverse of PLAY_PLAYING. The cards get reset back to their neutral position sequentially
@@ -1526,7 +1685,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
                     if (played[i]->selected && played_top - i <= *played_selections - 1)
                     {
-                        played_y -= (10 << FIX_SHIFT);
+                        played_y -= int2fx(10);
                     }
                     break;
                 case PLAY_ENDED: // Basically a copy of HAND_DISCARD
@@ -1592,6 +1751,34 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
     }
 }
 
+static void held_jokers_update_loop()
+{
+    const int spacing_lut[MAX_JOKERS_HELD_SIZE][MAX_JOKERS_HELD_SIZE] = 
+    {
+        {0, 0, 0, 0, 0},
+        {13, -13, 0, 0, 0},
+        {26, 0, -26, 0, 0},
+        {39, 13, -13, -39, 0},
+        {40, 20, 0, -20, -40}
+    };
+
+    FIXED hand_x = int2fx(108);
+    FIXED hand_y = int2fx(10);
+
+    for (int i = jokers_top; i >= 0; i--)
+    {
+        jokers[i]->tx = hand_x - int2fx(spacing_lut[jokers_top][i]); 
+        jokers[i]->ty = hand_y;
+
+        if (jokers[i]->selected)
+        {
+            jokers[i]->ty -= int2fx(10);
+        }
+
+        joker_object_update(jokers[i]);
+    }
+}
+
 static void game_playing_ui_text_update()
 {
     static int last_hand_size = 0;
@@ -1627,6 +1814,39 @@ static void game_round_end_cashout()
 
     score = 0;
     set_score(score); // Set the score display
+}
+
+static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
+{
+    tte_erase_rect_wrapper(SHOP_PRICES_TEXT_RECT);
+
+    for (int i = 0; i < MAX_SHOP_JOKERS; i++)
+    {
+        if (shop_jokers[i] != NULL)
+        {
+            joker_object_destroy(&shop_jokers[i]); // Destroy the joker object if it exists
+        }
+        
+        u8 joker_id = random() % MAX_JOKERS;
+
+        shop_jokers[i] = joker_object_new(joker_new(joker_id));
+        shop_jokers[i]->x = int2fx(120 + i * 32);
+        shop_jokers[i]->y = int2fx(160);
+        shop_jokers[i]->tx = shop_jokers[i]->x;
+        shop_jokers[i]->ty = int2fx(71);
+
+        int x = fx2int(shop_jokers[i]->tx) + TILE_SIZE - (get_digits_even(shop_jokers[i]->joker->value) - 1) * TILE_SIZE;
+        int y = fx2int(shop_jokers[i]->ty);
+        tte_printf("#{P:%d,%d; cx:0xC000}$%d", x, y, shop_jokers[i]->joker->value);
+
+        if (first_time == false)
+        {
+            shop_jokers[i]->y = shop_jokers[i]->ty; // If it's not the first time, set the y position to the target position
+            joker_object_shake(shop_jokers[i], UNDEFINED); // Give the joker a little wiggle animation
+        }
+
+        sprite_position(shop_jokers[i]->sprite, fx2int(shop_jokers[i]->x), fx2int(shop_jokers[i]->y));
+    }
 }
 
 void game_playing()
@@ -1677,8 +1897,6 @@ void game_round_end_cleanup()
 
 void game_round_end()
 {
-    static int state = 0;
-
     static int blind_reward = 0;
     static int hand_reward = 0;
     static int interest_reward = 0; 
@@ -1803,7 +2021,7 @@ void game_round_end()
             }   
             else if (timer > FRAMES(20))
             {
-                memset16(&pal_bg_mem[17], 0x1483, 1);
+                memset16(&pal_bg_mem[19], 0x1483, 1);
                 state = 6;
                 timer = 0;
             }
@@ -1892,14 +2110,13 @@ void game_round_end()
 
                 tte_printf("#{P:%d, %d; cx:0xF000}Cash Out: $%d", CASHOUT_RECT.left, CASHOUT_RECT.top, hands + blind_get_reward(current_blind)); // Print the cash out amount
             }
-            else if (timer > FRAMES(40) && key_hit(KEY_A)) // Wait until the player presses A to cash out
+            else if (timer > FRAMES(40) && key_hit(SELECT_CARD)) // Wait until the player presses A to cash out
             {
                 game_round_end_cashout();
 
                 state = 8; // Go to the next state
                 timer = 0; // Reset the timer
             
-                memset16(&pal_bg_mem[6], 0x0174, 1);
                 obj_hide(round_end_blind_token->obj); // Hide the blind token object
                 tte_erase_rect_wrapper(BLIND_TOKEN_TEXT_RECT); // Erase the blind token text
             }
@@ -1934,16 +2151,22 @@ void game_round_end()
 void game_shop()
 {
     change_background(BG_ID_SHOP);
-    
-    // TODO: Later move these static variables somewhere else so they can be reused for each game state
-    static int state = 0;
 
-    // these are for controlling the shop menu
-    static bool top_row = true;
-    static ushort selection_x = 0;
+    static JokerObject *shop_jokers[MAX_SHOP_JOKERS] = {NULL};
+
+    for (int i = 0; i < MAX_SHOP_JOKERS; i++)
+    {
+        if (shop_jokers[i] != NULL)
+        {
+            joker_object_update(shop_jokers[i]);
+        }
+    }
+
+    const int reroll_base_cost = 5; // Base cost for rerolling the shop items
+    static int reroll_cost = reroll_base_cost;
 
     // temp variables for future implementation
-    const ushort max_items_top = 0; 
+    const ushort max_items_top = MAX_SHOP_JOKERS; 
     const ushort max_items_bottom = 0;
 
     if (timer % 20 == 0) // Shift palette around the border of the shop icon
@@ -1975,6 +2198,11 @@ void game_shop()
         {           
             main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
 
+            if (timer == 1)
+            {
+                game_shop_create_items(shop_jokers, true);
+            }
+
             if (timer >= 7) // Shift the shop icon
             {
                 int timer_offset = timer - 6;
@@ -2002,10 +2230,15 @@ void game_shop()
         }    
         case 1: // Shop menu input and selection
         {
+            if (timer == 1)
+            {
+                tte_printf("#{P:%d,%d; cx:0xF000}$%d", SHOP_REROLL_RECT.left, SHOP_REROLL_RECT.top, reroll_cost);
+            }
+
             // Shop input logic
             if (key_hit(KEY_UP))
             {
-                top_row = true;
+                selection_y = 0;
 
                 if (selection_x > max_items_top)
                 {
@@ -2014,7 +2247,7 @@ void game_shop()
             }
             else if (key_hit(KEY_DOWN))
             {
-                top_row = false;
+                selection_y = 1;
 
                 if (selection_x > max_items_bottom)
                 {
@@ -2030,23 +2263,25 @@ void game_shop()
             }
             else if (key_hit(KEY_RIGHT))
             {
-                if (top_row && selection_x < max_items_top)
+                if (selection_y == 0 && selection_x < max_items_top)
                 {
                     selection_x++;
                 }
-                else if (!top_row && selection_x < max_items_bottom)
+                else if (selection_y == 1 && selection_x < max_items_bottom)
                 {
                     selection_x++;
                 }
             }
 
+            memcpy16(&pal_bg_mem[7], &pal_bg_mem[3], 1);
+            memcpy16(&pal_bg_mem[5], &pal_bg_mem[16], 1);
+
             // Shop selection logic
-            if (selection_x == 0 && top_row)
+            if (selection_x == 0 && selection_y == 0)
             {
-                memcpy16(&pal_bg_mem[7], &pal_bg_mem[3], 1);
                 memset16(&pal_bg_mem[5], 0xFFFF, 1);
 
-                if (key_hit(KEY_A))
+                if (key_hit(SELECT_CARD))
                 {
                     // Go to next blind selection game state
                     state = 2; // Go to the outro sequence state
@@ -2060,14 +2295,51 @@ void game_shop()
                     // And I don't care enough to fix it right now.
                 }
             }
-            else if (selection_x == 0 && !top_row)
+            else if (selection_x == 0 && selection_y == 1)
             {
                 memset16(&pal_bg_mem[7], 0xFFFF, 1);
-                memcpy16(&pal_bg_mem[5], &pal_bg_mem[16], 1);
 
-                if (key_hit(KEY_A))
+                if (key_hit(SELECT_CARD) && money >= reroll_cost)
                 {
-                    // Do shop re-roll for money
+                    money -= reroll_cost;
+                    set_money(money); // Update the money display
+                
+                    game_shop_create_items(shop_jokers, false);
+
+                    reroll_cost++;
+                    tte_printf("#{P:%d,%d; cx:0xF000}$%d", SHOP_REROLL_RECT.left, SHOP_REROLL_RECT.top, reroll_cost);
+                }
+            }
+
+            for (int i = 0; i < MAX_SHOP_JOKERS; i++)
+            {
+                if (shop_jokers[i] != NULL)
+                {
+                    if (i == selection_x - 1 && selection_y == 0)
+                    {
+                        shop_jokers[i]->ty = int2fx(61);
+
+                        if (key_hit(SELECT_CARD) && jokers_top < MAX_JOKERS_HELD_SIZE - 1 && money >= shop_jokers[i]->joker->value)
+                        {
+                            joker_push(shop_jokers[i]);
+                            money -= shop_jokers[i]->joker->value; // Deduct the money spent on the joker
+                            set_money(money); // Update the money display
+
+                            Rect joker_price_rect;
+                            joker_price_rect.left = fx2int(shop_jokers[i]->tx);
+                            joker_price_rect.top = fx2int(shop_jokers[i]->ty) + TILE_SIZE;
+                            joker_price_rect.right = joker_price_rect.left + TILE_SIZE * 3;
+                            joker_price_rect.bottom = joker_price_rect.top + TILE_SIZE;
+
+                            tte_erase_rect_wrapper(joker_price_rect);
+
+                            shop_jokers[i] = NULL; // Remove the joker from the shop
+                        }
+                    }
+                    else
+                    {
+                        shop_jokers[i]->ty = int2fx(71);
+                    }
                 }
             }
 
@@ -2082,20 +2354,30 @@ void game_shop()
             
             if (timer == 1)
             {
+                tte_erase_rect_wrapper(SHOP_PRICES_TEXT_RECT); // Erase the shop prices text
+
+                for (int i = 0; i < MAX_SHOP_JOKERS; i++)
+                {
+                    if (shop_jokers[i] != NULL)
+                    {
+                        shop_jokers[i]->ty = int2fx(160);
+                    }
+                }
+
                 int y = 6;
                 memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0006, 1);
                 memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0007, 2);
                 memset16(&se_mem[MAIN_BG_SBB][3 + 32 * (y - 1)], 0x0008, 1);
                 memset16(&se_mem[MAIN_BG_SBB][4 + 32 * (y - 1)], 0x0009, 4);
                 memset16(&se_mem[MAIN_BG_SBB][7 + 32 * (y - 1)], 0x000A, 1);
-                memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0406, 1); 
+                memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0406, 1);
             }
             else if (timer == 2)
             {
                 int y = 5;
                 memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0001, 1);
                 memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0002, 7);
-                memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0401, 1); 
+                memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0401, 1);
             }
 
             if (timer >= MENU_POP_OUT_ANIM_FRAMES)
@@ -2108,9 +2390,15 @@ void game_shop()
         }
         default:
             state = 0; // Reset the state
+            reroll_cost = reroll_base_cost;
 
             selection_x = 0; // Reset the selection
-            top_row = true; // Reset the top row selection
+            selection_y = 0; // Reset the selection
+
+            for (int i = 0; i < MAX_SHOP_JOKERS; i++)
+            {
+                joker_object_destroy(&shop_jokers[i]); // Destroy the joker objects
+            }
 
             increment_blind(BLIND_DEFEATED);
             game_set_state(GAME_BLIND_SELECT); // If we reach here, we should go to the blind select state
@@ -2121,10 +2409,6 @@ void game_shop()
 
 void game_blind_select()
 {
-    static int state = 0;
-
-    static bool top_row = true; // There's only one row in this game state, but this is here for consistency with the shop state if we make these variables global or something
-
     switch (state) // I'm only using magic numbers here for the sake of simplicity since it's just sequential, but you can replace them with named constants or enums if it makes it clearer
     {
         case 0: // Intro sequence (menu coming into frame)
@@ -2147,18 +2431,23 @@ void game_blind_select()
         }
         case 1: // Blind select input and selection
         {
+            if (timer == 1 && current_blind == BOSS_BLIND)
+            {
+                selection_y = 0;
+            }
+
             // Blind select input logic
             if (key_hit(KEY_UP))
             {
-                top_row = true;
+                selection_y = 0;
             }
-            else if (key_hit(KEY_DOWN))
+            else if (key_hit(KEY_DOWN) && current_blind != BOSS_BLIND)
             {
-                top_row = false;
+                selection_y = 1;
             }
-            else if (key_hit(KEY_A))
+            else if (key_hit(SELECT_CARD))
             {
-                if (top_row) // Blind selected
+                if (selection_y == 0) // Blind selected
                 {
                     state++;
                     timer = 0;
@@ -2186,7 +2475,7 @@ void game_blind_select()
                 }
             }
 
-            if (top_row)
+            if (selection_y == 0)
             {
                 memset16(&pal_bg_mem[18], 0xFFFF, 1);
                 memcpy16(&pal_bg_mem[10], &pal_bg_mem[5], 1);
@@ -2275,7 +2564,7 @@ void game_blind_select()
         default:
             state = 0;
             timer = 0;
-            top_row = true;
+            selection_y = 0;
             background = UNDEFINED;
             game_set_state(GAME_PLAYING);
             break;
@@ -2294,6 +2583,8 @@ void game_update()
             rng_seed *= 2;
         }
     }
+
+    held_jokers_update_loop();
 
     switch (game_state)
     {

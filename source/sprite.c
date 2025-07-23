@@ -79,6 +79,12 @@ void sprite_destroy(Sprite **sprite)
     *sprite = NULL;
 }
 
+int sprite_get_layer(Sprite *sprite)
+{
+    if (sprite == NULL || sprite->obj == NULL) return -1;
+    return sprite->obj - obj_buffer;
+}
+
 // Sprite functions
 void sprite_init()
 {

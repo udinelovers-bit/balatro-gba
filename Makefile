@@ -38,9 +38,10 @@ GRAPHICS	:= graphics
 #---------------------------------------------------------------------------------
 ARCH	:=	-mthumb -mthumb-interwork
 
-CFLAGS	:=	-g -Wall -O2\
-		-mcpu=arm7tdmi -mtune=arm7tdmi\
-		$(ARCH)
+CFLAGS	:= -O3 -Wall \
+        -mcpu=arm7tdmi -mtune=arm7tdmi \
+        -ffast-math -fomit-frame-pointer -funroll-loops \
+        $(ARCH)
 
 CFLAGS	+=	$(INCLUDE)
 

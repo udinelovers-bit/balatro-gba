@@ -6,10 +6,10 @@
 #include "card.h"
 #include "game.h"
 #include "blind.h"
+#include "joker.h"
 #include "graphic_utils.h"
 
 // Graphics
-#include "deck_gfx.h"
 #include "background_gfx.h"
 #include "affine_background_gfx.h"
 
@@ -60,10 +60,6 @@ void init()
     pal_bg_bank[14][15] = 0x213F; // Red
     pal_bg_bank[15][15] = CLR_WHITE;
 
-    // Deck graphics
-    GRIT_CPY(&tile_mem[4], deck_gfxTiles);
-    GRIT_CPY(pal_obj_mem, deck_gfxPal);
-
     // Set up the video mode
     // BG0 is the TTE text layer
     REG_BG0CNT = BG_PRIO(0) | BG_CBB(TTE_CBB) | BG_SBB(TTE_SBB) | BG_4BPP;
@@ -75,7 +71,7 @@ void init()
     int win1_left = 72;
     int win1_top = 44;
     int win1_right = 200;
-    int win1_bottom = 160;
+    int win1_bottom = 128;
 
     int win2_left = 72;
     int win2_top = 0;
@@ -101,7 +97,9 @@ void init()
 
     // Initialize subsystems
     sprite_init();
-    blinds_init();
+    card_init();
+    blind_init();
+    joker_init();
     game_init();
 }
 

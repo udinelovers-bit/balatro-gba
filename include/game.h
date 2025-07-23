@@ -3,6 +3,8 @@
 
 #define MAX_HAND_SIZE 16
 #define MAX_DECK_SIZE 52
+#define MAX_JOKERS_HELD_SIZE 5 // This doesn't account for negatives right now.
+#define MAX_SHOP_JOKERS 2 // TODO: Make this dynamic and allow for other items besides jokers
 #define MAX_SELECTION_SIZE 5
 #define FRAMES(x) (((x) + game_speed - 1) / game_speed)
 
@@ -12,6 +14,13 @@
 #define BG_ID_ROUND_END 3
 #define BG_ID_SHOP 4
 #define BG_ID_BLIND_SELECT 5
+
+// Input bindings
+#define SELECT_CARD KEY_A
+#define DESELECT_CARDS KEY_B
+#define PEEK_DECK KEY_L // Not implemented
+#define SORT_HAND KEY_R
+#define PAUSE_GAME KEY_START // Not implemented
 
 enum GameState
 {
