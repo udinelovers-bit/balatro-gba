@@ -27,7 +27,7 @@ static uint timer = 0; // This might already exist in libtonc but idk so i'm jus
 static int game_speed = 1;
 static int background = 0;
 
-static enum GameState game_state = GAME_BLIND_SELECT; // The current game state, this is used to determine what the game is doing at any given time
+static enum GameState game_state = GAME_SHOP; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
 static int state = 0; // General state variable, used for switch statements in each game state related function
@@ -51,7 +51,7 @@ static int discards = 0;
 
 static int round = 0;
 static int ante = 1;
-static int money = 4;
+static int money = 100;
 static int score = 0;
 static int temp_score = 0; // This is the score that shows in the same spot as the hand type.
 static FIXED lerped_score = 0;
