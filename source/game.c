@@ -644,7 +644,7 @@ void set_score(int value)
     char score_suffix = ' ';
     int display_value = value;
     
-    if(value > 9999)
+    if(value >= 10000)
     {
         score_suffix = 'k';
         display_value = value / 1000; // 12,986 = 12k
@@ -942,7 +942,7 @@ void game_round_init()
     int blind_requirement = blind_get_requirement(current_blind, ante);
     
     char score_suffix = ' ';
-    if(blind_requirement > 9999)
+    if(blind_requirement >= 10000)
     {
         // clear existing text
         tte_erase_rect_wrapper(blind_req_text_rect);
