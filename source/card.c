@@ -153,7 +153,7 @@ void card_object_set_sprite(CardObject *card_object, int layer)
     card_object->sprite = sprite_new(ATTR0_SQUARE | ATTR0_4BPP | ATTR0_AFF, ATTR1_SIZE_32, card_sprite_lut[card_object->card->suit][card_object->card->rank], 0, layer);
 }
 
-void card_object_score(CardObject *card_object, mm_word sound_id)
+void card_object_shake(CardObject *card_object, mm_word sound_id)
 {
     card_object->vscale = float2fx(0.3f); // Scale down the card when it's scored
     card_object->vrotation = float2fx(8.0f); // Rotate the card when it's scored

@@ -30,6 +30,7 @@ static int background = 0;
 static enum GameState game_state = GAME_BLIND_SELECT; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
+static int state = 0; // General state variable, used for switch statements in each game state related function
 
 static enum HandType hand_type = NONE;
 
@@ -63,8 +64,7 @@ static int hand_size = 8; // Default hand size is 8
 static int cards_drawn = 0;
 static int hand_selections = 0;
 
-static int card_focused = 0;
-static int previous_card_focused = 0;
+static int selection_x = 0;
 static int selection_y = 0;
 
 static bool sort_by_suit = false;
@@ -422,12 +422,13 @@ void change_background(int id)
     }
     else if (id == BG_ID_CARD_SELECTING)
     {
+        tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
+        REG_WIN0V = (REG_WIN0V << 8) | 0x80; // Set window 0 top to 128
+
         if (background == BG_ID_CARD_PLAYING)
         {
             int offset = 11;
             memcpy16(&se_mem[MAIN_BG_SBB][SE_ROW_LEN * offset], &background_gfxMap[SE_ROW_LEN * offset], SE_ROW_LEN * 8);
-            tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
-            REG_WIN0V = (REG_WIN0V << 8) | 0x80;
         }
         else
         {
@@ -437,8 +438,6 @@ void change_background(int id)
             memcpy(pal_bg_mem, background_gfxPal, 64); // This '64" isn't a specific number, I'm just using it to prevent the text colors from being overridden
             GRIT_CPY(&tile8_mem[MAIN_BG_CBB], background_gfxTiles); // Deadass i have no clue how any of these memory things work but I just messed with them until stuff worked
             GRIT_CPY(&se_mem[MAIN_BG_SBB], background_gfxMap);
-
-            tte_erase_rect_wrapper(HAND_SIZE_RECT_PLAYING);
 
             if (current_blind == BIG_BLIND) // Change text and palette depending on blind type
             {
@@ -469,7 +468,7 @@ void change_background(int id)
             background = BG_ID_CARD_PLAYING;
         }
 
-        REG_WIN0V = (REG_WIN0V << 8) | 0xA0;
+        REG_WIN0V = (REG_WIN0V << 8) | 0xA0; // Set window 0 bottom to 160
 
         for (int i = 0; i <= 2; i++)
         {
@@ -480,7 +479,7 @@ void change_background(int id)
     }
     else if (id == BG_ID_ROUND_END)
     {
-        if (background != BG_ID_CARD_SELECTING || background != BG_ID_CARD_PLAYING)
+        if (background != BG_ID_CARD_SELECTING && background != BG_ID_CARD_PLAYING)
         {
             change_background(BG_ID_CARD_SELECTING);
             background = BG_ID_ROUND_END;
@@ -822,7 +821,7 @@ void card_draw()
 void hand_set_focus(int index)
 {
     if (index < 0 || index > hand_top || hand_state != HAND_SELECT) return;
-    card_focused = index;
+    selection_x = index;
 
     mm_sound_effect sfx_focus = {{SFX_CARD_FOCUS}, 1024 + rand() % 512, 0, 255, 128,};
     mmEffectEx(&sfx_focus);
@@ -830,11 +829,11 @@ void hand_set_focus(int index)
 
 void hand_select()
 {
-    if (hand_state != HAND_SELECT || hand[card_focused] == NULL) return;
+    if (hand_state != HAND_SELECT || hand[selection_x] == NULL) return;
 
-    if (hand[card_focused]->selected)
+    if (hand[selection_x]->selected)
     {
-        hand[card_focused]->selected = false;
+        hand[selection_x]->selected = false;
         hand_selections--;
 
         mm_sound_effect sfx_select = {{SFX_CARD_SELECT}, 1024, 0, 255, 128,};
@@ -842,7 +841,7 @@ void hand_select()
     }
     else if (hand_selections < MAX_SELECTION_SIZE)
     {
-        hand[card_focused]->selected = true;
+        hand[selection_x]->selected = true;
         hand_selections++;
 
         mm_sound_effect sfx_deselect = {{SFX_CARD_DESELECT}, 1024, 0, 255, 128,};
@@ -1041,80 +1040,81 @@ static void game_playing_process_input_and_state()
 {
     if (hand_state == HAND_SELECT)
     {
+        static bool discard_button_highlighted = false; // true = play button highlighted, false = discard button highlighted
+
         if (key_hit(KEY_LEFT))
         {
             if (selection_y == 0)
             {
-                hand_set_focus(card_focused + 1); // The reason why this adds 1 is because the hand is drawn from right to left. There is no particular reason for this, it's just how I did it.
+                hand_set_focus(selection_x + 1); // The reason why this adds 1 is because the hand is drawn from right to left. There is no particular reason for this, it's just how I did it.
             }
             else
             {
-                card_focused = -2; // Play button
+                discard_button_highlighted = false; // Play button
             }
         }
         else if (key_hit(KEY_RIGHT))
         {
             if (selection_y == 0)
             {
-                hand_set_focus(card_focused - 1);
+                hand_set_focus(selection_x - 1);
             }
             else
             {
-                card_focused = -3; // Discard button
+                discard_button_highlighted = true; // Discard button
             }
         }
         else if (key_hit(KEY_UP) && selection_y != 0)
         {
             selection_y = 0;
-            card_focused = previous_card_focused;
         }
         else if (key_hit(KEY_DOWN) && selection_y != 1)
         {
             selection_y = 1;
-            previous_card_focused = card_focused;
 
-            if (card_focused > hand_top / 2)
+            if (selection_x > hand_top / 2)
             {
-                card_focused = -2; // Play button
+                discard_button_highlighted = false; // Play button
             }
             else
             {
-                card_focused = -3; // Discard button
+                discard_button_highlighted = true; // Discard button
             }
         }
 
-        if (card_focused == -2) // Play button logic
+        if (selection_y == 1) // On row of play/discard buttons
         {
-            memset16(&pal_bg_mem[1], 0xFFFF, 1);
-            memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1);
-
-            if (key_hit(SELECT_CARD) && hands > 0 && hand_play())
+            if (discard_button_highlighted == false) // Play button logic
             {
-                hand_state = HAND_PLAY;
-                card_focused = 0;
-                selection_y = 0;
-                previous_card_focused = 0;
-                set_hands(--hands);
+                memset16(&pal_bg_mem[1], 0xFFFF, 1);
+                memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1);
+
+                if (key_hit(SELECT_CARD) && hands > 0 && hand_play())
+                {
+                    hand_state = HAND_PLAY;
+                    selection_x = 0;
+                    selection_y = 0;
+                    set_hands(--hands);
+                }
             }
-        }
-        else if (card_focused == -3) // Discard button logic
-        {
-            memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1);
-            memset16(&pal_bg_mem[9], 0xFFFF, 1);
-
-            if (key_hit(SELECT_CARD) && discards > 0 && hand_discard())
+            else // Discard button logic
             {
-                hand_state = HAND_DISCARD;
-                card_focused = 0;
-                selection_y = 0;
-                previous_card_focused = 0;
-                set_hands(--discards);
-                set_hand();
-                tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards);
+                memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1);
+                memset16(&pal_bg_mem[9], 0xFFFF, 1);
+
+                if (key_hit(SELECT_CARD) && discards > 0 && hand_discard())
+                {
+                    hand_state = HAND_DISCARD;
+                    selection_x = 0;
+                    selection_y = 0;
+                    set_hands(--discards);
+                    set_hand();
+                    tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards);
+                }
             }
         }
         
-        if (card_focused >= 0)
+        if (selection_y == 0) // On row of cards
         {
             memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1); // Play button highlight color
             memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1); // Discard button highlight color
@@ -1263,20 +1263,22 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                 hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
                 break;
             case HAND_SELECT:
-                if (i == card_focused && !hand[i]->selected)
+                bool is_focused = (i == selection_x && selection_y == 0);
+
+                if (is_focused && !hand[i]->selected)
                 {
                     hand_y -= int2fx(10);
                 }
-                else if (i != card_focused && hand[i]->selected)
+                else if (!is_focused && hand[i]->selected)
                 {
                     hand_y -= int2fx(15);
                 }
-                else if (i == card_focused && hand[i]->selected)
+                else if (is_focused && hand[i]->selected)
                 {
                     hand_y -= int2fx(20);
                 }
 
-                if (i != card_focused && hand[i]->y > hand_y)
+                if (i != selection_x && hand[i]->y > hand_y)
                 {
                     hand[i]->y = hand_y;
                     hand[i]->vy = 0;
@@ -1581,82 +1583,70 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                     {
                         // So pretend "played_selections" is now called "scored_cards" and it counts the number of cards that have been scored
                         int scored_cards = 0;
-                        for (int j = played_top; j >= 0; j--)
+                        for (int j = 0; j <= played_top; j++)
                         {
-                            if (played[played_top - j]->selected)
+                            tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
+
+                            if (*played_selections > 0)
                             {
-                                scored_cards++;
+                                for (int k = 0; k <= jokers_top; k++)
+                                {
+                                    if (joker_object_score(jokers[k], played[*played_selections - 1]->card, &chips, &mult, NULL, &money, NULL)) // NULLs aren't implemented yet
+                                    {
+                                        set_chips(chips);
+                                        set_mult(mult);
+                                        set_money(money);
+
+                                        return; 
+                                    }
+                                }
+                            }
+
+                            if (played[j]->selected)
+                            {
+                                scored_cards = j + 1; // Count the number of cards that have been scored
                                 if (scored_cards > *played_selections)
                                 {
-                                    tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
-                                    tte_set_pos(fx2int(played[played_top - j]->x) + 8, 48); // Offset of 16 pixels to center the text on the card
+                                    for (int k = 0; k <= jokers_top; k++)
+                                    {
+                                        if (jokers[k] != NULL)
+                                        {
+                                            jokers[k]->joker->processed = false; // Reset the joker's processed state for the next score
+                                        }
+                                    }
+
+                                    tte_set_pos(fx2int(played[j]->x) + 8, 48); // Offset of 16 pixels to center the text on the card
                                     tte_set_special(0xD000); // Set text color to blue from background memory
 
                                     // Write the score to a character buffer variable
                                     char score_buffer[5]; // Assuming the maximum score is 99, we need 4 characters (2 digits + null terminator)
-                                    snprintf(score_buffer, sizeof(score_buffer), "+%d", card_get_value(played[played_top - j]->card));
+                                    snprintf(score_buffer, sizeof(score_buffer), "+%d", card_get_value(played[j]->card));
                                     tte_write(score_buffer);
 
                                     *played_selections = scored_cards;
-                                    card_object_score(played[played_top - j], SFX_CARD_SELECT);
+                                    card_object_shake(played[j], SFX_CARD_SELECT);
 
                                     // Relocated card scoring logic here
-                                    chips += card_get_value(played[played_top - j]->card);
+                                    chips += card_get_value(played[j]->card);
                                     set_chips(chips);
+
                                     break;
                                 }
                             }
 
-                            if (j == 0 && scored_cards == *played_selections) // Check if it's the last card 
+                            if (j == played_top && scored_cards == *played_selections) // Check if it's the last card 
                             {
                                 tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
 
-                                for (int k = 0; k <= jokers_top; k++)
+                                for (int k = 0; k <= jokers_top; k++) // Independent joker scoring loop
                                 {
-                                    if (jokers[k]->joker->proccessed == false)
-                                    {   
-                                        IndependentEffect joker_effect = joker_independent_effect(jokers[k]->joker);
-                                        IndependentEffect zero_effect = {0};
+                                    if (joker_object_score(jokers[k], NULL, &chips, &mult, NULL, &money, NULL)) // NULLs aren't implemented yet
+                                    {
+                                        set_chips(chips);
+                                        set_mult(mult);
+                                        set_money(money);
 
-                                        if (memcmp(&joker_effect, &zero_effect, sizeof(IndependentEffect)) != 0)
-                                        {
-                                            chips += joker_effect.chips;
-                                            set_chips(chips);
-                                            mult += joker_effect.mult;
-                                            set_mult(mult);
-                                            // TODO: XMult
-                                            money += joker_effect.money;
-                                            set_money(money);
-                                            // TODO: Retrigger
-
-
-                                            tte_set_pos(fx2int(jokers[k]->x) + 8, 48); // Offset of 16 pixels to center the text on the card
-
-                                            char score_buffer[12];
-
-                                            if (joker_effect.chips > 0)
-                                            {
-                                                tte_set_special(0xD000); // Blue
-                                                snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.chips);
-                                            }
-                                            else if (joker_effect.mult > 0)
-                                            {
-                                                tte_set_special(0xE000); // Red
-                                                snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.mult);
-                                            }
-                                            else if (joker_effect.money > 0)
-                                            {
-                                                tte_set_special(0xC000); // Yellow
-                                                snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.money);
-                                            }
-
-                                            tte_write(score_buffer);
-
-                                            jokers[k]->joker->proccessed = true; // Mark the joker as processed
-                                            joker_object_score(jokers[k], SFX_CARD_SELECT);
-
-                                            return; // Returning was just the easiest way to break out of the loop
-                                        }
+                                        return; // Returning was just the easiest way to break out of the loop
                                     }
                                 }
 
@@ -1664,7 +1654,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                                 {
                                     if (jokers[k] != NULL)
                                     {
-                                        jokers[k]->joker->proccessed = false; // Reset the joker's processed state for the next round
+                                        jokers[k]->joker->processed = false; // Reset the joker's processed state for the next round
                                     }
                                 }
 
@@ -1837,7 +1827,9 @@ static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
             joker_object_destroy(&shop_jokers[i]); // Destroy the joker object if it exists
         }
         
-        shop_jokers[i] = joker_object_new(joker_new(DEFAULT_JOKER_ID));
+        u8 joker_id = random() % MAX_JOKERS;
+
+        shop_jokers[i] = joker_object_new(joker_new(joker_id));
         shop_jokers[i]->x = int2fx(120 + i * 32);
         shop_jokers[i]->y = int2fx(160);
         shop_jokers[i]->tx = shop_jokers[i]->x;
@@ -1850,7 +1842,7 @@ static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
         if (first_time == false)
         {
             shop_jokers[i]->y = shop_jokers[i]->ty; // If it's not the first time, set the y position to the target position
-            joker_object_score(shop_jokers[i], UNDEFINED); // Give the joker a little wiggle animation
+            joker_object_shake(shop_jokers[i], UNDEFINED); // Give the joker a little wiggle animation
         }
 
         sprite_position(shop_jokers[i]->sprite, fx2int(shop_jokers[i]->x), fx2int(shop_jokers[i]->y));
@@ -1905,8 +1897,6 @@ void game_round_end_cleanup()
 
 void game_round_end()
 {
-    static int state = 0;
-
     static int blind_reward = 0;
     static int hand_reward = 0;
     static int interest_reward = 0; 
@@ -2161,9 +2151,6 @@ void game_round_end()
 void game_shop()
 {
     change_background(BG_ID_SHOP);
-    
-    // TODO: Later move these static variables somewhere else so they can be reused for each game state
-    static int state = 0;
 
     static JokerObject *shop_jokers[MAX_SHOP_JOKERS] = {NULL};
 
@@ -2177,10 +2164,6 @@ void game_shop()
 
     const int reroll_base_cost = 5; // Base cost for rerolling the shop items
     static int reroll_cost = reroll_base_cost;
-
-    // these are for controlling the shop menu
-    static bool top_row = true;
-    static ushort selection_x = 0;
 
     // temp variables for future implementation
     const ushort max_items_top = MAX_SHOP_JOKERS; 
@@ -2255,7 +2238,7 @@ void game_shop()
             // Shop input logic
             if (key_hit(KEY_UP))
             {
-                top_row = true;
+                selection_y = 0;
 
                 if (selection_x > max_items_top)
                 {
@@ -2264,7 +2247,7 @@ void game_shop()
             }
             else if (key_hit(KEY_DOWN))
             {
-                top_row = false;
+                selection_y = 1;
 
                 if (selection_x > max_items_bottom)
                 {
@@ -2280,11 +2263,11 @@ void game_shop()
             }
             else if (key_hit(KEY_RIGHT))
             {
-                if (top_row && selection_x < max_items_top)
+                if (selection_y == 0 && selection_x < max_items_top)
                 {
                     selection_x++;
                 }
-                else if (!top_row && selection_x < max_items_bottom)
+                else if (selection_y == 1 && selection_x < max_items_bottom)
                 {
                     selection_x++;
                 }
@@ -2294,7 +2277,7 @@ void game_shop()
             memcpy16(&pal_bg_mem[5], &pal_bg_mem[16], 1);
 
             // Shop selection logic
-            if (selection_x == 0 && top_row)
+            if (selection_x == 0 && selection_y == 0)
             {
                 memset16(&pal_bg_mem[5], 0xFFFF, 1);
 
@@ -2312,7 +2295,7 @@ void game_shop()
                     // And I don't care enough to fix it right now.
                 }
             }
-            else if (selection_x == 0 && !top_row)
+            else if (selection_x == 0 && selection_y == 1)
             {
                 memset16(&pal_bg_mem[7], 0xFFFF, 1);
 
@@ -2332,7 +2315,7 @@ void game_shop()
             {
                 if (shop_jokers[i] != NULL)
                 {
-                    if (i == selection_x - 1 && top_row)
+                    if (i == selection_x - 1 && selection_y == 0)
                     {
                         shop_jokers[i]->ty = int2fx(61);
 
@@ -2410,7 +2393,7 @@ void game_shop()
             reroll_cost = reroll_base_cost;
 
             selection_x = 0; // Reset the selection
-            top_row = true; // Reset the top row selection
+            selection_y = 0; // Reset the selection
 
             for (int i = 0; i < MAX_SHOP_JOKERS; i++)
             {
@@ -2426,10 +2409,6 @@ void game_shop()
 
 void game_blind_select()
 {
-    static int state = 0;
-
-    static bool top_row = true; // There's only one row in this game state, but this is here for consistency with the shop state if we make these variables global or something
-
     switch (state) // I'm only using magic numbers here for the sake of simplicity since it's just sequential, but you can replace them with named constants or enums if it makes it clearer
     {
         case 0: // Intro sequence (menu coming into frame)
@@ -2452,18 +2431,23 @@ void game_blind_select()
         }
         case 1: // Blind select input and selection
         {
+            if (timer == 1 && current_blind == BOSS_BLIND)
+            {
+                selection_y = 0;
+            }
+
             // Blind select input logic
             if (key_hit(KEY_UP))
             {
-                top_row = true;
+                selection_y = 0;
             }
-            else if (key_hit(KEY_DOWN))
+            else if (key_hit(KEY_DOWN) && current_blind != BOSS_BLIND)
             {
-                top_row = false;
+                selection_y = 1;
             }
             else if (key_hit(SELECT_CARD))
             {
-                if (top_row) // Blind selected
+                if (selection_y == 0) // Blind selected
                 {
                     state++;
                     timer = 0;
@@ -2491,7 +2475,7 @@ void game_blind_select()
                 }
             }
 
-            if (top_row)
+            if (selection_y == 0)
             {
                 memset16(&pal_bg_mem[18], 0xFFFF, 1);
                 memcpy16(&pal_bg_mem[10], &pal_bg_mem[5], 1);
@@ -2580,7 +2564,7 @@ void game_blind_select()
         default:
             state = 0;
             timer = 0;
-            top_row = true;
+            selection_y = 0;
             background = UNDEFINED;
             game_set_state(GAME_PLAYING);
             break;

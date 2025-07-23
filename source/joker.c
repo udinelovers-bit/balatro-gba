@@ -4,9 +4,11 @@
 #include "joker_gfx.h"
 #include "graphic_utils.h"
 #include "card.h"
+#include "soundbank.h"
 
 #include <maxmod.h>
 #include <stdlib.h>
+#include <string.h>
 
 const static u8 joker_data_lut[MAX_JOKERS][2] = // Rarity, Value
 {
@@ -46,7 +48,7 @@ Joker *joker_new(u8 id)
     joker->modifier = BASE_EDITION; // TODO: Make this random later
     joker->value = joker_data_lut[id][1] + edition_price_lut[joker->modifier]; // Base value + edition price
     joker->rarity = joker_data_lut[id][0];
-    joker->proccessed = false;
+    joker->processed = false;
 
     return joker;
 }
@@ -58,17 +60,21 @@ void joker_destroy(Joker **joker)
     *joker = NULL;
 }
 
-IndependentEffect joker_independent_effect(Joker *joker)
+JokerEffect joker_get_score_effect(Joker *joker, Card *scored_card)
 {
-    IndependentEffect effect = {0};
+    JokerEffect effect = {0};
 
     switch (joker->id)
     {
         case DEFAULT_JOKER_ID: // Default Joker
+            if (scored_card != NULL) break; // Joker is independent, no effect
             effect.mult = 4;
             break;
         case GREEDY_JOKER_ID: // Greedy Joker
-            // Nothing because this joker is a scored type
+            if (scored_card != NULL && scored_card->suit == DIAMONDS) // If the scored card is a diamond
+            {
+                effect.mult = 3;
+            }
             break;
         default:
             break;
@@ -139,8 +145,53 @@ void joker_object_update(JokerObject *joker_object)
     card_object_update(card_object);
 }
 
-void joker_object_score(JokerObject *joker_object, mm_word sound_id) // Another derived function of card_object
+void joker_object_shake(JokerObject *joker_object, mm_word sound_id)
 {
     CardObject *card_object = (CardObject *)joker_object;
-    card_object_score(card_object, sound_id);
+    card_object_shake(card_object, sound_id);
+}
+
+bool joker_object_score(JokerObject *joker_object, Card* scored_card, int *chips, int *mult, int *xmult, int *money, bool *retrigger)
+{
+    if (joker_object->joker->processed == true) return false; // If the joker has already been processed, return false
+
+    JokerEffect joker_effect = joker_get_score_effect(joker_object->joker, scored_card);
+
+    if (memcmp(&joker_effect, &(JokerEffect){0}, sizeof(JokerEffect)) != 0)
+    {
+        *chips += joker_effect.chips;
+        *mult += joker_effect.mult;
+        // TODO: XMult
+        *money += joker_effect.money;
+        // TODO: Retrigger
+
+        tte_set_pos(fx2int(joker_object->x) + 8, 48); // Offset of 16 pixels to center the text on the card
+
+        char score_buffer[12];
+
+        if (joker_effect.chips > 0)
+        {
+            tte_set_special(0xD000); // Blue
+            snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.chips);
+        }
+        else if (joker_effect.mult > 0)
+        {
+            tte_set_special(0xE000); // Red
+            snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.mult);
+        }
+        else if (joker_effect.money > 0)
+        {
+            tte_set_special(0xC000); // Yellow
+            snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.money);
+        }
+
+        tte_write(score_buffer);
+
+        joker_object->joker->processed = true; // Mark the joker as processed
+        joker_object_shake(joker_object, SFX_CARD_SELECT); // TODO: Add a sound effect for scoring the joker
+
+        return true;
+    }
+
+    return false;
 }

@@ -36,7 +36,7 @@ typedef struct
     u8 modifier; // base, foil, holo, poly, negative
     u8 value;
     u8 rarity;
-    bool proccessed;
+    bool processed;
 } Joker;
 
 typedef struct // copy of CardObject in card.h
@@ -62,16 +62,7 @@ typedef struct  // These jokers are triggered after the played hand has finished
     int xmult;
     int money;
     bool retrigger; // Retrigger played hand (e.g. "Dusk" joker, even though on the wiki it says "On Scored" it makes more sense to have it here)
-} IndependentEffect;
-
-typedef struct 
-{
-    int chips;
-    int mult;
-    int xmult;
-    int money;
-    bool retrigger; // Retrigger scored card
-} OnScoredEffect;
+} JokerEffect;
 
 void joker_init();
 
@@ -80,12 +71,12 @@ void joker_destroy(Joker **joker);
 
 // Unique effects like "Four Fingers" or "Credit Card" will be hard coded into game.c with a conditional check for the joker ID from the players owned jokers
 // game.c should probably be restructured so most of the variables in it are moved to some sort of global variable header file so they can be easily accessed and modified for the jokers
-IndependentEffect joker_independent_effect(Joker *joker);
-OnScoredEffect joker_on_scored(Joker *joker, Card *scored_card);
+JokerEffect joker_get_score_effect(Joker *joker, Card *scored_card);
 
 JokerObject *joker_object_new(Joker *joker);
 void joker_object_destroy(JokerObject **joker_object);
 void joker_object_update(JokerObject *joker_object);
-void joker_object_score(JokerObject *joker_object, mm_word sound_id); // This doesn't actually score anything, it just performs an animation and plays a sound effect
+void joker_object_shake(JokerObject *joker_object, mm_word sound_id); // This doesn't actually score anything, it just performs an animation and plays a sound effect
+bool joker_object_score(JokerObject *joker_object, Card* scored_card, int *chips, int *mult, int *xmult, int *money, bool *retrigger); // This scores the joker and returns true if it was scored successfully (Card = NULL means the joker is independent and not scored by a card)
 
 #endif // JOKER_H
