@@ -1549,82 +1549,70 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                     {
                         // So pretend "played_selections" is now called "scored_cards" and it counts the number of cards that have been scored
                         int scored_cards = 0;
-                        for (int j = played_top; j >= 0; j--)
+                        for (int j = 0; j <= played_top; j++)
                         {
-                            if (played[played_top - j]->selected)
+                            tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
+
+                            if (*played_selections > 0)
                             {
-                                scored_cards++;
+                                for (int k = 0; k <= jokers_top; k++)
+                                {
+                                    if (joker_object_score(jokers[k], played[*played_selections - 1]->card, &chips, &mult, NULL, &money, NULL)) // NULLs aren't implemented yet
+                                    {
+                                        set_chips(chips);
+                                        set_mult(mult);
+                                        set_money(money);
+
+                                        return; 
+                                    }
+                                }
+                            }
+
+                            if (played[j]->selected)
+                            {
+                                scored_cards = j + 1; // Count the number of cards that have been scored
                                 if (scored_cards > *played_selections)
                                 {
-                                    tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
-                                    tte_set_pos(fx2int(played[played_top - j]->x) + 8, 48); // Offset of 16 pixels to center the text on the card
+                                    for (int k = 0; k <= jokers_top; k++)
+                                    {
+                                        if (jokers[k] != NULL)
+                                        {
+                                            jokers[k]->joker->processed = false; // Reset the joker's processed state for the next score
+                                        }
+                                    }
+
+                                    tte_set_pos(fx2int(played[j]->x) + 8, 48); // Offset of 16 pixels to center the text on the card
                                     tte_set_special(0xD000); // Set text color to blue from background memory
 
                                     // Write the score to a character buffer variable
                                     char score_buffer[5]; // Assuming the maximum score is 99, we need 4 characters (2 digits + null terminator)
-                                    snprintf(score_buffer, sizeof(score_buffer), "+%d", card_get_value(played[played_top - j]->card));
+                                    snprintf(score_buffer, sizeof(score_buffer), "+%d", card_get_value(played[j]->card));
                                     tte_write(score_buffer);
 
                                     *played_selections = scored_cards;
-                                    card_object_score(played[played_top - j], SFX_CARD_SELECT);
+                                    card_object_shake(played[j], SFX_CARD_SELECT);
 
                                     // Relocated card scoring logic here
-                                    chips += card_get_value(played[played_top - j]->card);
+                                    chips += card_get_value(played[j]->card);
                                     set_chips(chips);
+
                                     break;
                                 }
                             }
 
-                            if (j == 0 && scored_cards == *played_selections) // Check if it's the last card 
+                            if (j == played_top && scored_cards == *played_selections) // Check if it's the last card 
                             {
                                 tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
 
-                                for (int k = 0; k <= jokers_top; k++)
+                                for (int k = 0; k <= jokers_top; k++) // Independent joker scoring loop
                                 {
-                                    if (jokers[k]->joker->processed == false)
-                                    {   
-                                        IndependentEffect joker_effect = joker_independent_effect(jokers[k]->joker);
-                                        IndependentEffect zero_effect = {0};
+                                    if (joker_object_score(jokers[k], NULL, &chips, &mult, NULL, &money, NULL)) // NULLs aren't implemented yet
+                                    {
+                                        set_chips(chips);
+                                        set_mult(mult);
+                                        set_money(money);
 
-                                        if (memcmp(&joker_effect, &zero_effect, sizeof(IndependentEffect)) != 0)
-                                        {
-                                            chips += joker_effect.chips;
-                                            set_chips(chips);
-                                            mult += joker_effect.mult;
-                                            set_mult(mult);
-                                            // TODO: XMult
-                                            money += joker_effect.money;
-                                            set_money(money);
-                                            // TODO: Retrigger
-
-
-                                            tte_set_pos(fx2int(jokers[k]->x) + 8, 48); // Offset of 16 pixels to center the text on the card
-
-                                            char score_buffer[12];
-
-                                            if (joker_effect.chips > 0)
-                                            {
-                                                tte_set_special(0xD000); // Blue
-                                                snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.chips);
-                                            }
-                                            else if (joker_effect.mult > 0)
-                                            {
-                                                tte_set_special(0xE000); // Red
-                                                snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.mult);
-                                            }
-                                            else if (joker_effect.money > 0)
-                                            {
-                                                tte_set_special(0xC000); // Yellow
-                                                snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.money);
-                                            }
-
-                                            tte_write(score_buffer);
-
-                                            jokers[k]->joker->processed = true; // Mark the joker as processed
-                                            joker_object_score(jokers[k], SFX_CARD_SELECT);
-
-                                            return; // Returning was just the easiest way to break out of the loop
-                                        }
+                                        return; // Returning was just the easiest way to break out of the loop
                                     }
                                 }
 
@@ -1805,7 +1793,9 @@ static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
             joker_object_destroy(&shop_jokers[i]); // Destroy the joker object if it exists
         }
         
-        shop_jokers[i] = joker_object_new(joker_new(DEFAULT_JOKER_ID));
+        u8 joker_id = random() % MAX_JOKERS;
+
+        shop_jokers[i] = joker_object_new(joker_new(joker_id));
         shop_jokers[i]->x = int2fx(120 + i * 32);
         shop_jokers[i]->y = int2fx(160);
         shop_jokers[i]->tx = shop_jokers[i]->x;
@@ -1818,7 +1808,7 @@ static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
         if (first_time == false)
         {
             shop_jokers[i]->y = shop_jokers[i]->ty; // If it's not the first time, set the y position to the target position
-            joker_object_score(shop_jokers[i], UNDEFINED); // Give the joker a little wiggle animation
+            joker_object_shake(shop_jokers[i], UNDEFINED); // Give the joker a little wiggle animation
         }
 
         sprite_position(shop_jokers[i]->sprite, fx2int(shop_jokers[i]->x), fx2int(shop_jokers[i]->y));
