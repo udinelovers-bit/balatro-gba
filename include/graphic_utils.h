@@ -15,7 +15,7 @@
  *  Screen Base Block is the base for the screenblock entries i.e. tilemap
  *  Character Base Block is the base for the tiles themselves
  */
-#define MAIN_BG_SBB 29 
+#define MAIN_BG_SBB 31 
 #define MAIN_BG_CBB 1
 #define TTE_SBB 30
 #define TTE_CBB 0
