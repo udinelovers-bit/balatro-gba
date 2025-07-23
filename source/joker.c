@@ -36,8 +36,7 @@ static bool used_layers[MAX_JOKER_OBJECTS] = {false}; // Track used layers for j
 
 void joker_init()
 {
-    //GRIT_CPY(&tile_mem[4][JOKER_TID], joker_gfxTiles);
-    memcpy16(&pal_obj_mem[PAL_ROW_LEN * JOKER_PB], joker_gfxPal, sizeof(joker_gfxPal) / 2);
+    GRIT_CPY(&pal_obj_mem[PAL_ROW_LEN * JOKER_PB], joker_gfxPal);
 }
 
 Joker *joker_new(u8 id)

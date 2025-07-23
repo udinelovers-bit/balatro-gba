@@ -19,7 +19,6 @@ const static u16 card_sprite_lut[NUM_SUITS][NUM_RANKS] = {
 
 void card_init()
 {
-    //GRIT_CPY(&tile_mem[4], deck_gfxTiles);
     GRIT_CPY(&pal_obj_mem[CARD_PB], deck_gfxPal);
 }
 
