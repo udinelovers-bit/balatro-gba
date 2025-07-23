@@ -41,6 +41,10 @@ typedef struct
 
 typedef struct // copy of CardObject in card.h
 {
+    /* Note that since JokerObject is cast to CardObject in joker_object_update(),
+     * they have to have the exact same structure to have 
+     * the exact same field offsets in memory
+     */
     Joker *joker;
     Sprite *sprite;
     FIXED tx, ty;
