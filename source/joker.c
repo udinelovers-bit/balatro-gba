@@ -71,7 +71,7 @@ JokerEffect joker_get_score_effect(Joker *joker, Card *scored_card)
             effect.mult = 4;
             break;
         case GREEDY_JOKER_ID: // Greedy Joker
-            if (scored_card->suit == DIAMONDS) // If the scored card is a diamond
+            if (scored_card != NULL && scored_card->suit == DIAMONDS) // If the scored card is a diamond
             {
                 effect.mult = 3;
             }
