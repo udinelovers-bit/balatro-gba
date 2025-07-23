@@ -637,15 +637,31 @@ void set_temp_score(int value)
 
 void set_score(int value)
 {
-    if (value == 0) // Clear if 0
+    // Clear the existing text before redrawing
+    tte_erase_rect_wrapper(SCORE_RECT);
+    
+    char score_suffix = ' ';
+    int display_value = value;
+    
+    if(value >= 10000)
     {
-        Rect rect = SCORE_RECT;
-        rect.left += 1;
-        tte_erase_rect_wrapper(rect);
+        score_suffix = 'k';
+        display_value = value / 1000; // 12,986 = 12k
     }
-
-    int x_offset = 32;
-    tte_printf("#{P:%d,48; cx:0xF000}%d", x_offset, value);
+    
+    // Calculate text width: digits + suffix character (if 'k')
+    int num_digits = get_digits(display_value);
+    int text_width = num_digits * TILE_SIZE;
+    if(score_suffix == 'k')
+    {
+        text_width += TILE_SIZE; // Add width for 'k' suffix
+    }
+    
+    // Calculate center position within SCORE_RECT
+    int rect_width = SCORE_RECT.right - SCORE_RECT.left;
+    int x_offset = SCORE_RECT.left + (rect_width - text_width) / 2;
+    
+    tte_printf("#{P:%d,48; cx:0xF000}%d%c", x_offset, display_value, score_suffix);
 }
 
 void set_money(int value)
@@ -923,9 +939,27 @@ void game_round_init()
 
     Rect blind_req_text_rect = BLIND_REQ_TEXT_RECT;
     int blind_requirement = blind_get_requirement(current_blind, ante);
+    
+    char score_suffix = ' ';
+    if(blind_requirement >= 10000)
+    {
+        // clear existing text
+        tte_erase_rect_wrapper(blind_req_text_rect);
+        
+        score_suffix = 'k';
+        blind_requirement /= 1000; // 11,000 = 11k
+    }
+    
+    // Update text rect for right alignment AFTER shortening the number
     update_text_rect_to_right_align_num(&blind_req_text_rect, blind_requirement, OVERFLOW_RIGHT);
     
-    tte_printf("#{P:%d,%d; cx:0xE000}%d", blind_req_text_rect.left, blind_req_text_rect.top, blind_requirement); // Blind requirement
+    // If we added a suffix, adjust position to account for the extra character
+    if(score_suffix == 'k')
+    {
+        blind_req_text_rect.left -= TILE_SIZE; // Move left by one character width to make room for 'k'
+    }
+
+    tte_printf("#{P:%d,%d; cx:0xE000}%d%c", blind_req_text_rect.left, blind_req_text_rect.top, blind_requirement, score_suffix); // Blind requirement
     tte_printf("#{P:%d,%d; cx:0xC000}$%d", BLIND_REWARD_RECT.left, BLIND_REWARD_RECT.top, blind_get_reward(current_blind)); // Blind reward
 
     deck_shuffle(); // Shuffle the deck at the start of the round
