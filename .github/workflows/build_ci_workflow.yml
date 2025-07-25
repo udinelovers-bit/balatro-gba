@@ -23,8 +23,9 @@ jobs:
           echo "DEVKITARM=/home/runner/devkitpro/devkitARM" >> $GITHUB_ENV
           export PATH=$DEVKITARM/bin:$DEVKITPRO/tools/bin:$PATH
           
-        # Caching to avoid excessive request to the server from a runner because they 
-        # eventually result in permission denied 403
+        # Caching to avoid excessive request to the devkitpro server from a runner because they 
+        # eventually block and result in permission denied 403.
+        # If that happens it takes like 2 hours until you can make requests again
       - name: Cache devkitPro toolchain
         id: cache-devkitpro
         uses: actions/cache@v4
@@ -34,7 +35,7 @@ jobs:
           # cache stale and require a refresh, just  bump the version number so there's
           # a cache miss. The key needs to match in the "Save devkitPro to cache" stage
           # so you need to bump the number there too...
-          key: devkitpro-${{ runner.os }}-v5
+          key: devkitpro-${{ runner.os }}-v1
 
       - name: Set up devkitARM (if not cached)
         if: steps.cache-devkitpro.outputs.cache-hit != 'true'
@@ -53,7 +54,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: /home/runner/devkitpro
-          key: devkitpro-${{ runner.os }}-5
+          key: devkitpro-${{ runner.os }}-v1
 
       - name: Build the project
         run: |
