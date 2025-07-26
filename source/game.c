@@ -2028,7 +2028,9 @@ void game_round_end()
         case 6: // This state handles displaying the rewards earned from the completed round
         {
             int hand_y = 0;
-            int interest_y = 0;
+
+            // TODO: Implement interest
+            //int interest_y = 0;
 
             if (hands > 0)
             {
