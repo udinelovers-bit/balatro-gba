@@ -635,7 +635,7 @@ void set_temp_score(int value)
     tte_printf("#{P:%d,%d; cx:0xF000}%d", x_offset, TEMP_SCORE_RECT.top, value);
 }
 
-void set_score(int value)
+void display_score(int value)
 {
     // Clear the existing text before redrawing
     tte_erase_rect_wrapper(SCORE_RECT);
@@ -664,14 +664,14 @@ void set_score(int value)
     tte_printf("#{P:%d,48; cx:0xF000}%d%c", x_offset, display_value, score_suffix);
 }
 
-void set_money(int value)
+void display_money(int value)
 {
     int x_offset = 32 - get_digits_odd(value) * TILE_SIZE;
     tte_erase_rect_wrapper(MONEY_TEXT_RECT);
     tte_printf("#{P:%d,%d; cx:0xC000}$%d", x_offset, MONEY_TEXT_RECT.top, value);
 }
 
-void set_chips(int value)
+void display_chips(int value)
 {
     Rect chips_text_rect = CHIPS_TEXT_RECT;
     tte_erase_rect_wrapper(CHIPS_TEXT_RECT);
@@ -679,30 +679,30 @@ void set_chips(int value)
     tte_printf("#{P:%d,%d; cx:0xF000;}%d", chips_text_rect.left, chips_text_rect.top, value);
 }
 
-void set_mult(int value)
+void display_mult(int value)
 {
     tte_erase_rect_wrapper(MULT_TEXT_RECT);
     tte_printf("#{P:%d,%d; cx:0xF000;}%d", MULT_TEXT_RECT.left, MULT_TEXT_RECT.top, value); // Mult
 }
 
-void set_round(int value)
+void display_round(int value)
 {
     //tte_erase_rect_wrapper(ROUND_TEXT_RECT);
     tte_printf("#{P:%d,%d; cx:0xC000}%d", ROUND_TEXT_RECT.left, ROUND_TEXT_RECT.top, round);
 }
 
-void set_ante(int value)
+void display_ante(int value)
 {
     tte_printf("#{P:%d,%d; cx:0xC000}%d#{cx:0xF000}/%d", ANTE_TEXT_RECT.left, ANTE_TEXT_RECT.top, value, MAX_ANTE);
 }
 
-void set_hands(int value)
+void display_hands(int value)
 {
     //tte_erase_rect_wrapper(HANDS_TEXT_RECT);
     tte_printf("#{P:%d,%d; cx:0xD000}%d", HANDS_TEXT_RECT.left, HANDS_TEXT_RECT.top, hands); // Hand
 }
 
-void set_discards(int value)
+void display_discards(int value)
 {
     //tte_erase_rect_wrapper(DISCARDS_TEXT_RECT);
     tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards); // Discard
@@ -792,8 +792,8 @@ void set_hand()
         break;
     }
 
-    set_chips(chips);
-    set_mult(mult);
+    display_chips(chips);
+    display_mult(mult);
 }
 
 void card_draw()
@@ -1021,17 +1021,17 @@ void game_init()
 
     tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", DECK_SIZE_RECT.left, DECK_SIZE_RECT.top, deck_get_size(), deck_get_max_size()); // Deck size/max size
     
-    set_round(round); // Set the round display
-    set_score(score); // Set the score display
+    display_round(round); // Set the round display
+    display_score(score); // Set the score display
 
-    set_chips(chips); // Set the chips display
-    set_mult(mult); // Set the multiplier display
+    display_chips(chips); // Set the chips display
+    display_mult(mult); // Set the multiplier display
 
-    set_hands(hands); // Hand
-    set_discards(discards); // Discard
+    display_hands(hands); // Hand
+    display_discards(discards); // Discard
 
     //tte_printf("#{P:24,120; cx:0xC000}$%d", money); // Money
-    set_money(money); // Set the money display
+    display_money(money); // Set the money display
 
     tte_printf("#{P:%d,%d; cx:0xC000}%d#{cx:0xF000}/%d", ANTE_TEXT_RECT.left, ANTE_TEXT_RECT.top, ante, MAX_ANTE); // Ante
 }
@@ -1094,7 +1094,7 @@ static void game_playing_process_input_and_state()
                     hand_state = HAND_PLAY;
                     selection_x = 0;
                     selection_y = 0;
-                    set_hands(--hands);
+                    display_hands(--hands);
                 }
             }
             else // Discard button logic
@@ -1107,7 +1107,7 @@ static void game_playing_process_input_and_state()
                     hand_state = HAND_DISCARD;
                     selection_x = 0;
                     selection_y = 0;
-                    set_hands(--discards);
+                    display_hands(--discards);
                     set_hand();
                     tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards);
                 }
@@ -1143,8 +1143,8 @@ static void game_playing_process_input_and_state()
 
             chips = 0;
             mult = 0;
-            set_mult(mult);
-            set_chips(chips);
+            display_mult(mult);
+            display_chips(chips);
         }
     }
     else if (play_state == PLAY_ENDED)
@@ -1157,7 +1157,7 @@ static void game_playing_process_input_and_state()
             set_temp_score(fx2int(lerped_temp_score));
 
             // We actually don't need to erase this because the score only increases
-            set_score(fx2int(lerped_score)); // Set the score display
+            display_score(fx2int(lerped_score)); // Set the score display
 
             if (temp_score <= 0)
             {
@@ -1173,7 +1173,7 @@ static void game_playing_process_input_and_state()
 
             tte_erase_rect_wrapper(TEMP_SCORE_RECT); // Just erase the temp score
 
-            set_score(score);
+            display_score(score);
         }
     }
 }
@@ -1593,9 +1593,9 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                                 {
                                     if (joker_object_score(jokers[k], played[*played_selections - 1]->card, &chips, &mult, NULL, &money, NULL)) // NULLs aren't implemented yet
                                     {
-                                        set_chips(chips);
-                                        set_mult(mult);
-                                        set_money(money);
+                                        display_chips(chips);
+                                        display_mult(mult);
+                                        display_money(money);
 
                                         return; 
                                     }
@@ -1628,7 +1628,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
                                     // Relocated card scoring logic here
                                     chips += card_get_value(played[j]->card);
-                                    set_chips(chips);
+                                    display_chips(chips);
 
                                     break;
                                 }
@@ -1642,9 +1642,9 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                                 {
                                     if (joker_object_score(jokers[k], NULL, &chips, &mult, NULL, &money, NULL)) // NULLs aren't implemented yet
                                     {
-                                        set_chips(chips);
-                                        set_mult(mult);
-                                        set_money(money);
+                                        display_chips(chips);
+                                        display_mult(mult);
+                                        display_money(money);
 
                                         return; // Returning was just the easiest way to break out of the loop
                                     }
@@ -1719,7 +1719,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
                                     if (current_blind == BOSS_BLIND)
                                     {
-                                        set_ante(++ante);
+                                        display_ante(++ante);
                                     }
                                 }
                                 else
@@ -1805,15 +1805,15 @@ static void game_playing_ui_text_update()
 static void game_round_end_cashout()
 {
     money += hands + blind_get_reward(current_blind); // Reward the player
-    set_money(money);
+    display_money(money);
 
     hands = max_hands; // Reset the hands to the maximum
     discards = max_discards; // Reset the discards to the maximum
-    set_hands(hands); // Set the hands display
-    set_discards(discards); // Set the discards display
+    display_hands(hands); // Set the hands display
+    display_discards(discards); // Set the discards display
 
     score = 0;
-    set_score(score); // Set the score display
+    display_score(score); // Set the score display
 }
 
 static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
@@ -2302,7 +2302,7 @@ void game_shop()
                 if (key_hit(SELECT_CARD) && money >= reroll_cost)
                 {
                     money -= reroll_cost;
-                    set_money(money); // Update the money display
+                    display_money(money); // Update the money display
                 
                     game_shop_create_items(shop_jokers, false);
 
@@ -2323,7 +2323,7 @@ void game_shop()
                         {
                             joker_push(shop_jokers[i]);
                             money -= shop_jokers[i]->joker->value; // Deduct the money spent on the joker
-                            set_money(money); // Update the money display
+                            display_money(money); // Update the money display
 
                             Rect joker_price_rect;
                             joker_price_rect.left = fx2int(shop_jokers[i]->tx);
@@ -2451,7 +2451,7 @@ void game_blind_select()
                 {
                     state++;
                     timer = 0;
-                    set_round(++round);
+                    display_round(++round);
                 }
                 else if (current_blind != BOSS_BLIND)
                 {
