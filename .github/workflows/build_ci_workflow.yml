@@ -1,0 +1,61 @@
+name: Build CI
+
+on:
+  push:
+    branches: 
+      - '**' # Matches any branch
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set devkitPro environment variables
+        run: |
+          # Installing to home directory to avoid permission denied on caching
+          echo "DEVKITPRO=/home/runner/devkitpro" >> $GITHUB_ENV
+          echo "DEVKITARM=/home/runner/devkitpro/devkitARM" >> $GITHUB_ENV
+          export PATH=$DEVKITARM/bin:$DEVKITPRO/tools/bin:$PATH
+          
+        # Caching to avoid excessive request to the devkitpro server from a runner because they 
+        # eventually block and result in permission denied 403.
+        # If that happens it takes like 2 hours until you can make requests again
+      - name: Cache devkitPro toolchain
+        id: cache-devkitpro
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/devkitpro
+          # Using a manual key version suffix - v{num}, if changes are made that make the
+          # cache stale and require a refresh, just  bump the version number so there's
+          # a cache miss. The key needs to match in the "Save devkitPro to cache" stage
+          # so you need to bump the number there too...
+          key: devkitpro-${{ runner.os }}-v1
+
+      - name: Set up devkitARM (if not cached)
+        if: steps.cache-devkitpro.outputs.cache-hit != 'true'
+        run: |
+          sudo apt update
+          wget https://apt.devkitpro.org/install-devkitpro-pacman
+          chmod +x install-devkitpro-pacman
+          sudo ./install-devkitpro-pacman
+          mkdir -p "$DEVKITPRO"
+          sudo dkp-pacman -Sy --noconfirm gba-dev
+          # Copy from installed directory to cacheable directory
+          sudo cp -r /opt/devkitpro "/home/runner"
+          sudo chown -R $USER:$USER "/home/runner/devkitpro"
+      - name: Save devkitPro to cache
+        if: steps.cache-devkitpro.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /home/runner/devkitpro
+          key: devkitpro-${{ runner.os }}-v1
+
+      - name: Build the project
+        run: |
+          make
