@@ -1,37 +1,33 @@
 #include "joker.h"
 
+
 static JokerEffect default_joker_effect(Joker *joker, Card *scored_card) {
     JokerEffect effect = {0};
     if (scored_card == NULL) effect.mult = 4;
     return effect;
 }
 
-static JokerEffect greedy_joker_effect(Joker *joker, Card *scored_card) {
+static JokerEffect sinful_joker_effect(Card *scored_card, u8 sinful_suit) {
     JokerEffect effect = {0};
-    if (scored_card != NULL && scored_card->suit == DIAMONDS)
+    if (scored_card != NULL && scored_card->suit == sinful_suit)
         effect.mult = 3;
     return effect;
+}
+
+static JokerEffect greedy_joker_effect(Joker *joker, Card *scored_card) {
+    return sinful_joker_effect(scored_card, DIAMONDS);
 }
 
 static JokerEffect lusty_joker_effect(Joker *joker, Card *scored_card) {
-    JokerEffect effect = {0};
-    if (scored_card != NULL && scored_card->suit == HEARTS)
-        effect.mult = 3;
-    return effect;
+    return sinful_joker_effect(scored_card, HEARTS);
 }
 
 static JokerEffect wrathful_joker_effect(Joker *joker, Card *scored_card) {
-    JokerEffect effect = {0};
-    if (scored_card != NULL && scored_card->suit == SPADES)
-        effect.mult = 3;
-    return effect;
+    return sinful_joker_effect(scored_card, SPADES);
 }
 
 static JokerEffect gluttonous_joker_effect(Joker *joker, Card *scored_card) {
-    JokerEffect effect = {0};
-    if (scored_card != NULL && scored_card->suit == CLUBS)
-        effect.mult = 3;
-    return effect;
+    return sinful_joker_effect(scored_card, CLUBS);
 }
 
 const JokerInfo joker_registry[] = {
