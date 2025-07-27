@@ -8,6 +8,7 @@
 #include "util.h"
 #include "sprite.h"
 #include "card.h"
+#include "hand_analysis.h"
 #include "blind.h"
 #include "joker.h"
 #include "graphic_utils.h"
@@ -282,6 +283,22 @@ void sort_cards()
     }
 }
 
+CardObject **get_hand_array(void) {
+    return hand;
+}
+
+int get_hand_top(void) {
+    return hand_top;
+}
+
+CardObject **get_played_array(void) {
+    return played;
+}
+
+int get_played_top(void) {
+    return played_top;
+}
+
 enum HandType hand_get_type()
 {
     enum HandType res_hand_type = NONE;
@@ -295,117 +312,64 @@ enum HandType hand_get_type()
 
     res_hand_type = HIGH_CARD;
 
-    u8 suits[NUM_SUITS] = {0};
-    u8 ranks[NUM_RANKS] = {0};
-
-    for (int i = 0; i <= hand_top; i++)
-    {
-        if (hand[i] != NULL && card_object_is_selected(hand[i]))
-        {
-            suits[hand[i]->card->suit]++;
-            ranks[hand[i]->card->rank]++;
-        }
-    }
+    u8 suits[NUM_SUITS];
+    u8 ranks[NUM_RANKS];
+    get_hand_distribution(ranks, suits);
 
     // Check for flush
-    for (int i = 0; i < NUM_SUITS; i++)
-    {
-        if (suits[i] >= MAX_SELECTION_SIZE) // if i add jokers just MAX_SELECTION_SIZE - 1 for four fingers
-        {
-            res_hand_type = FLUSH;
-            break;
-        }
-    }
+    if (hand_contains_flush(suits))
+        res_hand_type = FLUSH;
 
     // Check for straight
-    for (int i = 0; i < NUM_RANKS - 4; i++)
-    {
-        if (ranks[i] && ranks[i + 1] && ranks[i + 2] && ranks[i + 3] && ranks[i + 4])
-        {
-            if (res_hand_type == FLUSH)
-            {
-                res_hand_type = STRAIGHT_FLUSH;
-            }
-            else
-            {
-                res_hand_type = STRAIGHT;
-            }
-            break;
-        }
+    if (hand_contains_straight(ranks)) {
+        if (res_hand_type == FLUSH)
+            res_hand_type = STRAIGHT_FLUSH;
+        else
+            res_hand_type = STRAIGHT;
     }
 
-    // Check for ace low straight
-    if (ranks[ACE] && ranks[TWO] && ranks[THREE] && ranks[FOUR] && ranks[FIVE])
-    {
-        res_hand_type = STRAIGHT;
+    // Check for royal flush vs regular straight flush
+    if (res_hand_type == STRAIGHT_FLUSH) {
+        if (ranks[TEN] && ranks[JACK] && ranks[QUEEN] && ranks[KING] && ranks[ACE])
+            return ROYAL_FLUSH;
+        return STRAIGHT_FLUSH;
     }
 
-    // Check for royal flush
-    if (res_hand_type == STRAIGHT_FLUSH && ranks[TEN] && ranks[JACK] && ranks[QUEEN] && ranks[KING] && ranks[ACE])
-    {
-        res_hand_type = ROYAL_FLUSH;
-        return res_hand_type;
+    // The following can be optimized better but not sure how much it matters
+    u8 n_of_a_kind = hand_contains_n_of_a_kind(ranks);
+
+    if (n_of_a_kind >= 5) {
+        if (res_hand_type == FLUSH) {
+            return FLUSH_FIVE;
+        }
+        return FIVE_OF_A_KIND;
     }
 
-    // Check for straight flush
-    if (res_hand_type == STRAIGHT_FLUSH)
-    {
-        res_hand_type = STRAIGHT_FLUSH;
-        return res_hand_type;
+    if (n_of_a_kind == 4) {
+        return FOUR_OF_A_KIND;
     }
 
-    for (int i = 0; i < NUM_RANKS; i++)
-    {
-        if (ranks[i] >= 5)
-        {
-            if (res_hand_type == FLUSH)
-            {
-                res_hand_type = FLUSH_FIVE;
-                return res_hand_type;
-            }
-            else
-            {
-                res_hand_type = FIVE_OF_A_KIND;
-                return res_hand_type;
-            }
-        }
-        else if (ranks[i] == 4)
-        {
-            res_hand_type = FOUR_OF_A_KIND;
-            return res_hand_type;
-        }
-        else if (ranks[i] == 3)
-        {   
-            if (res_hand_type == PAIR)
-            {
-                res_hand_type = FULL_HOUSE;
-                return res_hand_type;
-            }
-            else
-            {
-                res_hand_type = THREE_OF_A_KIND;
-            }
-        }
-        else if (ranks[i] == 2)
-        {
-            if (res_hand_type == THREE_OF_A_KIND)
-            {
-                res_hand_type = FULL_HOUSE;
-                return res_hand_type;
-            }
-            else if (res_hand_type == PAIR)
-            {
-                res_hand_type = TWO_PAIR;
-                return res_hand_type;
-            }
-            else
-            {
-                res_hand_type = PAIR;
-            }
-        }
+    if (n_of_a_kind == 3 && hand_contains_full_house(ranks)) {
+        return FULL_HOUSE;
     }
 
-    return res_hand_type;
+    // Flush is more valuable than the remaining hand types, so return now
+    if (res_hand_type == FLUSH) {
+        return FLUSH;
+    }
+
+    if (n_of_a_kind == 3) {
+        return THREE_OF_A_KIND;
+    }
+
+    if (n_of_a_kind == 2) {
+        if (hand_contains_two_pair(ranks)) {
+            return TWO_PAIR;
+        }
+        return PAIR;
+    }
+
+    return res_hand_type; // should be HIGH_CARD
 }
 
 /* Copies the appropriate item into the top left panel (blind/shop icon)

@@ -42,7 +42,7 @@ typedef struct
     u8 rank;
 } Card;
 
-typedef struct
+typedef struct CardObject
 {
     Card *card;
     SpriteObject *sprite_object;
