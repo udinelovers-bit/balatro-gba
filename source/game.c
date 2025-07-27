@@ -1038,100 +1038,105 @@ void game_init()
     tte_printf("#{P:%d,%d; cx:0xC000}%d#{cx:0xF000}/%d", ANTE_TEXT_RECT.left, ANTE_TEXT_RECT.top, ante, MAX_ANTE); // Ante
 }
 
-static void game_playing_process_input_and_state()
+static void game_playing_process_hand_select_input()
 {
-    if (hand_state == HAND_SELECT)
+    static bool discard_button_highlighted = false; // true = play button highlighted, false = discard button highlighted
+
+    if (key_hit(KEY_LEFT))
     {
-        static bool discard_button_highlighted = false; // true = play button highlighted, false = discard button highlighted
-
-        if (key_hit(KEY_LEFT))
+        if (selection_y == 0)
         {
-            if (selection_y == 0)
+            hand_set_focus(selection_x + 1); // The reason why this adds 1 is because the hand is drawn from right to left. There is no particular reason for this, it's just how I did it.
+        }
+        else
+        {
+            discard_button_highlighted = false; // Play button
+        }
+    }
+    else if (key_hit(KEY_RIGHT))
+    {
+        if (selection_y == 0)
+        {
+            hand_set_focus(selection_x - 1);
+        }
+        else
+        {
+            discard_button_highlighted = true; // Discard button
+        }
+    }
+    else if (key_hit(KEY_UP) && selection_y != 0)
+    {
+        selection_y = 0;
+    }
+    else if (key_hit(KEY_DOWN) && selection_y != 1)
+    {
+        selection_y = 1;
+
+        if (selection_x > hand_top / 2)
+        {
+            discard_button_highlighted = false; // Play button
+        }
+        else
+        {
+            discard_button_highlighted = true; // Discard button
+        }
+    }
+
+    if (selection_y == 1) // On row of play/discard buttons
+    {
+        if (discard_button_highlighted == false) // Play button logic
+        {
+            memset16(&pal_bg_mem[1], 0xFFFF, 1);
+            memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1);
+
+            if (key_hit(SELECT_CARD) && hands > 0 && hand_play())
             {
-                hand_set_focus(selection_x + 1); // The reason why this adds 1 is because the hand is drawn from right to left. There is no particular reason for this, it's just how I did it.
-            }
-            else
-            {
-                discard_button_highlighted = false; // Play button
+                hand_state = HAND_PLAY;
+                selection_x = 0;
+                selection_y = 0;
+                display_hands(--hands);
             }
         }
-        else if (key_hit(KEY_RIGHT))
+        else // Discard button logic
         {
-            if (selection_y == 0)
+            memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1);
+            memset16(&pal_bg_mem[9], 0xFFFF, 1);
+
+            if (key_hit(SELECT_CARD) && discards > 0 && hand_discard())
             {
-                hand_set_focus(selection_x - 1);
-            }
-            else
-            {
-                discard_button_highlighted = true; // Discard button
+                hand_state = HAND_DISCARD;
+                selection_x = 0;
+                selection_y = 0;
+                display_hands(--discards);
+                set_hand();
+                tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards);
             }
         }
-        else if (key_hit(KEY_UP) && selection_y != 0)
-        {
-            selection_y = 0;
-        }
-        else if (key_hit(KEY_DOWN) && selection_y != 1)
-        {
-            selection_y = 1;
+    }
 
-            if (selection_x > hand_top / 2)
-            {
-                discard_button_highlighted = false; // Play button
-            }
-            else
-            {
-                discard_button_highlighted = true; // Discard button
-            }
-        }
-
-        if (selection_y == 1) // On row of play/discard buttons
-        {
-            if (discard_button_highlighted == false) // Play button logic
-            {
-                memset16(&pal_bg_mem[1], 0xFFFF, 1);
-                memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1);
-
-                if (key_hit(SELECT_CARD) && hands > 0 && hand_play())
-                {
-                    hand_state = HAND_PLAY;
-                    selection_x = 0;
-                    selection_y = 0;
-                    display_hands(--hands);
-                }
-            }
-            else // Discard button logic
-            {
-                memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1);
-                memset16(&pal_bg_mem[9], 0xFFFF, 1);
-
-                if (key_hit(SELECT_CARD) && discards > 0 && hand_discard())
-                {
-                    hand_state = HAND_DISCARD;
-                    selection_x = 0;
-                    selection_y = 0;
-                    display_hands(--discards);
-                    set_hand();
-                    tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards);
-                }
-            }
-        }
+    if (selection_y == 0) // On row of cards
+    {
+        memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1); // Play button highlight color
+        memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1); // Discard button highlight color
         
-        if (selection_y == 0) // On row of cards
-        {
-            memcpy16(&pal_bg_mem[1], &pal_bg_mem[7], 1); // Play button highlight color
-            memcpy16(&pal_bg_mem[9], &pal_bg_mem[12], 1); // Discard button highlight color
-        }
-
         if (key_hit(SELECT_CARD))
         {
             hand_select();
             set_hand();
         }
+    }
 
-        if (key_hit(SORT_HAND))
-        {
-            hand_change_sort();
-        }
+    if (key_hit(SORT_HAND))
+    {
+        hand_change_sort();
+    }
+}
+
+static void game_playing_process_input_and_state()
+{
+    if (hand_state == HAND_SELECT)
+    {
+        game_playing_process_hand_select_input();
     }
     else if (play_state == PLAY_ENDING)
     {
