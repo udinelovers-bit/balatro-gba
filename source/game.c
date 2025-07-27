@@ -1825,7 +1825,7 @@ static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
             joker_object_destroy(&shop_jokers[i]); // Destroy the joker object if it exists
         }
         
-        u8 joker_id = random() % MAX_JOKERS;
+        u8 joker_id = random() % joker_registry_size;
 
         shop_jokers[i] = joker_object_new(joker_new(joker_id));
         shop_jokers[i]->sprite_object->x = int2fx(120 + i * 32);

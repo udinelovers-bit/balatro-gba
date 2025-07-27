@@ -12,13 +12,6 @@
 
 #define JOKER_SCORE_TEXT_Y 48
 
-const static u8 joker_data_lut[MAX_JOKERS][2] = // Rarity, Value
-{
-    // TODO: Change to struct
-    {COMMON_JOKER, 2}, // Default Joker
-    {COMMON_JOKER, 5}, // Greedy Joker
-};
-
 const static u8 edition_price_lut[MAX_EDITIONS] =
 {
     0, // BASE_EDITION
@@ -45,12 +38,15 @@ void joker_init()
 
 Joker *joker_new(u8 id)
 {
-    Joker *joker = malloc(sizeof(Joker));
+    if (id >= joker_registry_size) return NULL;
 
-    joker->id = id; // TODO: Make this random later
+    Joker *joker = malloc(sizeof(Joker));
+    const JokerInfo *jinfo = &joker_registry[id];
+
+    joker->id = id;
     joker->modifier = BASE_EDITION; // TODO: Make this random later
-    joker->value = joker_data_lut[id][1] + edition_price_lut[joker->modifier]; // Base value + edition price
-    joker->rarity = joker_data_lut[id][0];
+    joker->value = jinfo->base_value + edition_price_lut[joker->modifier]; // Base value + edition price
+    joker->rarity = jinfo->rarity;
     joker->processed = false;
 
     return joker;
@@ -65,25 +61,8 @@ void joker_destroy(Joker **joker)
 
 JokerEffect joker_get_score_effect(Joker *joker, Card *scored_card)
 {
-    JokerEffect effect = {0};
-
-    switch (joker->id)
-    {
-        case DEFAULT_JOKER_ID: // Default Joker
-            if (scored_card != NULL) break; // Joker is independent, no effect
-            effect.mult = 4;
-            break;
-        case GREEDY_JOKER_ID: // Greedy Joker
-            if (scored_card != NULL && scored_card->suit == DIAMONDS) // If the scored card is a diamond
-            {
-                effect.mult = 3;
-            }
-            break;
-        default:
-            break;
-    }
-
-    return effect;
+    if (joker->id >= joker_registry_size) return (JokerEffect){0};
+    return joker_registry[joker->id].effect(joker, scored_card);
 }
 
 // JokerObject methods
