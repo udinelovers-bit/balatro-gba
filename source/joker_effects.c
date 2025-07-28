@@ -178,7 +178,7 @@ static JokerEffect half_joker_effect(Joker *joker, Card *scored_card) {
     if (scored_card != NULL)
         return effect; // if card != null, we are not at the end-phase of scoring yet
 
-    if (get_hand_top() + 1 <= 3) // game.c has hand_get_size() but it's not accesible here
+    if (get_played_top() + 1 <= 3) // game.c has hand_get_size() but it's not accesible here
         effect.mult = 20;
 
     return effect;
