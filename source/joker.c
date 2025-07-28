@@ -38,10 +38,10 @@ void joker_init()
 
 Joker *joker_new(u8 id)
 {
-    if (id >= joker_registry_size) return NULL;
+    if (id >= get_joker_registry_size()) return NULL;
 
     Joker *joker = malloc(sizeof(Joker));
-    const JokerInfo *jinfo = &joker_registry[id];
+    const JokerInfo *jinfo = get_joker_registry_entry(id);
 
     joker->id = id;
     joker->modifier = BASE_EDITION; // TODO: Make this random later
@@ -61,8 +61,10 @@ void joker_destroy(Joker **joker)
 
 JokerEffect joker_get_score_effect(Joker *joker, Card *scored_card)
 {
-    if (joker->id >= joker_registry_size) return (JokerEffect){0};
-    return joker_registry[joker->id].effect(joker, scored_card);
+    const JokerInfo *jinfo = get_joker_registry_entry(joker->id);
+    if (!jinfo) return (JokerEffect){0};
+
+    return jinfo->effect(joker, scored_card);
 }
 
 // JokerObject methods

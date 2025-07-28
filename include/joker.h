@@ -60,8 +60,8 @@ typedef struct {
     u8 base_value;
     JokerEffectFunc effect;
 } JokerInfo;
-extern const JokerInfo joker_registry[];
-extern const size_t joker_registry_size;
+const JokerInfo* get_joker_registry_entry(int joker_id);
+size_t get_joker_registry_size(void);
 
 void joker_init();
 

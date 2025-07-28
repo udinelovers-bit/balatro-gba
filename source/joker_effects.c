@@ -1,4 +1,5 @@
 #include "joker.h"
+#include "util.h"
 
 
 static JokerEffect default_joker_effect(Joker *joker, Card *scored_card) {
@@ -38,4 +39,15 @@ const JokerInfo joker_registry[] = {
     { COMMON_JOKER, 5, gluttonous_joker_effect },
 };
 
-const size_t joker_registry_size = sizeof(joker_registry) / sizeof(joker_registry[0]);
+static const size_t joker_registry_size = NUM_ELEM_IN_ARR(joker_registry);
+
+const JokerInfo* get_joker_registry_entry(int joker_id) {
+    if (joker_id < 0 || (size_t)joker_id >= joker_registry_size) {
+        return NULL;
+    }
+    return &joker_registry[joker_id];
+}
+
+size_t get_joker_registry_size(void) {
+    return joker_registry_size;
+}
