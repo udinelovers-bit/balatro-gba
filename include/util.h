@@ -35,4 +35,6 @@ static inline int get_digits_even(int n)
 
 #define UNDEFINED -1
 
+#define NUM_ELEM_IN_ARR(arr) (sizeof(arr) / sizeof((arr)[0]))
+
 #endif // UTIL_H

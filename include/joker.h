@@ -25,7 +25,6 @@
 #define RARE_JOKER 2
 #define LEGENDARY_JOKER 3
 
-#define MAX_JOKERS 2 // The current maximum jokers added
 #define MAX_JOKER_OBJECTS 32 // The maximum number of joker objects that can be created at once
 
 #define DEFAULT_JOKER_ID 0
@@ -54,6 +53,15 @@ typedef struct  // These jokers are triggered after the played hand has finished
     int money;
     bool retrigger; // Retrigger played hand (e.g. "Dusk" joker, even though on the wiki it says "On Scored" it makes more sense to have it here)
 } JokerEffect;
+
+typedef JokerEffect (*JokerEffectFunc)(Joker *joker, Card *scored_card);
+typedef struct {
+    u8 rarity;
+    u8 base_value;
+    JokerEffectFunc effect;
+} JokerInfo;
+const JokerInfo* get_joker_registry_entry(int joker_id);
+size_t get_joker_registry_size(void);
 
 void joker_init();
 
