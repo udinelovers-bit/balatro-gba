@@ -5,12 +5,17 @@
 #include "graphic_utils.h"
 #include "card.h"
 #include "soundbank.h"
+#include "util.h"
 
 #include <maxmod.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define JOKER_SCORE_TEXT_Y 48
+#define NUM_JOKERS_PER_SPRITESHEET 2
+
+const unsigned int **joker_gfxTiles;
+const unsigned short **joker_gfxPal;
 
 const static u8 edition_price_lut[MAX_EDITIONS] =
 {
@@ -31,20 +36,99 @@ const static u8 edition_price_lut[MAX_EDITIONS] =
 static bool used_layers[MAX_JOKER_OBJECTS] = {false}; // Track used layers for joker sprites
 // TODO: Refactor sorting into SpriteObject?
 
+// Maps the spritesheet index to the palette bank index allocated to it.
+// Spritesheets that were not allocated are
+static int* joker_spritesheet_pb_map;
+
+static int get_num_spritesheets()
+{
+    return (get_joker_registry_size() + NUM_JOKERS_PER_SPRITESHEET - 1) / NUM_JOKERS_PER_SPRITESHEET;
+}
+
+// TODO: This should be generalized so any sprite can have dynamic swapping
+static int allocate_pb_if_needed(u8 joker_id)
+{
+    int joker_spritesheet_idx = joker_id / NUM_JOKERS_PER_SPRITESHEET;
+    int joker_pb = joker_spritesheet_pb_map[joker_spritesheet_idx];
+    if (joker_pb != UNDEFINED)
+    {
+        // Already allocated
+        return joker_pb;
+    }
+    
+    // Allocate a new palette
+    joker_pb = int_arr_max(joker_spritesheet_pb_map, get_num_spritesheets());
+
+    if (joker_pb == UNDEFINED)
+    {
+        // This is the first palette loaded
+        joker_pb = JOKER_BASE_PB;
+    }
+    else
+    {
+        // The new palette bank is a 1 increment of the last allocated one
+        /* TODO: This doesn't account for removal, we need to address that,
+         * track sprite usage and remove palettes for unused sprites
+         */ 
+        joker_pb = joker_pb + 1;
+    }
+
+    if (joker_pb == NUM_PALETTES)
+    {
+        // Ran out of palettes, default to base and pray
+        joker_pb = JOKER_BASE_PB;
+    }
+    else
+    {
+        joker_spritesheet_pb_map[joker_spritesheet_idx] = joker_pb;
+        memcpy16(&pal_obj_mem[PAL_ROW_LEN * joker_pb], joker_gfxPal[joker_spritesheet_idx], NUM_ELEM_IN_ARR(joker_gfx0Pal));
+    }
+    
+    return joker_pb;
+}
+
 void joker_init()
 {
-    GRIT_CPY(&pal_obj_mem[PAL_ROW_LEN * JOKER_PB], joker_gfxPal);
+    // This should init once only so no need to free
+    int num_spritesheets = get_num_spritesheets();
+    joker_gfxTiles = (const unsigned int**)malloc((sizeof(unsigned int*) * num_spritesheets));
+    joker_gfxPal = (const unsigned short**)malloc((sizeof(unsigned int*) * num_spritesheets));
+    joker_spritesheet_pb_map = (int*)malloc(sizeof(int) * num_spritesheets);
+    
+    // TODO: Automate this with the preprocessor somehow?
+    joker_gfxTiles[0] = joker_gfx0Tiles;
+    joker_gfxTiles[1] = joker_gfx1Tiles;
+    joker_gfxTiles[2] = joker_gfx2Tiles;
+    joker_gfxTiles[3] = joker_gfx3Tiles;
+    joker_gfxTiles[4] = joker_gfx4Tiles;
+    joker_gfxTiles[5] = joker_gfx5Tiles;
+    joker_gfxTiles[6] = joker_gfx6Tiles;
+    joker_gfxTiles[7] = joker_gfx7Tiles;
+
+    joker_gfxPal[0] = joker_gfx0Pal;
+    joker_gfxPal[1] = joker_gfx1Pal;
+    joker_gfxPal[2] = joker_gfx2Pal;
+    joker_gfxPal[3] = joker_gfx3Pal;
+    joker_gfxPal[4] = joker_gfx4Pal;
+    joker_gfxPal[5] = joker_gfx5Pal;
+    joker_gfxPal[6] = joker_gfx6Pal;
+    joker_gfxPal[7] = joker_gfx7Pal;
+
+    for (int i = 0; i < num_spritesheets; i++)
+    {
+        joker_spritesheet_pb_map[i] = UNDEFINED;
+    }
 }
 
 Joker *joker_new(u8 id)
 {
     if (id >= get_joker_registry_size()) return NULL;
 
-    Joker *joker = malloc(sizeof(Joker));
+    Joker *joker = (Joker*)malloc(sizeof(Joker));
     const JokerInfo *jinfo = get_joker_registry_entry(id);
 
     joker->id = id;
-    joker->modifier = BASE_EDITION; // TODO: Make this random later
+    joker->modifier = BASE_EDITION; // TODO: Make this a parameter
     joker->value = jinfo->base_value + edition_price_lut[joker->modifier]; // Base value + edition price
     joker->rarity = jinfo->rarity;
     joker->processed = false;
@@ -87,7 +171,13 @@ JokerObject *joker_object_new(Joker *joker)
     joker_object->sprite_object = sprite_object_new();
 
     int tile_index = JOKER_TID + (layer * JOKER_SPRITE_OFFSET);
-    memcpy32(&tile_mem[4][tile_index], &joker_gfxTiles[joker->id * TILE_SIZE * JOKER_SPRITE_OFFSET], TILE_SIZE * JOKER_SPRITE_OFFSET);
+    
+    int joker_spritesheet_idx = joker->id / NUM_JOKERS_PER_SPRITESHEET;
+    int joker_idx = joker->id % NUM_JOKERS_PER_SPRITESHEET;
+    int joker_pb = allocate_pb_if_needed(joker->id);
+
+    memcpy32(&tile_mem[4][tile_index], &joker_gfxTiles[joker_spritesheet_idx][joker_idx * TILE_SIZE * JOKER_SPRITE_OFFSET], TILE_SIZE * JOKER_SPRITE_OFFSET);
+    
     sprite_object_set_sprite
     (
         joker_object->sprite_object, 
@@ -96,7 +186,7 @@ JokerObject *joker_object_new(Joker *joker)
             ATTR0_SQUARE | ATTR0_4BPP | ATTR0_AFF, 
             ATTR1_SIZE_32, 
             tile_index, 
-            JOKER_PB,
+            joker_pb,
             JOKER_STARTING_LAYER + layer
         )
     );
