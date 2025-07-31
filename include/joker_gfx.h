@@ -4,5 +4,10 @@
 #include "joker_gfx0.h"
 #include "joker_gfx1.h"
 #include "joker_gfx2.h"
+#include "joker_gfx3.h"
+#include "joker_gfx4.h"
+#include "joker_gfx5.h"
+#include "joker_gfx6.h"
+#include "joker_gfx7.h"
 
 #endif
