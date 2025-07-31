@@ -37,4 +37,6 @@ static inline int get_digits_even(int n)
 
 #define NUM_ELEM_IN_ARR(arr) (sizeof(arr) / sizeof((arr)[0]))
 
+int int_arr_max(int int_arr[], int size);
+
 #endif // UTIL_H
