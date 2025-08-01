@@ -44,18 +44,23 @@ bool hand_contains_two_pair(u8 *ranks) {
     return false;
 }
 
-bool hand_contains_full_house(u8 *ranks) {
-    bool contains_pair = false;
-    bool contains_three = false;
+bool hand_contains_full_house(u8* ranks) {
+    int count_three = 0;
+    int count_pair = 0;
     for (int i = 0; i < NUM_RANKS; i++) {
-        if (ranks[i] == 2) {
-            contains_pair = true;
+        if (ranks[i] >= 3) {
+            count_three++;
         }
-        if (ranks[i] == 3) {
-            contains_three = true;
+        else if (ranks[i] >= 2) {
+            count_pair++;
         }
     }
-    return contains_pair && contains_three;
+    // Full house if there is:
+    // - at least one three-of-a-kind and at least one other pair,
+    // - OR at least two three-of-a-kinds (second "three" acts as pair).
+    // This accounts for hands with 6 or more cards even though
+    // they are currently not possible and probably never will be.
+    return (count_three >= 2 || (count_three && count_pair));
 }
 
 bool hand_contains_straight(u8 *ranks) {
