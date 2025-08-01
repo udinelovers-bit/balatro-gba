@@ -793,7 +793,7 @@ void hand_set_focus(int index)
     mmEffectEx(&sfx_focus);
 }
 
-void hand_select()
+void hand_toggle_card_selection()
 {
     if (hand_state != HAND_SELECT || hand[selection_x] == NULL) return;
 
@@ -811,6 +811,28 @@ void hand_select()
         hand_selections++;
 
         mm_sound_effect sfx_deselect = {{SFX_CARD_DESELECT}, 1024, 0, 255, 128,};
+        mmEffectEx(&sfx_deselect);
+    }
+}
+
+void hand_deselect_all_cards()
+{
+    bool any_cards_deselected = false;
+    for (int i = 0; i <= get_hand_top(); i++)
+    {
+        if (card_object_is_selected(hand[i]))
+        {
+            card_object_set_selected(hand[i], false);
+            hand_selections--;
+            any_cards_deselected = true;
+        }
+    }
+
+    if (any_cards_deselected)
+    {
+        // The sound effects are currently flipped
+        // TODO: Fix
+        mm_sound_effect sfx_deselect = { {SFX_CARD_SELECT}, 1024, 0, 255, 128, };
         mmEffectEx(&sfx_deselect);
     }
 }
@@ -1085,7 +1107,13 @@ static void game_playing_process_hand_select_input()
         
         if (key_hit(SELECT_CARD))
         {
-            hand_select();
+            hand_toggle_card_selection();
+            set_hand();
+        }
+
+        if (key_hit(DESELECT_CARDS))
+        {
+            hand_deselect_all_cards();
             set_hand();
         }
     }
