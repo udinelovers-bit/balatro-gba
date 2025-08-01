@@ -82,4 +82,6 @@ int             get_played_top(void);
 JokerObject**   get_jokers(void);
 int             get_jokers_top(void);
 
+int get_num_discards_remaining(void);
+
 #endif // GAME_H

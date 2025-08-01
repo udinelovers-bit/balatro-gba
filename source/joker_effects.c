@@ -215,6 +215,78 @@ static JokerEffect misprint_joker_effect(Joker *joker, Card *scored_card) {
     return effect;
 }
 
+static JokerEffect walkie_talkie_joker_effect(Joker *joker, Card *scored_card) {
+    JokerEffect effect = {0};
+    if (scored_card == NULL)
+        return effect;
+
+    if (scored_card->rank == TEN || scored_card->rank == FOUR) {
+            effect.chips = 10;
+            effect.mult = 4;
+    }
+
+    return effect;
+}
+
+static JokerEffect fibonnaci_joker_effect(Joker *joker, Card *scored_card) {
+    JokerEffect effect = {0};
+    if (scored_card == NULL)
+        return effect;
+
+    switch (scored_card->rank) {
+        case ACE: case TWO: case THREE: case FIVE: case EIGHT:
+            effect.mult = 8;
+        default:
+            break;
+    }
+
+    return effect;
+}
+
+static JokerEffect banner_joker_effect(Joker *joker, Card *scored_card) {
+    JokerEffect effect = {0};
+    if (scored_card != NULL)
+        return effect; // if card != null, we are not at the end-phase of scoring yet
+
+    effect.chips = 30 * get_num_discards_remaining();
+
+    return effect;
+}
+
+static JokerEffect mystic_summit_joker_effect(Joker *joker, Card *scored_card) {
+    JokerEffect effect = {0};
+    if (scored_card != NULL)
+        return effect; // if card != null, we are not at the end-phase of scoring yet
+
+    if (get_num_discards_remaining() == 0)
+        effect.mult = 15;
+
+    return effect;
+}
+
+static JokerEffect blackboard_joker_effect(Joker *joker, Card *scored_card) {
+    JokerEffect effect = {0};
+    if (scored_card != NULL)
+        return effect; // if card != null, we are not at the end-phase of scoring yet
+
+    bool all_cards_are_spades_or_clubs = true;
+    CardObject** hand = get_hand_array();
+    int hand_top = get_hand_top();
+    for (int i = 0; i < hand_top; i++ )
+    {
+        u8 suit = hand[i]->card->suit;
+        if (suit == HEARTS || suit == DIAMONDS) {
+            all_cards_are_spades_or_clubs = false;
+            break;
+        }
+    }
+
+    if (all_cards_are_spades_or_clubs)
+        effect.xmult = 3;
+
+    return effect;
+}
+
 const JokerInfo joker_registry[] = {
     { COMMON_JOKER, 2, default_joker_effect },  // DEFAULT_JOKER_ID = 0
     { COMMON_JOKER, 5, greedy_joker_effect },   // GREEDY_JOKER_ID = 1
@@ -234,6 +306,11 @@ const JokerInfo joker_registry[] = {
     { COMMON_JOKER, 5, half_joker_effect },
     { UNCOMMON_JOKER, 8, joker_stencil_effect },
     { COMMON_JOKER, 4, misprint_joker_effect },
+    { COMMON_JOKER, 4, walkie_talkie_joker_effect },
+    { UNCOMMON_JOKER, 8, fibonnaci_joker_effect },
+    { COMMON_JOKER, 5, banner_joker_effect },
+    { COMMON_JOKER, 5, mystic_summit_joker_effect },
+    { UNCOMMON_JOKER, 6, blackboard_joker_effect },
 };
 
 static const size_t joker_registry_size = NUM_ELEM_IN_ARR(joker_registry);
