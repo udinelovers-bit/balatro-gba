@@ -13,6 +13,7 @@
 #include "joker.h"
 #include "graphic_utils.h"
 #include "tonc_video.h"
+#include "audio_utils.h"
 
 #include "background_gfx.h"
 #include "background_shop_gfx.h"
@@ -205,7 +206,13 @@ static const Rect SHOP_REROLL_RECT          = {88,      96,    UNDEFINED, UNDEFI
 
 //TODO: Properly define and use
 #define MENU_POP_OUT_ANIM_FRAMES 20
+
 #define SCORED_CARD_TEXT_Y 48
+
+#define PITCH_STEP_DISCARD_SFX      (-64)
+#define PITCH_STEP_DRAW_SFX         24
+#define PITCH_STEP_UNDISCARD_SFX    2*PITCH_STEP_DRAW_SFX    
+// Naming the stage where cards return from the discard pile to the deck "undiscard"
 
 // General functions
 void set_seed(int seed)
@@ -779,9 +786,7 @@ void card_draw()
     // Sort the hand after drawing a card
     sort_cards();
 
-    const int pitch_lut[MAX_HAND_SIZE] = {1024, 1048, 1072, 1096, 1120, 1144, 1168, 1192, 1216, 1240, 1264, 1288, 1312, 1336, 1360, 1384};
-    mm_sound_effect sfx_draw = {{SFX_CARD_DRAW}, pitch_lut[cards_drawn], 0, 255, 128,};
-    mmEffectEx(&sfx_draw);
+    play_sfx(SFX_CARD_DRAW, MM_BASE_PITCH_RATE + cards_drawn*PITCH_STEP_DRAW_SFX);
 }
 
 void hand_set_focus(int index)
@@ -789,8 +794,7 @@ void hand_set_focus(int index)
     if (index < 0 || index > hand_top || hand_state != HAND_SELECT) return;
     selection_x = index;
 
-    mm_sound_effect sfx_focus = {{SFX_CARD_FOCUS}, 1024 + rand() % 512, 0, 255, 128,};
-    mmEffectEx(&sfx_focus);
+    play_sfx(SFX_CARD_FOCUS, MM_BASE_PITCH_RATE + rand() % 512);
 }
 
 void hand_toggle_card_selection()
@@ -801,17 +805,13 @@ void hand_toggle_card_selection()
     {
         card_object_set_selected(hand[selection_x], false);
         hand_selections--;
-
-        mm_sound_effect sfx_select = {{SFX_CARD_SELECT}, 1024, 0, 255, 128,};
-        mmEffectEx(&sfx_select);
+        play_sfx(SFX_CARD_DESELECT, MM_BASE_PITCH_RATE);
     }
     else if (hand_selections < MAX_SELECTION_SIZE)
     {
         card_object_set_selected(hand[selection_x], true);
         hand_selections++;
-
-        mm_sound_effect sfx_deselect = {{SFX_CARD_DESELECT}, 1024, 0, 255, 128,};
-        mmEffectEx(&sfx_deselect);
+        play_sfx(SFX_CARD_SELECT, MM_BASE_PITCH_RATE);
     }
 }
 
@@ -830,10 +830,7 @@ void hand_deselect_all_cards()
 
     if (any_cards_deselected)
     {
-        // The sound effects are currently flipped
-        // TODO: Fix
-        mm_sound_effect sfx_deselect = { {SFX_CARD_SELECT}, 1024, 0, 255, 128, };
-        mmEffectEx(&sfx_deselect);
+        play_sfx(SFX_CARD_DESELECT, MM_BASE_PITCH_RATE);
     }
 }
 
@@ -928,6 +925,8 @@ void game_round_init()
     Rect blind_req_text_rect = BLIND_REQ_TEXT_RECT;
     int blind_requirement = blind_get_requirement(current_blind, ante);
     
+    // TODO: Address Copilot review at
+    // https://github.com/cellos51/balatro-gba/pull/46#pullrequestreview-3045772903
     char score_suffix = ' ';
     if(blind_requirement >= 10000)
     {
@@ -1227,10 +1226,7 @@ static void game_playing_discarded_cards_loop()
                 deck_push(discarded_card_object->card); // Put the card back into the deck
                 card_object_destroy(&discarded_card_object);
 
-                // play draw sound
-                const int pitch_lut[MAX_HAND_SIZE] = { 1024, 1048, 1072, 1096, 1120, 1144, 1168, 1192, 1216, 1240, 1264, 1288, 1312, 1336, 1360, 1384 };
-                mm_sound_effect sfx_draw = { {SFX_CARD_DRAW}, pitch_lut[2], 0, 255, 128, };
-                mmEffectEx(&sfx_draw);
+                play_sfx(SFX_CARD_DRAW, MM_BASE_PITCH_RATE + PITCH_STEP_UNDISCARD_SFX);
             }
         }
 
@@ -1293,9 +1289,7 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
 
                         if (!*sound_played)
                         {
-                            const int pitch_lut[MAX_SELECTION_SIZE] = { 1024, 960, 896, 832, 768 };
-                            mm_sound_effect sfx_draw = { {SFX_CARD_DRAW}, pitch_lut[cards_drawn], 0, 255, 128, };
-                            mmEffectEx(&sfx_draw);
+                            play_sfx(SFX_CARD_DRAW, MM_BASE_PITCH_RATE + cards_drawn*PITCH_STEP_DISCARD_SFX);
                             *sound_played = true;
                         }
 
@@ -1357,9 +1351,7 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                     hand[i] = NULL;
                     sort_cards();
 
-                    const int pitch_lut[MAX_SELECTION_SIZE] = { 1024, 960, 896, 832, 768 };
-                    mm_sound_effect sfx_draw = { {SFX_CARD_DRAW}, pitch_lut[cards_drawn], 0, 255, 128, };
-                    mmEffectEx(&sfx_draw);
+                    play_sfx(SFX_CARD_DRAW, MM_BASE_PITCH_RATE + cards_drawn*PITCH_STEP_DISCARD_SFX);
 
                     hand_top--;
                     hand_selections--;
@@ -1691,9 +1683,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
                         if (!*sound_played)
                         {
-                            const int pitch_lut[MAX_SELECTION_SIZE] = {1024, 960, 896, 832, 768};
-                            mm_sound_effect sfx_draw = {{SFX_CARD_DRAW}, pitch_lut[cards_drawn], 0, 255, 128,};
-                            mmEffectEx(&sfx_draw);
+                            play_sfx(SFX_CARD_DRAW, MM_BASE_PITCH_RATE + cards_drawn*PITCH_STEP_DISCARD_SFX);
                             *sound_played = true;
                         }
 
@@ -2415,7 +2405,7 @@ void game_blind_select()
 
             for (int i = 0; i < MAX_BLINDS; i++)
             {
-                sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y - 8);
+                sprite_position(blind_select_tokens[i], blind_select_tokens[i]->pos.x, blind_select_tokens[i]->pos.y - TILE_SIZE);
             }
 
             if (timer == 12)
