@@ -39,7 +39,7 @@ typedef struct
     bool processed;
 } Joker;
 
-typedef struct // copy of CardObject in card.h
+typedef struct JokerObject // copy of CardObject in card.h
 {
     Joker *joker;
     SpriteObject* sprite_object;

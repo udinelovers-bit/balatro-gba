@@ -214,6 +214,31 @@ static const Rect SHOP_REROLL_RECT          = {88,      96,    UNDEFINED, UNDEFI
 #define PITCH_STEP_UNDISCARD_SFX    2*PITCH_STEP_DRAW_SFX    
 // Naming the stage where cards return from the discard pile to the deck "undiscard"
 
+// get-functions, for other files to view game state (mainly for jokers)
+CardObject **get_hand_array(void) {
+    return hand;
+}
+
+int get_hand_top(void) {
+    return hand_top;
+}
+
+CardObject **get_played_array(void) {
+    return played;
+}
+
+int get_played_top(void) {
+    return played_top;
+}
+
+JokerObject **get_jokers(void) {
+    return jokers;
+}
+
+int get_jokers_top(void) {
+    return jokers_top;
+}
+
 // General functions
 void set_seed(int seed)
 {
@@ -288,22 +313,6 @@ void sort_cards()
             sprite_position(card_object_get_sprite(hand[i]), fx2int(hand[i]->sprite_object->x), fx2int(hand[i]->sprite_object->y));
         }
     }
-}
-
-CardObject **get_hand_array(void) {
-    return hand;
-}
-
-int get_hand_top(void) {
-    return hand_top;
-}
-
-CardObject **get_played_array(void) {
-    return played;
-}
-
-int get_played_top(void) {
-    return played_top;
 }
 
 enum HandType hand_get_type()
@@ -1813,6 +1822,8 @@ static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
         }
         
         u8 joker_id = random() % get_joker_registry_size();
+        // TODO: don't pick a joker that we already own
+        // TODO: weight the random choice by joker rarity
 
         shop_jokers[i] = joker_object_new(joker_new(joker_id));
         shop_jokers[i]->sprite_object->x = int2fx(120 + i * 32);

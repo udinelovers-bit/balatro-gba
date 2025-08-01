@@ -229,7 +229,7 @@ bool joker_object_score(JokerObject *joker_object, Card* scored_card, int *chips
     {
         *chips += joker_effect.chips;
         *mult += joker_effect.mult;
-        // TODO: XMult
+        *mult *= joker_effect.xmult > 0 ? joker_effect.xmult : 1; // if xmult is zero, DO NOT multiply by it
         *money += joker_effect.money;
         // TODO: Retrigger
 
@@ -246,6 +246,11 @@ bool joker_object_score(JokerObject *joker_object, Card* scored_card, int *chips
         {
             tte_set_special(0xE000); // Red
             snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.mult);
+        }
+        else if (joker_effect.xmult > 0)
+        {
+            tte_set_special(0xE000); // Red
+            snprintf(score_buffer, sizeof(score_buffer), "X%d", joker_effect.xmult);
         }
         else if (joker_effect.money > 0)
         {
