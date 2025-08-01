@@ -805,13 +805,13 @@ void hand_toggle_card_selection()
     {
         card_object_set_selected(hand[selection_x], false);
         hand_selections--;
-        play_sfx(SFX_CARD_SELECT, MM_BASE_PITCH_RATE);
+        play_sfx(SFX_CARD_DESELECT, MM_BASE_PITCH_RATE);
     }
     else if (hand_selections < MAX_SELECTION_SIZE)
     {
         card_object_set_selected(hand[selection_x], true);
         hand_selections++;
-        play_sfx(SFX_CARD_DESELECT, MM_BASE_PITCH_RATE);
+        play_sfx(SFX_CARD_SELECT, MM_BASE_PITCH_RATE);
     }
 }
 
@@ -830,9 +830,7 @@ void hand_deselect_all_cards()
 
     if (any_cards_deselected)
     {
-        // The sound effects are currently flipped
-        // TODO: Fix
-        play_sfx(SFX_CARD_SELECT, MM_BASE_PITCH_RATE);
+        play_sfx(SFX_CARD_DESELECT, MM_BASE_PITCH_RATE);
     }
 }
 
@@ -927,6 +925,8 @@ void game_round_init()
     Rect blind_req_text_rect = BLIND_REQ_TEXT_RECT;
     int blind_requirement = blind_get_requirement(current_blind, ante);
     
+    // TODO: Address Copilot review at
+    // https://github.com/cellos51/balatro-gba/pull/46#pullrequestreview-3045772903
     char score_suffix = ' ';
     if(blind_requirement >= 10000)
     {
