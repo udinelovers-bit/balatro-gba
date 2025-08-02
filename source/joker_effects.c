@@ -3,8 +3,6 @@
 #include "hand_analysis.h"
 #include <stdlib.h>
 
-static const int JOKER_STENCIL_ID = 16;
-
 static JokerEffect default_joker_effect(Joker *joker, Card *scored_card) {
     JokerEffect effect = {0};
     if (scored_card == NULL) effect.mult = 4;
