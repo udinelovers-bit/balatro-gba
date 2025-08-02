@@ -2135,6 +2135,39 @@ void game_round_end()
     }
 }
 
+void game_shop_intro(JokerObject* shop_jokers[])
+{
+    main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
+
+    if (timer == 1)
+    {
+        game_shop_create_items(shop_jokers, true);
+    }
+
+    if (timer >= 7) // Shift the shop icon
+    {
+        int timer_offset = timer - 6;
+
+        // TODO: Extract to generic function?
+        for (int y = 0; y < timer_offset; y++)
+        {
+            int y_from = 26 + y - timer_offset;
+            int y_to = 0 + y;
+
+            Rect from = { 0, y_from, 8, y_from };
+            BG_POINT to = { 0, y_to };
+
+            main_bg_se_copy_rect(from, to);
+        }
+    }
+
+    if (timer == 12)
+    {
+        state = 1;
+        timer = 0; // Reset the timer
+    }
+}
+
 void game_shop()
 {
     change_background(BG_ID_SHOP);
@@ -2183,36 +2216,7 @@ void game_shop()
     {
         case 0: // Intro sequence (menu and shop icon coming into frame)
         {           
-            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
-
-            if (timer == 1)
-            {
-                game_shop_create_items(shop_jokers, true);
-            }
-
-            if (timer >= 7) // Shift the shop icon
-            {
-                int timer_offset = timer - 6;
-
-                // TODO: Extract to generic function?
-                for (int y = 0; y < timer_offset; y++)
-                {
-                    int y_from = 26 + y - timer_offset;
-                    int y_to = 0 + y;
-
-                    Rect from = {0, y_from, 8, y_from};
-                    BG_POINT to = {0, y_to};
-
-                    main_bg_se_copy_rect(from, to);
-                }
-            }
-
-            if (timer == 12)
-            {
-                state = 1;
-                timer = 0; // Reset the timer
-            }
-
+            game_shop_intro(shop_jokers);
             break;
         }    
         case 1: // Shop menu input and selection
