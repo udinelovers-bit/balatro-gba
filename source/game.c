@@ -272,6 +272,10 @@ int get_num_discards_remaining(void) {
     return discards;
 }
 
+int get_money(void) {
+    return money;
+}
+
 // General functions
 void set_seed(int seed)
 {
