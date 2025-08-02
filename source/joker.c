@@ -104,6 +104,7 @@ void joker_init()
     joker_gfxTiles[5] = joker_gfx5Tiles;
     joker_gfxTiles[6] = joker_gfx6Tiles;
     joker_gfxTiles[7] = joker_gfx7Tiles;
+    joker_gfxTiles[8] = joker_gfx8Tiles;
 
     joker_gfxPal[0] = joker_gfx0Pal;
     joker_gfxPal[1] = joker_gfx1Pal;
@@ -113,6 +114,7 @@ void joker_init()
     joker_gfxPal[5] = joker_gfx5Pal;
     joker_gfxPal[6] = joker_gfx6Pal;
     joker_gfxPal[7] = joker_gfx7Pal;
+    joker_gfxPal[8] = joker_gfx8Pal;
 
     for (int i = 0; i < num_spritesheets; i++)
     {
