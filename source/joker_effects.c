@@ -204,12 +204,13 @@ static JokerEffect joker_stencil_effect(Joker *joker, Card *scored_card) {
     return effect;
 }
 
+#define MISPRINT_MAX_MULT 23
 static JokerEffect misprint_joker_effect(Joker *joker, Card *scored_card) {
     JokerEffect effect = {0};
     if (scored_card != NULL)
         return effect; // if card != null, we are not at the end-phase of scoring yet
 
-    effect.mult = random() % 24;
+    effect.mult = random() % (MISPRINT_MAX_MULT + 1);
 
     return effect;
 }
