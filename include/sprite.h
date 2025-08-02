@@ -8,7 +8,6 @@ typedef struct
 {
     OBJ_ATTR *obj;
     OBJ_AFFINE *aff;
-    u32 tid, pb;
     POINT pos;
 } Sprite;
 
@@ -44,6 +43,7 @@ INLINE void sprite_position(Sprite *sprite, int x, int y)
 // Sprite functions
 void sprite_init();
 void sprite_draw();
+int sprite_get_pb(const Sprite* sprite);
 
 // SpriteObject methods
 SpriteObject *sprite_object_new();
