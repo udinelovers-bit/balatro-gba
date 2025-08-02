@@ -420,13 +420,23 @@ void change_background(int id)
             else if (current_blind == BOSS_BLIND)
             {
                 main_bg_se_copy_rect(BOSS_BLIND_TITLE_SRC_RECT, TOP_LEFT_BLIND_TITLE_POINT);
-                u16 palette[5] = {};
-                palette[0] = blind_get_color(current_blind, BLIND_BACKGROUND_SECONDARY_COLOR_INDEX);
-                palette[1] = blind_get_color(current_blind, BLIND_SHADOW_COLOR_INDEX);
-                palette[2] = blind_get_color(current_blind, BLIND_BACKGROUND_SHADOW_COLOR_INDEX);
-                palette[3] = blind_get_color(current_blind, BLIND_MAIN_COLOR_INDEX);
-                palette[4] = blind_get_color(current_blind, BLIND_TEXT_COLOR_INDEX);
-                memcpy16(&pal_bg_mem[16 * 15], palette, 5);
+
+                const int palette_length = 5;
+                memcpy16(&pal_bg_mem[16 * 15], affine_background_gfxPal, palette_length);
+                for (int i = 0; i < palette_length; i++)
+                {
+                    COLOR old_color = 0;
+                    memcpy16(&old_color, &pal_bg_mem[16 * 15] + i, 1); // Copy the color from the background palette
+
+                    int r, g, b;
+                    r = (old_color >> 10) & 0b11111; // Extract red component
+                    g = (old_color >> 5) & 0b11111; // Extract green component
+                    b = old_color & 0b11111; // Extract blue component
+
+                    COLOR new_color = blind_get_color(BOSS_BLIND, BLIND_MAIN_COLOR_INDEX);
+                    int brightness = (r + g + b) / 3; // Calculate brightness
+                    clr_adj_brightness(&pal_bg_mem[16 * 15] + i, &new_color, 1, float2fx(-0.6f + (brightness * 0.05f))); // Adjust brightness for the palette colors
+                }
             }
 
             bg_copy_current_item_to_top_left_panel();
