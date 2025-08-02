@@ -164,6 +164,18 @@ int get_jokers_top(void) {
     return jokers_top;
 }
 
+int get_deck_top(void) {
+    return deck_top;
+}
+
+int get_num_discards_remaining(void) {
+    return discards;
+}
+
+int get_money(void) {
+    return money;
+}
+
 // Consts
 
 // Rects                                       left     top     right   bottom
@@ -238,43 +250,6 @@ static const Rect SHOP_REROLL_RECT          = {88,      96,    UNDEFINED, UNDEFI
 #define PITCH_STEP_DRAW_SFX         24
 #define PITCH_STEP_UNDISCARD_SFX    2*PITCH_STEP_DRAW_SFX    
 // Naming the stage where cards return from the discard pile to the deck "undiscard"
-
-// get-functions, for other files to view game state (mainly for jokers)
-CardObject **get_hand_array(void) {
-    return hand;
-}
-
-int get_hand_top(void) {
-    return hand_top;
-}
-
-CardObject **get_played_array(void) {
-    return played;
-}
-
-int get_played_top(void) {
-    return played_top;
-}
-
-JokerObject **get_jokers(void) {
-    return jokers;
-}
-
-int get_jokers_top(void) {
-    return jokers_top;
-}
-
-int get_deck_top(void) {
-    return deck_top;
-}
-
-int get_num_discards_remaining(void) {
-    return discards;
-}
-
-int get_money(void) {
-    return money;
-}
 
 // General functions
 void set_seed(int seed)
