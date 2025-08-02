@@ -287,6 +287,15 @@ static JokerEffect blackboard_joker_effect(Joker *joker, Card *scored_card) {
     return effect;
 }
 
+static JokerEffect blue_joker_effect(Joker *joker, Card *scored_card) {
+    JokerEffect effect = {0};
+    if (scored_card != NULL)
+        return effect; // if card != null, we are not at the end-phase of scoring yet
+    effect.chips = (get_deck_top() + 1) * 2;
+
+    return effect;
+}
+
 const JokerInfo joker_registry[] = {
     { COMMON_JOKER, 2, default_joker_effect },  // DEFAULT_JOKER_ID = 0
     { COMMON_JOKER, 5, greedy_joker_effect },   // GREEDY_JOKER_ID = 1
@@ -311,6 +320,7 @@ const JokerInfo joker_registry[] = {
     { COMMON_JOKER, 5, banner_joker_effect },
     { COMMON_JOKER, 5, mystic_summit_joker_effect },
     { UNCOMMON_JOKER, 6, blackboard_joker_effect },
+    { COMMON_JOKER, 5, blue_joker_effect },
 };
 
 static const size_t joker_registry_size = NUM_ELEM_IN_ARR(joker_registry);

@@ -264,6 +264,10 @@ int get_jokers_top(void) {
     return jokers_top;
 }
 
+int get_deck_top(void) {
+    return deck_top;
+}
+
 int get_num_discards_remaining(void) {
     return discards;
 }
