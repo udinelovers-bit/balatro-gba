@@ -2325,7 +2325,8 @@ void game_shop()
 
                             Rect joker_price_rect;
                             joker_price_rect.left = fx2int(shop_jokers[i]->sprite_object->tx);
-                            joker_price_rect.top = fx2int(shop_jokers[i]->sprite_object->ty) + TILE_SIZE;
+                            // 2*TILE_SIZE because the item is highlighted and raised by 1 additional tile
+                            joker_price_rect.top = fx2int(shop_jokers[i]->sprite_object->ty) + CARD_SPRITE_SIZE + 2*TILE_SIZE;
                             joker_price_rect.right = joker_price_rect.left + TILE_SIZE * 3;
                             joker_price_rect.bottom = joker_price_rect.top + TILE_SIZE;
 
