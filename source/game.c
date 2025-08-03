@@ -1821,7 +1821,7 @@ static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
         shop_jokers[i]->sprite_object->ty = int2fx(71);
 
         int x = fx2int(shop_jokers[i]->sprite_object->tx) + TILE_SIZE - (get_digits_even(shop_jokers[i]->joker->value) - 1) * TILE_SIZE;
-        int y = fx2int(shop_jokers[i]->sprite_object->ty);
+        int y = fx2int(shop_jokers[i]->sprite_object->ty) + CARD_SPRITE_SIZE + TILE_SIZE;
         tte_printf("#{P:%d,%d; cx:0xC000}$%d", x, y, shop_jokers[i]->joker->value);
 
         if (first_time == false)
