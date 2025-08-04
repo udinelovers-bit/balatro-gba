@@ -101,6 +101,15 @@ void sprite_draw()
     oam_copy(oam_mem, obj_buffer, MAX_SPRITES);
 }
 
+int sprite_get_pb(const Sprite *sprite)
+{
+    if (sprite == NULL)
+    {
+        return UNDEFINED;
+    }
+    return (sprite->obj->attr2 & ATTR2_PALBANK_MASK) >> ATTR2_PALBANK_SHIFT;
+}
+
 // SpriteObject methods
 SpriteObject* sprite_object_new()
 {

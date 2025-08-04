@@ -39,16 +39,52 @@ static bool used_layers[MAX_JOKER_OBJECTS] = {false}; // Track used layers for j
 // Maps the spritesheet index to the palette bank index allocated to it.
 // Spritesheets that were not allocated are
 static int* joker_spritesheet_pb_map;
+static int joker_pb_num_sprite_users[JOKER_LAST_PB - JOKER_BASE_PB + 1] = { 0 };
 
 static int get_num_spritesheets()
 {
     return (get_joker_registry_size() + NUM_JOKERS_PER_SPRITESHEET - 1) / NUM_JOKERS_PER_SPRITESHEET;
 }
 
+static int joker_get_spritesheet_idx(u8 joker_id)
+
+{
+    return joker_id / NUM_JOKERS_PER_SPRITESHEET;
+}
+
 // TODO: This should be generalized so any sprite can have dynamic swapping
+static void joker_pb_add_sprite_user(int pb)
+{
+    joker_pb_num_sprite_users[pb - JOKER_BASE_PB]++;
+}
+
+static void joker_pb_remove_sprite_user(int pb)
+{
+    int num_sprite_users = joker_pb_num_sprite_users[pb - JOKER_BASE_PB];
+    joker_pb_num_sprite_users[pb - JOKER_BASE_PB] = max(0, num_sprite_users - 1);
+}
+
+static int joker_pb_get_num_sprite_users(int joker_pb)
+{
+    return joker_pb_num_sprite_users[joker_pb - JOKER_BASE_PB];
+}
+
+static int get_unused_joker_pb()
+{
+    for (int i = 0; i < NUM_ELEM_IN_ARR(joker_pb_num_sprite_users); i++)
+    {
+        if (joker_pb_num_sprite_users[i] == 0)
+        {
+            return (i + JOKER_BASE_PB);
+        }
+    }
+
+    return UNDEFINED;
+}
+
 static int allocate_pb_if_needed(u8 joker_id)
 {
-    int joker_spritesheet_idx = joker_id / NUM_JOKERS_PER_SPRITESHEET;
+    int joker_spritesheet_idx = joker_get_spritesheet_idx(joker_id);
     int joker_pb = joker_spritesheet_pb_map[joker_spritesheet_idx];
     if (joker_pb != UNDEFINED)
     {
@@ -57,23 +93,9 @@ static int allocate_pb_if_needed(u8 joker_id)
     }
     
     // Allocate a new palette
-    joker_pb = int_arr_max(joker_spritesheet_pb_map, get_num_spritesheets());
+    joker_pb = get_unused_joker_pb();
 
     if (joker_pb == UNDEFINED)
-    {
-        // This is the first palette loaded
-        joker_pb = JOKER_BASE_PB;
-    }
-    else
-    {
-        // The new palette bank is a 1 increment of the last allocated one
-        /* TODO: This doesn't account for removal, we need to address that,
-         * track sprite usage and remove palettes for unused sprites
-         */ 
-        joker_pb = joker_pb + 1;
-    }
-
-    if (joker_pb == NUM_PALETTES)
     {
         // Ran out of palettes, default to base and pray
         joker_pb = JOKER_BASE_PB;
@@ -131,7 +153,7 @@ Joker *joker_new(u8 id)
 
     joker->id = id;
     joker->modifier = BASE_EDITION; // TODO: Make this a parameter
-    joker->value = jinfo->base_value + edition_price_lut[joker->modifier]; // Base value + edition price
+    joker->value = jinfo->base_value + edition_price_lut[joker->modifier];
     joker->rarity = jinfo->rarity;
     joker->processed = false;
 
@@ -174,12 +196,13 @@ JokerObject *joker_object_new(Joker *joker)
 
     int tile_index = JOKER_TID + (layer * JOKER_SPRITE_OFFSET);
     
-    int joker_spritesheet_idx = joker->id / NUM_JOKERS_PER_SPRITESHEET;
+    int joker_spritesheet_idx = joker_get_spritesheet_idx(joker->id);
     int joker_idx = joker->id % NUM_JOKERS_PER_SPRITESHEET;
     int joker_pb = allocate_pb_if_needed(joker->id);
+    joker_pb_add_sprite_user(joker_pb);
 
     memcpy32(&tile_mem[4][tile_index], &joker_gfxTiles[joker_spritesheet_idx][joker_idx * TILE_SIZE * JOKER_SPRITE_OFFSET], TILE_SIZE * JOKER_SPRITE_OFFSET);
-    
+
     sprite_object_set_sprite
     (
         joker_object->sprite_object, 
@@ -200,10 +223,16 @@ JokerObject *joker_object_new(Joker *joker)
 
 void joker_object_destroy(JokerObject **joker_object)
 {
-    if (*joker_object == NULL) return;
+    if (joker_object == NULL || *joker_object == NULL) return;
 
     int layer = sprite_get_layer(joker_object_get_sprite(*joker_object)) - JOKER_STARTING_LAYER;
     used_layers[layer] = false;
+    joker_pb_remove_sprite_user(sprite_get_pb(joker_object_get_sprite(*joker_object)));
+    if (joker_pb_get_num_sprite_users((sprite_get_pb(joker_object_get_sprite(*joker_object)))) == 0)
+    {
+        joker_spritesheet_pb_map[joker_get_spritesheet_idx((*joker_object)->joker->id)] = UNDEFINED;
+    }
+
     sprite_object_destroy(&(*joker_object)->sprite_object); // Destroy the sprite
     joker_destroy(&(*joker_object)->joker); // Destroy the joker
     free(*joker_object);
