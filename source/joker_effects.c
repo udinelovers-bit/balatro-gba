@@ -1,7 +1,7 @@
 #include "joker.h"
 #include "util.h"
 #include "hand_analysis.h"
-
+#include <stdlib.h>
 
 static JokerEffect default_joker_effect(Joker *joker, Card *scored_card) {
     JokerEffect effect = {0};
@@ -184,6 +184,37 @@ static JokerEffect half_joker_effect(Joker *joker, Card *scored_card) {
     return effect;
 }
 
+static JokerEffect joker_stencil_effect(Joker *joker, Card *scored_card) {
+    JokerEffect effect = {0};
+    if (scored_card != NULL)
+        return effect; // if card != null, we are not at the end-phase of scoring yet
+
+    // +1 xmult per empty joker slot...
+    int jokers_top = get_jokers_top();
+    effect.xmult = (MAX_JOKERS_HELD_SIZE-1) - jokers_top;
+
+    // ...and also each stencil_joker adds +1 xmult
+    JokerObject** jokers = get_jokers();
+    for (int i = 0; i < jokers_top; i++ )
+    {
+        if (jokers[i]->joker->id == JOKER_STENCIL_ID)
+            effect.xmult++;
+    }
+
+    return effect;
+}
+
+#define MISPRINT_MAX_MULT 23
+static JokerEffect misprint_joker_effect(Joker *joker, Card *scored_card) {
+    JokerEffect effect = {0};
+    if (scored_card != NULL)
+        return effect; // if card != null, we are not at the end-phase of scoring yet
+
+    effect.mult = random() % (MISPRINT_MAX_MULT + 1);
+
+    return effect;
+}
+
 const JokerInfo joker_registry[] = {
     { COMMON_JOKER, 2, default_joker_effect },  // DEFAULT_JOKER_ID = 0
     { COMMON_JOKER, 5, greedy_joker_effect },   // GREEDY_JOKER_ID = 1
@@ -201,6 +232,8 @@ const JokerInfo joker_registry[] = {
     { COMMON_JOKER, 4, devious_joker_effect },
     { COMMON_JOKER, 4, crafty_joker_effect },
     { COMMON_JOKER, 5, half_joker_effect },
+    { UNCOMMON_JOKER, 8, joker_stencil_effect },
+    { COMMON_JOKER, 4, misprint_joker_effect },
 };
 
 static const size_t joker_registry_size = NUM_ELEM_IN_ARR(joker_registry);

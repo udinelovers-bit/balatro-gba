@@ -35,6 +35,7 @@
 
 #define DEFAULT_JOKER_ID 0
 #define GREEDY_JOKER_ID 1 // This is just an example to show the patern of making joker IDs
+#define JOKER_STENCIL_ID 16
 
 typedef struct 
 {
@@ -45,7 +46,7 @@ typedef struct
     bool processed;
 } Joker;
 
-typedef struct // copy of CardObject in card.h
+typedef struct JokerObject
 {
     Joker *joker;
     SpriteObject* sprite_object;

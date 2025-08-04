@@ -9,5 +9,6 @@
 #include "joker_gfx5.h"
 #include "joker_gfx6.h"
 #include "joker_gfx7.h"
+#include "joker_gfx8.h"
 
 #endif
