@@ -4,6 +4,8 @@
 #include <tonc.h>
 #include <maxmod.h>
 
+#define CARD_SPRITE_SIZE 32
+
 typedef struct 
 {
     OBJ_ATTR *obj;

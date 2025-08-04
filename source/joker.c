@@ -126,6 +126,7 @@ void joker_init()
     joker_gfxTiles[5] = joker_gfx5Tiles;
     joker_gfxTiles[6] = joker_gfx6Tiles;
     joker_gfxTiles[7] = joker_gfx7Tiles;
+    joker_gfxTiles[8] = joker_gfx8Tiles;
 
     joker_gfxPal[0] = joker_gfx0Pal;
     joker_gfxPal[1] = joker_gfx1Pal;
@@ -135,6 +136,7 @@ void joker_init()
     joker_gfxPal[5] = joker_gfx5Pal;
     joker_gfxPal[6] = joker_gfx6Pal;
     joker_gfxPal[7] = joker_gfx7Pal;
+    joker_gfxPal[8] = joker_gfx8Pal;
 
     for (int i = 0; i < num_spritesheets; i++)
     {
@@ -258,7 +260,7 @@ bool joker_object_score(JokerObject *joker_object, Card* scored_card, int *chips
     {
         *chips += joker_effect.chips;
         *mult += joker_effect.mult;
-        // TODO: XMult
+        *mult *= joker_effect.xmult > 0 ? joker_effect.xmult : 1; // if xmult is zero, DO NOT multiply by it
         *money += joker_effect.money;
         // TODO: Retrigger
 
@@ -275,6 +277,11 @@ bool joker_object_score(JokerObject *joker_object, Card* scored_card, int *chips
         {
             tte_set_special(0xE000); // Red
             snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.mult);
+        }
+        else if (joker_effect.xmult > 0)
+        {
+            tte_set_special(0xE000); // Red
+            snprintf(score_buffer, sizeof(score_buffer), "X%d", joker_effect.xmult);
         }
         else if (joker_effect.money > 0)
         {

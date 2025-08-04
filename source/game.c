@@ -139,6 +139,31 @@ static inline Card *discard_pop()
     return discard_pile[discard_top--];
 }
 
+// get-functions, for other files to view game state (mainly for jokers)
+CardObject **get_hand_array(void) {
+    return hand;
+}
+
+int get_hand_top(void) {
+    return hand_top;
+}
+
+CardObject **get_played_array(void) {
+    return played;
+}
+
+int get_played_top(void) {
+    return played_top;
+}
+
+JokerObject **get_jokers(void) {
+    return jokers;
+}
+
+int get_jokers_top(void) {
+    return jokers_top;
+}
+
 // Consts
 
 // Rects                                       left     top     right   bottom
@@ -288,22 +313,6 @@ void sort_cards()
             sprite_position(card_object_get_sprite(hand[i]), fx2int(hand[i]->sprite_object->x), fx2int(hand[i]->sprite_object->y));
         }
     }
-}
-
-CardObject **get_hand_array(void) {
-    return hand;
-}
-
-int get_hand_top(void) {
-    return hand_top;
-}
-
-CardObject **get_played_array(void) {
-    return played;
-}
-
-int get_played_top(void) {
-    return played_top;
 }
 
 enum HandType hand_get_type()
@@ -1813,6 +1822,8 @@ static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
         }
         
         u8 joker_id = random() % get_joker_registry_size();
+        // TODO: don't pick a joker that we already own
+        // TODO: weight the random choice by joker rarity
 
         shop_jokers[i] = joker_object_new(joker_new(joker_id));
         shop_jokers[i]->sprite_object->x = int2fx(120 + i * 32);
@@ -1821,7 +1832,7 @@ static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
         shop_jokers[i]->sprite_object->ty = int2fx(71);
 
         int x = fx2int(shop_jokers[i]->sprite_object->tx) + TILE_SIZE - (get_digits_even(shop_jokers[i]->joker->value) - 1) * TILE_SIZE;
-        int y = fx2int(shop_jokers[i]->sprite_object->ty);
+        int y = fx2int(shop_jokers[i]->sprite_object->ty) + CARD_SPRITE_SIZE + TILE_SIZE;
         tte_printf("#{P:%d,%d; cx:0xC000}$%d", x, y, shop_jokers[i]->joker->value);
 
         if (first_time == false)
@@ -2318,7 +2329,8 @@ void game_shop()
 
                             Rect joker_price_rect;
                             joker_price_rect.left = fx2int(shop_jokers[i]->sprite_object->tx);
-                            joker_price_rect.top = fx2int(shop_jokers[i]->sprite_object->ty) + TILE_SIZE;
+                            // 2*TILE_SIZE because the item is highlighted and raised by 1 additional tile
+                            joker_price_rect.top = fx2int(shop_jokers[i]->sprite_object->ty) + CARD_SPRITE_SIZE + 2*TILE_SIZE;
                             joker_price_rect.right = joker_price_rect.left + TILE_SIZE * 3;
                             joker_price_rect.bottom = joker_price_rect.top + TILE_SIZE;
 
