@@ -38,7 +38,7 @@ GRAPHICS	:= graphics
 #---------------------------------------------------------------------------------
 ARCH	:=	-mthumb -mthumb-interwork
 
-CFLAGS	:= -O3 -Wall -Werror\
+CFLAGS	:= -g -O3 -Wall -Werror\
         -mcpu=arm7tdmi -mtune=arm7tdmi \
         -ffast-math -fomit-frame-pointer -funroll-loops \
         $(ARCH)
