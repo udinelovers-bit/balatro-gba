@@ -74,9 +74,12 @@ void game_update();
 
 // Utility functions for other files
 typedef struct CardObject CardObject; // forward declaration, actually declared in card.h
-CardObject **get_hand_array(void);
-CardObject **get_played_array(void);
-int get_hand_top(void);
-int get_played_top(void);
+typedef struct JokerObject JokerObject;
+CardObject**    get_hand_array(void);
+int             get_hand_top(void);
+CardObject**    get_played_array(void);
+int             get_played_top(void);
+JokerObject**   get_jokers(void);
+int             get_jokers_top(void);
 
 #endif // GAME_H

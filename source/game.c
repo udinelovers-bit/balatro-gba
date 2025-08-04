@@ -30,7 +30,7 @@ static uint timer = 0; // This might already exist in libtonc but idk so i'm jus
 static int game_speed = 1;
 static int background = 0;
 
-static enum GameState game_state = GAME_BLIND_SELECT; // The current game state, this is used to determine what the game is doing at any given time
+static enum GameState game_state = GAME_SHOP; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
 static int state = 0; // General state variable, used for switch statements in each game state related function
@@ -138,6 +138,31 @@ static inline Card *discard_pop()
 {
     if (discard_top < 0) return NULL;
     return discard_pile[discard_top--];
+}
+
+// get-functions, for other files to view game state (mainly for jokers)
+CardObject **get_hand_array(void) {
+    return hand;
+}
+
+int get_hand_top(void) {
+    return hand_top;
+}
+
+CardObject **get_played_array(void) {
+    return played;
+}
+
+int get_played_top(void) {
+    return played_top;
+}
+
+JokerObject **get_jokers(void) {
+    return jokers;
+}
+
+int get_jokers_top(void) {
+    return jokers_top;
 }
 
 // Consts
@@ -289,22 +314,6 @@ void sort_cards()
             sprite_position(card_object_get_sprite(hand[i]), fx2int(hand[i]->sprite_object->x), fx2int(hand[i]->sprite_object->y));
         }
     }
-}
-
-CardObject **get_hand_array(void) {
-    return hand;
-}
-
-int get_hand_top(void) {
-    return hand_top;
-}
-
-CardObject **get_played_array(void) {
-    return played;
-}
-
-int get_played_top(void) {
-    return played_top;
 }
 
 enum HandType hand_get_type()
@@ -1831,6 +1840,8 @@ static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
         }
         
         u8 joker_id = random() % get_joker_registry_size();
+        // TODO: don't pick a joker that we already own
+        // TODO: weight the random choice by joker rarity
 
         shop_jokers[i] = joker_object_new(joker_new(joker_id));
         shop_jokers[i]->sprite_object->x = int2fx(120 + i * 32);
@@ -1839,7 +1850,7 @@ static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
         shop_jokers[i]->sprite_object->ty = int2fx(71);
 
         int x = fx2int(shop_jokers[i]->sprite_object->tx) + TILE_SIZE - (get_digits_even(shop_jokers[i]->joker->value) - 1) * TILE_SIZE;
-        int y = fx2int(shop_jokers[i]->sprite_object->ty);
+        int y = fx2int(shop_jokers[i]->sprite_object->ty) + CARD_SPRITE_SIZE + TILE_SIZE;
         tte_printf("#{P:%d,%d; cx:0xC000}$%d", x, y, shop_jokers[i]->joker->value);
 
         if (first_time == false)
@@ -2153,6 +2164,39 @@ void game_round_end()
     }
 }
 
+void game_shop_intro(JokerObject* shop_jokers[])
+{
+    main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
+
+    if (timer == 1)
+    {
+        game_shop_create_items(shop_jokers, true);
+    }
+
+    if (timer >= 7) // Shift the shop icon
+    {
+        int timer_offset = timer - 6;
+
+        // TODO: Extract to generic function?
+        for (int y = 0; y < timer_offset; y++)
+        {
+            int y_from = 26 + y - timer_offset;
+            int y_to = 0 + y;
+
+            Rect from = { 0, y_from, 8, y_from };
+            BG_POINT to = { 0, y_to };
+
+            main_bg_se_copy_rect(from, to);
+        }
+    }
+
+    if (timer == 12)
+    {
+        state = 1;
+        timer = 0; // Reset the timer
+    }
+}
+
 void game_shop()
 {
     change_background(BG_ID_SHOP);
@@ -2201,36 +2245,7 @@ void game_shop()
     {
         case 0: // Intro sequence (menu and shop icon coming into frame)
         {           
-            main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
-
-            if (timer == 1)
-            {
-                game_shop_create_items(shop_jokers, true);
-            }
-
-            if (timer >= 7) // Shift the shop icon
-            {
-                int timer_offset = timer - 6;
-
-                // TODO: Extract to generic function?
-                for (int y = 0; y < timer_offset; y++)
-                {
-                    int y_from = 26 + y - timer_offset;
-                    int y_to = 0 + y;
-
-                    Rect from = {0, y_from, 8, y_from};
-                    BG_POINT to = {0, y_to};
-
-                    main_bg_se_copy_rect(from, to);
-                }
-            }
-
-            if (timer == 12)
-            {
-                state = 1;
-                timer = 0; // Reset the timer
-            }
-
+            game_shop_intro(shop_jokers);
             break;
         }    
         case 1: // Shop menu input and selection
@@ -2332,7 +2347,8 @@ void game_shop()
 
                             Rect joker_price_rect;
                             joker_price_rect.left = fx2int(shop_jokers[i]->sprite_object->tx);
-                            joker_price_rect.top = fx2int(shop_jokers[i]->sprite_object->ty) + TILE_SIZE;
+                            // 2*TILE_SIZE because the item is highlighted and raised by 1 additional tile
+                            joker_price_rect.top = fx2int(shop_jokers[i]->sprite_object->ty) + CARD_SPRITE_SIZE + 2*TILE_SIZE;
                             joker_price_rect.right = joker_price_rect.left + TILE_SIZE * 3;
                             joker_price_rect.bottom = joker_price_rect.top + TILE_SIZE;
 

@@ -6,10 +6,16 @@
 #include "sprite.h"
 #include "card.h"
 #include "game.h"
+#include "graphic_utils.h"
 
 #define JOKER_TID (MAX_HAND_SIZE + MAX_SELECTION_SIZE) * JOKER_SPRITE_OFFSET // Tile ID for the starting index in the tile memory
 #define JOKER_SPRITE_OFFSET 16 // Offset for the joker sprites
-#define JOKER_BASE_PB 4 // Palette bank for the default jokers
+#define JOKER_BASE_PB 4 // The starting palette index for the jokers
+#define JOKER_LAST_PB (NUM_PALETTES - 1) 
+// Currently allocating the rest of the palettes for the jokers.
+// This number needs to be decreased once we need to allocated palettes for other sprites
+// such as planet cards etc.
+
 #define JOKER_STARTING_LAYER 27
 
 #define BASE_EDITION 0
@@ -29,6 +35,7 @@
 
 #define DEFAULT_JOKER_ID 0
 #define GREEDY_JOKER_ID 1 // This is just an example to show the patern of making joker IDs
+#define JOKER_STENCIL_ID 16
 
 typedef struct 
 {
@@ -39,7 +46,7 @@ typedef struct
     bool processed;
 } Joker;
 
-typedef struct // copy of CardObject in card.h
+typedef struct JokerObject
 {
     Joker *joker;
     SpriteObject* sprite_object;
