@@ -15,11 +15,11 @@ void affine_background_init()
         correctedTiles[i] = affine_background_gfxTiles[i] | 0xF0F0F0F0;
     }
 
-	memcpy16(&tile8_mem[AFFINE_BG_CBB], correctedTiles, affine_background_gfxTilesLen/2);
+    memcpy16(&tile8_mem[AFFINE_BG_CBB], correctedTiles, affine_background_gfxTilesLen/2);
     GRIT_CPY(&se_mem[AFFINE_BG_SBB], affine_background_gfxMap);
     memcpy16(&pal_bg_mem[AFFINE_BG_PB], affine_background_gfxPal, AFFINE_BG_PAL_LEN);
 
-	bgaff = bg_aff_default;
+    bgaff = bg_aff_default;
 
     affine_background_set_color(AFFINE_BG_DEFAULT_COLOR);
 }
@@ -37,7 +37,7 @@ void affine_background_update()
     asx.sy = (lu_sin(timer * 100 + 0x4000)) >> 8; // Scale the sine value to fit in a s16
     asx.sy += 256; // Add 256 to the sine value to make it positive
     bg_rotscale_ex(&bgaff, &asx);
-	REG_BG_AFFINE[2] = bgaff;
+    REG_BG_AFFINE[2] = bgaff;
 }
 
 void affine_background_set_color(COLOR color)
