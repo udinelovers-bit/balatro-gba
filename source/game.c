@@ -1619,7 +1619,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                                     tte_set_special(0xD000); // Set text color to blue from background memory
 
                                     // Write the score to a character buffer variable
-                                    char score_buffer[5]; // Assuming the maximum score is 99, we need 4 characters (2 digits + null terminator)
+                                    char score_buffer[INT_MAX_DIGITS + 2]; // for '+' and null terminator
                                     snprintf(score_buffer, sizeof(score_buffer), "+%d", card_get_value(played[j]->card));
                                     tte_write(score_buffer);
 
