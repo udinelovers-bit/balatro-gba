@@ -148,6 +148,11 @@ int get_hand_top(void) {
     return hand_top;
 }
 
+int hand_get_size(void)
+{
+    return hand_top + 1;
+}
+
 CardObject **get_played_array(void) {
     return played;
 }
@@ -851,11 +856,6 @@ void hand_change_sort()
 {
     sort_by_suit = !sort_by_suit;
     sort_cards();
-}
-
-int hand_get_size()
-{
-    return hand_top + 1;
 }
 
 int hand_get_max_size()

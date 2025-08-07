@@ -77,6 +77,7 @@ typedef struct CardObject CardObject; // forward declaration, actually declared 
 typedef struct JokerObject JokerObject;
 CardObject**    get_hand_array(void);
 int             get_hand_top(void);
+int             hand_get_size(void);
 CardObject**    get_played_array(void);
 int             get_played_top(void);
 JokerObject**   get_jokers(void);
