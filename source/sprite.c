@@ -1,5 +1,6 @@
 #include "sprite.h"
 #include "util.h"
+#include "audio_utils.h"
 
 #include <tonc.h>
 #include <stdlib.h>
@@ -98,6 +99,15 @@ void sprite_draw()
     obj_copy(obj_mem, obj_buffer, MAX_SPRITES);
     obj_aff_copy(obj_aff_mem, obj_aff_buffer, MAX_AFFINES);
     oam_copy(oam_mem, obj_buffer, MAX_SPRITES);
+}
+
+int sprite_get_pb(const Sprite *sprite)
+{
+    if (sprite == NULL)
+    {
+        return UNDEFINED;
+    }
+    return (sprite->obj->attr2 & ATTR2_PALBANK_MASK) >> ATTR2_PALBANK_SHIFT;
 }
 
 // SpriteObject methods
@@ -206,8 +216,7 @@ void sprite_object_shake(SpriteObject* sprite_object, mm_word sound_id)
 
     if (sound_id == UNDEFINED) return; // If no sound ID is provided, do nothing
 
-    mm_sound_effect sfx_select = { {sound_id}, 1024, 0, 255, 128, };
-    mmEffectEx(&sfx_select);
+    play_sfx(sound_id, MM_BASE_PITCH_RATE);
 }
 
 void sprite_object_set_selected(SpriteObject* sprite_object, bool selected)
