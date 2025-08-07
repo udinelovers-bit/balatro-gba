@@ -311,9 +311,10 @@ const JokerInfo joker_registry[] = {
     { COMMON_JOKER, 4, misprint_joker_effect },
     { COMMON_JOKER, 4, walkie_talkie_joker_effect },
     { UNCOMMON_JOKER, 8, fibonnaci_joker_effect },
-    { COMMON_JOKER, 5, banner_joker_effect },
-    { COMMON_JOKER, 5, mystic_summit_joker_effect },
     { UNCOMMON_JOKER, 6, blackboard_joker_effect },
+    { COMMON_JOKER, 5, mystic_summit_joker_effect },
+    { COMMON_JOKER, 5, banner_joker_effect },
+    
 };
 
 static const size_t joker_registry_size = NUM_ELEM_IN_ARR(joker_registry);
