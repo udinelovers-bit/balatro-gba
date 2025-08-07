@@ -148,6 +148,11 @@ int get_hand_top(void) {
     return hand_top;
 }
 
+int hand_get_size(void)
+{
+    return hand_top + 1;
+}
+
 CardObject **get_played_array(void) {
     return played;
 }
@@ -238,6 +243,10 @@ static const Rect SHOP_REROLL_RECT          = {88,      96,    UNDEFINED, UNDEFI
 #define PITCH_STEP_DRAW_SFX         24
 #define PITCH_STEP_UNDISCARD_SFX    2*PITCH_STEP_DRAW_SFX    
 // Naming the stage where cards return from the discard pile to the deck "undiscard"
+
+int get_num_discards_remaining(void) {
+    return discards;
+}
 
 // General functions
 void set_seed(int seed)
@@ -847,11 +856,6 @@ void hand_change_sort()
 {
     sort_by_suit = !sort_by_suit;
     sort_cards();
-}
-
-int hand_get_size()
-{
-    return hand_top + 1;
 }
 
 int hand_get_max_size()
@@ -1615,7 +1619,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                                     tte_set_special(0xD000); // Set text color to blue from background memory
 
                                     // Write the score to a character buffer variable
-                                    char score_buffer[5]; // Assuming the maximum score is 99, we need 4 characters (2 digits + null terminator)
+                                    char score_buffer[INT_MAX_DIGITS + 2]; // for '+' and null terminator
                                     snprintf(score_buffer, sizeof(score_buffer), "+%d", card_get_value(played[j]->card));
                                     tte_write(score_buffer);
 

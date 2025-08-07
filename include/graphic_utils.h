@@ -43,6 +43,9 @@
 // Tile size in pixels, both height and width as tiles are square
 #define TILE_SIZE 8
 
+// By default TTE characters occupy a single tile
+#define TTE_CHAR_SIZE TILE_SIZE
+
 typedef struct
 {
 	int left;

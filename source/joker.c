@@ -127,6 +127,9 @@ void joker_init()
     joker_gfxTiles[6] = joker_gfx6Tiles;
     joker_gfxTiles[7] = joker_gfx7Tiles;
     joker_gfxTiles[8] = joker_gfx8Tiles;
+    joker_gfxTiles[9] = joker_gfx9Tiles;
+    joker_gfxTiles[10] = joker_gfx10Tiles;
+    joker_gfxTiles[11] = joker_gfx11Tiles;
 
     joker_gfxPal[0] = joker_gfx0Pal;
     joker_gfxPal[1] = joker_gfx1Pal;
@@ -137,6 +140,9 @@ void joker_init()
     joker_gfxPal[6] = joker_gfx6Pal;
     joker_gfxPal[7] = joker_gfx7Pal;
     joker_gfxPal[8] = joker_gfx8Pal;
+    joker_gfxPal[9] = joker_gfx9Pal;
+    joker_gfxPal[10] = joker_gfx10Pal;
+    joker_gfxPal[11] = joker_gfx11Pal;
 
     for (int i = 0; i < num_spritesheets; i++)
     {
@@ -264,32 +270,46 @@ bool joker_object_score(JokerObject *joker_object, Card* scored_card, int *chips
         *money += joker_effect.money;
         // TODO: Retrigger
 
-        tte_set_pos(fx2int(joker_object->sprite_object->x) + 8, JOKER_SCORE_TEXT_Y); // Offset of 16 pixels to center the text on the card
+        const int joker_score_display_offset_px = (MAX_CARD_SCORE_STR_LEN + 1)*TTE_CHAR_SIZE;
+        // + 1 For space
 
-        char score_buffer[12];
-
+        int cursorPosX = fx2int(joker_object->sprite_object->x) + 8; // Offset of 16 pixels to center the text on the card
         if (joker_effect.chips > 0)
         {
+            char score_buffer[INT_MAX_DIGITS + 2]; // For '+' and null terminator
+            tte_set_pos(cursorPosX, JOKER_SCORE_TEXT_Y);
             tte_set_special(0xD000); // Blue
             snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.chips);
+            tte_write(score_buffer);
+            cursorPosX += joker_score_display_offset_px;
         }
-        else if (joker_effect.mult > 0)
+        if (joker_effect.mult > 0)
         {
+            char score_buffer[INT_MAX_DIGITS + 2];
+            tte_set_pos(cursorPosX, JOKER_SCORE_TEXT_Y);
             tte_set_special(0xE000); // Red
             snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.mult);
+            tte_write(score_buffer);
+            cursorPosX += joker_score_display_offset_px;
         }
-        else if (joker_effect.xmult > 0)
+        if (joker_effect.xmult > 0)
         {
+            char score_buffer[INT_MAX_DIGITS + 2];
+            tte_set_pos(cursorPosX, JOKER_SCORE_TEXT_Y);
             tte_set_special(0xE000); // Red
             snprintf(score_buffer, sizeof(score_buffer), "X%d", joker_effect.xmult);
+            tte_write(score_buffer);
+            cursorPosX += joker_score_display_offset_px;
         }
-        else if (joker_effect.money > 0)
+        if (joker_effect.money > 0)
         {
+            char score_buffer[INT_MAX_DIGITS + 2];
+            tte_set_pos(cursorPosX, JOKER_SCORE_TEXT_Y);
             tte_set_special(0xC000); // Yellow
             snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.money);
+            tte_write(score_buffer);
+            cursorPosX += joker_score_display_offset_px;
         }
-
-        tte_write(score_buffer);
 
         joker_object->joker->processed = true; // Mark the joker as processed
         joker_object_shake(joker_object, SFX_CARD_SELECT); // TODO: Add a sound effect for scoring the joker
