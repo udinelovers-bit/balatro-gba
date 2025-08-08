@@ -168,3 +168,22 @@ void update_text_rect_to_right_align_num(Rect* rect, int num, int overflow_direc
     }
 }
 
+void memcpy16_tile8_with_palette_offset(u16* dst, const u16* src, uint hwcount, u8 palette_offset)
+{
+    const u16 offset = (((palette_offset) << 8) | (palette_offset));
+    for (int i = 0; i < hwcount; i++)
+    {
+        // Copying u8 data twice across u16 data
+        dst[i] = src[i] + offset;
+    }
+}
+
+void memcpy32_tile8_with_palette_offset(u32* dst, const u32* src, uint hwcount, u8 palette_offset)
+{
+    const u32 offset = (palette_offset << 24) | (palette_offset << 16) | (palette_offset << 8) | palette_offset;
+    for (int i = 0; i < hwcount; i++)
+    {
+        // Copying u8 data 4 times across u32 data
+        dst[i] = src[i] + offset;
+    }
+}

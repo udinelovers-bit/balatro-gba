@@ -120,4 +120,22 @@ void tte_erase_rect_wrapper(Rect rect);
  */
 void update_text_rect_to_right_align_num(Rect* rect, int num, int overflow_direction);
 
+/*Copies 16 bit data from src to dst, applying a palette offset to the data.
+ * This is intended solely for use with tile8/8bpp data for dst and src.
+ * The palette offset allows the tiles to use a different location in the palette
+ * memory
+ * This is useful because  grit always loads the palette to the beginning of 
+ * pal_bg_mem[]
+ */
+void memcpy16_tile8_with_palette_offset(u16* dst, const u16* src, uint hwcount, u8 palette_offset);
+
+/*Copies 32 bit data from src to dst, applying a palette offset to the data.
+ * This is intended solely for use with tile8/8bpp data for dst and src.
+ * The palette offset allows the tiles to use a different location in the palette
+ * memory
+ * This is useful because  grit always loads the palette to the beginning of 
+ * pal_bg_mem[]
+ */
+void memcpy32_tile8_with_palette_offset(u32* dst, const u32* src, uint hwcount, u8 palette_offset);
+
 #endif //GRAPHIC_UTILS_H

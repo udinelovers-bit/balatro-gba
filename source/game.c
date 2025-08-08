@@ -11,6 +11,7 @@
 #include "hand_analysis.h"
 #include "blind.h"
 #include "joker.h"
+#include "affine_background.h"
 #include "graphic_utils.h"
 #include "tonc_video.h"
 #include "audio_utils.h"
@@ -18,6 +19,7 @@
 #include "background_gfx.h"
 #include "background_shop_gfx.h"
 #include "background_blind_select_gfx.h"
+#include "affine_background_gfx.h"
 
 #include "soundbank.h"
 
@@ -437,6 +439,8 @@ void change_background(int id)
             else if (current_blind == BOSS_BLIND)
             {
                 main_bg_se_copy_rect(BOSS_BLIND_TITLE_SRC_RECT, TOP_LEFT_BLIND_TITLE_POINT);
+
+                affine_background_set_color(blind_get_color(BOSS_BLIND, BLIND_SHADOW_COLOR_INDEX));
             }
 
             bg_copy_current_item_to_top_left_panel();
@@ -1990,6 +1994,7 @@ void game_round_end()
                 tte_erase_rect_wrapper(BLIND_REWARD_RECT);
                 tte_erase_rect_wrapper(BLIND_REQ_TEXT_RECT);
                 obj_hide(playing_blind_token->obj);
+                affine_background_load_palette(affine_background_gfxPal);
                 state = 5;
                 timer = 0;
             }
