@@ -120,4 +120,9 @@ void tte_erase_rect_wrapper(Rect rect);
  */
 void update_text_rect_to_right_align_num(Rect* rect, int num, int overflow_direction);
 
+/*Copies 16 bit data from src to dst, applying a palette offset to the data.
+ * This is intended solely for use with tile8/8bpp data for dst and src.
+ */
+void memcpy16_tile8_with_palette_offset(void* dst, const void* src, uint hwcount, u8 palette_offset);
+
 #endif //GRAPHIC_UTILS_H

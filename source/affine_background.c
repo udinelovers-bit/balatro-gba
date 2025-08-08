@@ -8,14 +8,7 @@ AFF_SRC_EX asx = {32<<8, 64<<8, 120, 80, 0x0100, 0x0100, 0};
 
 void affine_background_init()
 {
-    unsigned int correctedTiles[affine_background_gfxTilesLen / 4];
-
-    for (int i = 0; i < affine_background_gfxTilesLen / 4; i++)
-    {   
-        correctedTiles[i] = affine_background_gfxTiles[i] | 0xF0F0F0F0;
-    }
-
-    memcpy16(&tile8_mem[AFFINE_BG_CBB], correctedTiles, affine_background_gfxTilesLen/2);
+    memcpy16_tile8_with_palette_offset(&tile8_mem[AFFINE_BG_CBB], affine_background_gfxTiles, affine_background_gfxTilesLen/2, AFFINE_BG_PB);
     GRIT_CPY(&se_mem[AFFINE_BG_SBB], affine_background_gfxMap);
     memcpy16(&pal_bg_mem[AFFINE_BG_PB], affine_background_gfxPal, AFFINE_BG_PAL_LEN);
 

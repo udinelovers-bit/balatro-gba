@@ -168,3 +168,14 @@ void update_text_rect_to_right_align_num(Rect* rect, int num, int overflow_direc
     }
 }
 
+void memcpy16_tile8_with_palette_offset(void* dst, const void* src, uint hwcount, u8 palette_offset)
+{
+    u16* dst16 = (u16*)dst;
+    const u16* src16 = (const u16*)src;
+
+    for (int i = 0; i < hwcount; i++)
+    {
+        // Copying u8 data twice across u16 data
+        dst16[i] = src16[i] + (((palette_offset) << 8) | (palette_offset));
+    }
+}
