@@ -38,19 +38,6 @@ void affine_background_set_color(COLOR color)
     memcpy16(&pal_bg_mem[AFFINE_BG_PB], affine_background_gfxPal, AFFINE_BG_PAL_LEN);
     for (int i = 0; i < AFFINE_BG_PAL_LEN; i++)
     {
-        COLOR old_color;
-        memcpy16(&old_color, &pal_bg_mem[AFFINE_BG_PB] + i, 1); // Copy the color from the background palette
-
-        int r, g, b;
-        r = (old_color & RED_MASK) >> RED_SHIFT; // Extract red component
-        g = (old_color & GREEN_MASK) >> GREEN_SHIFT; // Extract green component
-        b = (old_color & BLUE_MASK) >> BLUE_SHIFT; // Extract blue component
-
-        int brightness = (r + g + b) / 3; // Calculate brightness
-
-        const float brightness_divergence = 0.03f; // The difference in brightness between each color in the palette
-        const float brightness_modifier = -0.4f; // The overall brightness modifier for the palette
-
-        clr_adj_brightness(&pal_bg_mem[AFFINE_BG_PB] + i, &color, 1, float2fx(brightness_modifier + (brightness * brightness_divergence))); // Adjust brightness for the palette colors
+        clr_rgbscale(&pal_bg_mem[AFFINE_BG_PB] + i, &pal_bg_mem[AFFINE_BG_PB] + i, 1, color);
     }
 }
