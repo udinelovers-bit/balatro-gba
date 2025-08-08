@@ -136,6 +136,6 @@ void memcpy16_tile8_with_palette_offset(u16* dst, const u16* src, uint hwcount, 
  * This is useful because  grit always loads the palette to the beginning of 
  * pal_bg_mem[]
  */
-void memcpy32_tile8_with_palette_offset(u32* dst, const u32* src, uint hwcount, u8 palette_offset);
+void memcpy32_tile8_with_palette_offset(u32* dst, const u32* src, uint wcount, u8 palette_offset);
 
 #endif //GRAPHIC_UTILS_H

@@ -178,10 +178,10 @@ void memcpy16_tile8_with_palette_offset(u16* dst, const u16* src, uint hwcount, 
     }
 }
 
-void memcpy32_tile8_with_palette_offset(u32* dst, const u32* src, uint hwcount, u8 palette_offset)
+void memcpy32_tile8_with_palette_offset(u32* dst, const u32* src, uint wcount, u8 palette_offset)
 {
     const u32 offset = (palette_offset << 24) | (palette_offset << 16) | (palette_offset << 8) | palette_offset;
-    for (int i = 0; i < hwcount; i++)
+    for (int i = 0; i < wcount; i++)
     {
         // Copying u8 data 4 times across u32 data
         dst[i] = src[i] + offset;
