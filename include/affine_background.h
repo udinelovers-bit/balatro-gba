@@ -7,7 +7,7 @@
 
 #define AFFINE_BG_PAL_LEN 5
 #define AFFINE_BG_PB (PAL_ROW_LEN * 15) // This isn't really a palette bank, just the starting index of the palette
-#define AFFINE_BG_DEFAULT_COLOR 0x3E4B
+#define AFFINE_BG_DEFAULT_COLOR RGB15(11, 18, 15) // 0x3E4B
 
 void affine_background_init();
 void affine_background_update();
