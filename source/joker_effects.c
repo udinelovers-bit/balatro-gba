@@ -1,3 +1,4 @@
+#include "game.h"
 #include "joker.h"
 #include "util.h"
 #include "hand_analysis.h"
@@ -178,7 +179,8 @@ static JokerEffect half_joker_effect(Joker *joker, Card *scored_card) {
     if (scored_card != NULL)
         return effect; // if card != null, we are not at the end-phase of scoring yet
 
-    if (get_played_top() + 1 <= 3) // game.c has hand_get_size() but it's not accesible here
+    int played_size = get_played_top() + 1;
+    if (played_size <= 3) 
         effect.mult = 20;
 
     return effect;
@@ -190,12 +192,13 @@ static JokerEffect joker_stencil_effect(Joker *joker, Card *scored_card) {
         return effect; // if card != null, we are not at the end-phase of scoring yet
 
     // +1 xmult per empty joker slot...
-    int jokers_top = get_jokers_top();
-    effect.xmult = (MAX_JOKERS_HELD_SIZE-1) - jokers_top;
+    int num_jokers = get_jokers_top() + 1;
+
+    effect.xmult = (MAX_JOKERS_HELD_SIZE) - num_jokers;
 
     // ...and also each stencil_joker adds +1 xmult
     JokerObject** jokers = get_jokers();
-    for (int i = 0; i < jokers_top; i++ )
+    for (int i = 0; i < num_jokers; i++ )
     {
         if (jokers[i]->joker->id == JOKER_STENCIL_ID)
             effect.xmult++;
@@ -211,6 +214,78 @@ static JokerEffect misprint_joker_effect(Joker *joker, Card *scored_card) {
         return effect; // if card != null, we are not at the end-phase of scoring yet
 
     effect.mult = random() % (MISPRINT_MAX_MULT + 1);
+
+    return effect;
+}
+
+static JokerEffect walkie_talkie_joker_effect(Joker *joker, Card *scored_card) {
+    JokerEffect effect = {0};
+    if (scored_card == NULL)
+        return effect;
+
+    if (scored_card->rank == TEN || scored_card->rank == FOUR) {
+            effect.chips = 10;
+            effect.mult = 4;
+    }
+
+    return effect;
+}
+
+static JokerEffect fibonnaci_joker_effect(Joker *joker, Card *scored_card) {
+    JokerEffect effect = {0};
+    if (scored_card == NULL)
+        return effect;
+
+    switch (scored_card->rank) {
+        case ACE: case TWO: case THREE: case FIVE: case EIGHT:
+            effect.mult = 8;
+        default:
+            break;
+    }
+
+    return effect;
+}
+
+static JokerEffect banner_joker_effect(Joker *joker, Card *scored_card) {
+    JokerEffect effect = {0};
+    if (scored_card != NULL)
+        return effect; // if card != null, we are not at the end-phase of scoring yet
+
+    effect.chips = 30 * get_num_discards_remaining();
+
+    return effect;
+}
+
+static JokerEffect mystic_summit_joker_effect(Joker *joker, Card *scored_card) {
+    JokerEffect effect = {0};
+    if (scored_card != NULL)
+        return effect; // if card != null, we are not at the end-phase of scoring yet
+
+    if (get_num_discards_remaining() == 0)
+        effect.mult = 15;
+
+    return effect;
+}
+
+static JokerEffect blackboard_joker_effect(Joker *joker, Card *scored_card) {
+    JokerEffect effect = {0};
+    if (scored_card != NULL)
+        return effect; // if card != null, we are not at the end-phase of scoring yet
+
+    bool all_cards_are_spades_or_clubs = true;
+    CardObject** hand = get_hand_array();
+    int hand_size = hand_get_size();
+    for (int i = 0; i < hand_size; i++ )
+    {
+        u8 suit = hand[i]->card->suit;
+        if (suit == HEARTS || suit == DIAMONDS) {
+            all_cards_are_spades_or_clubs = false;
+            break;
+        }
+    }
+
+    if (all_cards_are_spades_or_clubs)
+        effect.xmult = 3;
 
     return effect;
 }
@@ -233,6 +308,11 @@ const JokerInfo joker_registry[] = {
     { COMMON_JOKER, 4, crafty_joker_effect },
     { COMMON_JOKER, 5, half_joker_effect },
     { UNCOMMON_JOKER, 8, joker_stencil_effect },
+    { COMMON_JOKER, 5, banner_joker_effect },
+    { COMMON_JOKER, 4, walkie_talkie_joker_effect },
+    { UNCOMMON_JOKER, 8, fibonnaci_joker_effect },
+    { UNCOMMON_JOKER, 6, blackboard_joker_effect },
+    { COMMON_JOKER, 5, mystic_summit_joker_effect },
     { COMMON_JOKER, 4, misprint_joker_effect },
 };
 
