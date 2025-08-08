@@ -127,6 +127,6 @@ void update_text_rect_to_right_align_num(Rect* rect, int num, int overflow_direc
  * This is useful because  grit always loads the palette to the beginning of 
  * pal_bg_mem[]
  */
-void memcpy16_tile8_with_palette_offset(void* dst, const void* src, uint hwcount, u8 palette_offset);
+void memcpy16_tile8_with_palette_offset(u16* dst, const u16* src, uint hwcount, u8 palette_offset);
 
 #endif //GRAPHIC_UTILS_H

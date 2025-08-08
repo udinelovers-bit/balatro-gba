@@ -8,7 +8,7 @@ AFF_SRC_EX asx = {32<<8, 64<<8, 120, 80, 0x0100, 0x0100, 0};
 
 void affine_background_init()
 {
-    memcpy16_tile8_with_palette_offset(&tile8_mem[AFFINE_BG_CBB], affine_background_gfxTiles, affine_background_gfxTilesLen/2, AFFINE_BG_PB);
+    memcpy16_tile8_with_palette_offset((u16*)tile8_mem[AFFINE_BG_CBB], (const u16*)affine_background_gfxTiles, affine_background_gfxTilesLen/2, AFFINE_BG_PB);
     GRIT_CPY(&se_mem[AFFINE_BG_SBB], affine_background_gfxMap);
     affine_background_load_palette(affine_background_gfxPal);
 
@@ -40,7 +40,7 @@ void affine_background_set_color(COLOR color)
     }
 }
 
-void affine_background_load_palette(const void *src)
+void affine_background_load_palette(const u16 *src)
 {
     memcpy16(&pal_bg_mem[AFFINE_BG_PB], src, AFFINE_BG_PAL_LEN);
 }
