@@ -1994,7 +1994,7 @@ void game_round_end()
                 tte_erase_rect_wrapper(BLIND_REWARD_RECT);
                 tte_erase_rect_wrapper(BLIND_REQ_TEXT_RECT);
                 obj_hide(playing_blind_token->obj);
-                affine_background_set_color(AFFINE_BG_DEFAULT_COLOR);
+                affine_background_load_palette(affine_background_gfxPal);
                 state = 5;
                 timer = 0;
             }
