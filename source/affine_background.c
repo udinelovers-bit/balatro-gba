@@ -49,9 +49,9 @@ void affine_background_set_color(COLOR color)
         memcpy16(&old_color, &pal_bg_mem[AFFINE_BG_PB] + i, 1); // Copy the color from the background palette
 
         int r, g, b;
-        r = (old_color >> 10) & 0b11111; // Extract red component
-        g = (old_color >> 5) & 0b11111; // Extract green component
-        b = old_color & 0b11111; // Extract blue component
+        r = (old_color & RED_MASK) >> RED_SHIFT; // Extract red component
+        g = (old_color & GREEN_MASK) >> GREEN_SHIFT; // Extract green component
+        b = (old_color & BLUE_MASK) >> BLUE_SHIFT; // Extract blue component
 
         int brightness = (r + g + b) / 3; // Calculate brightness
 
