@@ -18,14 +18,26 @@ void affine_background_init()
 
 void affine_background_hblank()
 {
-    const s32 timer_s32 = timer << 8;
-    const s32 vcount_s32 = REG_VCOUNT << 8;
-    const s16 vcount_s16 = REG_VCOUNT;
+    vu16 vcount = REG_VCOUNT;
 
-    asx.scr_y = vcount_s16 - 128; // 128 on x and y is an offset used to center the rotation
-    asx.scr_x = 128;
-    asx.tex_x = lu_sin(timer_s32 + vcount_s32) + timer / 8;
-    asx.alpha = (vcount_s32 + timer_s32) / 8;
+    // This fixes a visual issue where the top 3 pixels of the scanline are out of sync
+    if (vcount >= 160)
+    {
+        vcount -= 228;
+    }
+
+    const s32 timer_s32 = timer << 8;
+    const s32 vcount_s32 = vcount << 8;
+    const s16 vcount_s16 = vcount;
+    const s32 vcount_sine = lu_sin(vcount_s32 + timer_s32 / 16); // dividing the timer by 16 to make the animation slower
+
+    asx.scr_x = 128; // 128 on x and y is an offset used to center the rotation
+    asx.scr_y = vcount_s16 - 128; // scr_y must equal vcount otherwise the background will have no vertical difference
+    asx.tex_x = vcount_sine;
+    asx.tex_y = vcount_sine / 64;
+    asx.sx = vcount_sine / 32;
+    asx.sy = vcount_sine / 16;
+    asx.alpha = (vcount_s32 + timer_s32) / 16;
     
     bg_rotscale_ex(&bgaff, &asx);
     REG_BG_AFFINE[2] = bgaff;
