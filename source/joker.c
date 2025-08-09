@@ -243,7 +243,7 @@ bool joker_object_score(JokerObject *joker_object, Card* scored_card, int *chips
             tte_set_special(0xD000); // Blue
             snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.chips);
             tte_write(score_buffer);
-            cursorPosX += 30;
+            cursorPosX += EFFECT_TEXT_SEPARATION_AMOUNT;
         }
         if (joker_effect.mult > 0)
         {
@@ -252,7 +252,7 @@ bool joker_object_score(JokerObject *joker_object, Card* scored_card, int *chips
             tte_set_special(0xE000); // Red
             snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.mult);
             tte_write(score_buffer);
-            cursorPosX += 30;
+            cursorPosX += EFFECT_TEXT_SEPARATION_AMOUNT;
         }
         if (joker_effect.xmult > 0)
         {
@@ -261,7 +261,7 @@ bool joker_object_score(JokerObject *joker_object, Card* scored_card, int *chips
             tte_set_special(0xE000); // Red
             snprintf(score_buffer, sizeof(score_buffer), "X%d", joker_effect.xmult);
             tte_write(score_buffer);
-            cursorPosX += 30;
+            cursorPosX += EFFECT_TEXT_SEPARATION_AMOUNT;
         }
         if (joker_effect.money > 0)
         {
@@ -270,7 +270,7 @@ bool joker_object_score(JokerObject *joker_object, Card* scored_card, int *chips
             tte_set_special(0xC000); // Yellow
             snprintf(score_buffer, sizeof(score_buffer), "+%d", joker_effect.money);
             tte_write(score_buffer);
-            cursorPosX += 30;
+            cursorPosX += EFFECT_TEXT_SEPARATION_AMOUNT;
         }
 
         joker_object->joker->processed = true; // Mark the joker as processed

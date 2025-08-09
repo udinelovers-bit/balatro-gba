@@ -304,7 +304,7 @@ static JokerEffect raised_fist_joker_effect(Joker *joker, Card *scored_card) {
 
     // Find the lowest rank card in hand
     // Aces are always considered high value, even in an ace-low straight
-    u8 lowest_value = 99;
+    u8 lowest_value = IMPOSSIBLY_HIGH_CARD_VALUE;
     CardObject** hand = get_hand_array();
     int hand_top = get_hand_top();
     for (int i = 0; i < hand_top; i++ )
