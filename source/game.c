@@ -11,6 +11,7 @@
 #include "hand_analysis.h"
 #include "blind.h"
 #include "joker.h"
+#include "affine_background.h"
 #include "graphic_utils.h"
 #include "tonc_video.h"
 #include "audio_utils.h"
@@ -18,6 +19,7 @@
 #include "background_gfx.h"
 #include "background_shop_gfx.h"
 #include "background_blind_select_gfx.h"
+#include "affine_background_gfx.h"
 
 #include "soundbank.h"
 
@@ -148,6 +150,11 @@ int get_hand_top(void) {
     return hand_top;
 }
 
+int hand_get_size(void)
+{
+    return hand_top + 1;
+}
+
 CardObject **get_played_array(void) {
     return played;
 }
@@ -238,6 +245,10 @@ static const Rect SHOP_REROLL_RECT          = {88,      96,    UNDEFINED, UNDEFI
 #define PITCH_STEP_DRAW_SFX         24
 #define PITCH_STEP_UNDISCARD_SFX    2*PITCH_STEP_DRAW_SFX    
 // Naming the stage where cards return from the discard pile to the deck "undiscard"
+
+int get_num_discards_remaining(void) {
+    return discards;
+}
 
 // General functions
 void set_seed(int seed)
@@ -428,6 +439,8 @@ void change_background(int id)
             else if (current_blind == BOSS_BLIND)
             {
                 main_bg_se_copy_rect(BOSS_BLIND_TITLE_SRC_RECT, TOP_LEFT_BLIND_TITLE_POINT);
+
+                affine_background_set_color(blind_get_color(BOSS_BLIND, BLIND_SHADOW_COLOR_INDEX));
             }
 
             bg_copy_current_item_to_top_left_panel();
@@ -847,11 +860,6 @@ void hand_change_sort()
 {
     sort_by_suit = !sort_by_suit;
     sort_cards();
-}
-
-int hand_get_size()
-{
-    return hand_top + 1;
 }
 
 int hand_get_max_size()
@@ -1615,7 +1623,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                                     tte_set_special(0xD000); // Set text color to blue from background memory
 
                                     // Write the score to a character buffer variable
-                                    char score_buffer[5]; // Assuming the maximum score is 99, we need 4 characters (2 digits + null terminator)
+                                    char score_buffer[INT_MAX_DIGITS + 2]; // for '+' and null terminator
                                     snprintf(score_buffer, sizeof(score_buffer), "+%d", card_get_value(played[j]->card));
                                     tte_write(score_buffer);
 
@@ -1986,6 +1994,7 @@ void game_round_end()
                 tte_erase_rect_wrapper(BLIND_REWARD_RECT);
                 tte_erase_rect_wrapper(BLIND_REQ_TEXT_RECT);
                 obj_hide(playing_blind_token->obj);
+                affine_background_load_palette(affine_background_gfxPal);
                 state = 5;
                 timer = 0;
             }

@@ -7,6 +7,7 @@
 #include "game.h"
 #include "blind.h"
 #include "joker.h"
+#include "affine_background.h"
 #include "graphic_utils.h"
 
 // Graphics
@@ -16,29 +17,6 @@
 // Audio
 #include "soundbank.h"
 #include "soundbank_bin.h"
-
-#define MAP_AFF_SIZE 0x0100
-BG_AFFINE bgaff;
-AFF_SRC_EX asx = {32<<8, 64<<8, 120, 80, 0x0100, 0x0100, 0};
-
-
-void init_map() // Temp function derived from libtonc example
-{   
-    // Grit is fucking garbage and doesn't allow you to have a palette offset, they all get loaded at 0x0000. I have to manually change each tile's palette bank
-
-    unsigned int correctedTiles[affine_background_gfxTilesLen / 4];
-    for (int i = 0; i < affine_background_gfxTilesLen / 4; i++)
-    {   
-        correctedTiles[i] = affine_background_gfxTiles[i] | 0xF0F0F0F0; // I brute forced this. I have no idea how this would and does work, but it does. We'll just leave this here for now.
-        // Actually for future reference, each number seems to equate to an XY on the palette, so 0xF0F0F0F0 would just push everything down 15 colors, since the second number isn't set.
-    }
-
-	memcpy(&tile8_mem[AFFINE_BG_CBB], correctedTiles, affine_background_gfxTilesLen);
-    GRIT_CPY(&se_mem[AFFINE_BG_SBB], affine_background_gfxMap);
-    memcpy16(&pal_bg_mem[16 * 15], affine_background_gfxPal, 5);
-
-	bgaff = bg_aff_default;
-}
 
 void init()
 {
@@ -93,9 +71,8 @@ void init()
 
     REG_DISPCNT = DCNT_MODE1 | DCNT_OBJ_1D | DCNT_BG0 | DCNT_BG1 | DCNT_BG2 | DCNT_OBJ | DCNT_WIN0 | DCNT_WIN1;
 
-    init_map(); // Initialize the map for the background
-
     // Initialize subsystems
+    affine_background_init();
     sprite_init();
     card_init();
     blind_init();
@@ -103,24 +80,9 @@ void init()
     game_init();
 }
 
-void background_update() // This needs to be called before update() and draw() because setting REG_BG_AFFINE during an HBlank can cause issues
-{
-    static uint timer = 0;
-    timer++;
-
-    // These values are not permament, just the current configuration for the affine background
-    asx.tex_x += 5;
-    asx.tex_y += 12;
-    asx.sx = (lu_sin(timer * 100)) >> 8; // Scale the sine value to fit in a s16
-    asx.sx += 256; // Add 256 to the sine value to make it positive
-    asx.sy = (lu_sin(timer * 100 + 0x4000)) >> 8; // Scale the sine value to fit in a s16
-    asx.sy += 256; // Add 256 to the sine value to make it positive
-    bg_rotscale_ex(&bgaff, &asx);
-	REG_BG_AFFINE[2]= bgaff;
-}
-
 void update()
 {
+    affine_background_update();
     game_update();
 }
 
@@ -138,7 +100,6 @@ int main()
         VBlankIntrWait();
         mmFrame();
 		key_poll();
-        background_update();
         update();
         draw();
     }
