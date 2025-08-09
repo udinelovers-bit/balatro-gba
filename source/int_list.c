@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include "list.h"
+#include "util.h"
 
 IntList *int_list_new(int init_size) {
     IntList *list = (IntList *)malloc(sizeof(IntList));
@@ -27,7 +28,7 @@ void int_list_destroy(IntList **list) {
     *list = NULL;
 }
 
-bool int_list_add(IntList *list, int value) 
+bool int_list_append(IntList *list, int value) 
 {
     if (list->size >= list->allocated_size) 
     {
@@ -42,7 +43,7 @@ bool int_list_add(IntList *list, int value)
     return true;
 }
 
-bool int_list_remove(IntList *list, int index) {
+bool int_list_remove_by_idx(IntList *list, int index) {
     if (index < 0 || index >= list->size) 
         return false;
     for (int i = index; i < list->size - 1; ++i) 
@@ -53,9 +54,31 @@ bool int_list_remove(IntList *list, int index) {
     return true;
 }
 
+bool int_list_remove_by_value(IntList *list, int value)
+{
+    for (int i = 0; i < list->size; i++)
+    {
+        if (list->_array[i] == value)
+        {
+            return int_list_remove_by_idx(list, i);
+        }
+    }
+
+    return false;
+}
+
 int int_list_get(IntList *list, int index) 
 {
     if (index < 0 || index >= list->size) 
         return 0;
     return list->_array[index];
+}
+
+int int_list_get_size(IntList *list)
+{
+    if (list == NULL)
+    {
+        return UNDEFINED;
+    }
+    return list->size;
 }
