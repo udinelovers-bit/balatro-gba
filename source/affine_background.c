@@ -24,8 +24,11 @@ void affine_background_hblank()
 {
     vu16 vcount = REG_VCOUNT;
 
-    // This fixes a visual issue where the top 3 pixels of the scanline are out of sync
-    if (vcount >= 160)
+    if ((vcount > 160 && vcount < 225) || vcount > TOP_SCANLINE_OFFSET) // Exit the function if the scanline is outside the valid range
+    {
+        return;
+    }
+    else if (vcount > TOP_SCANLINE_OFFSET - 3) // This fixes a visual issue where the top 3 pixels of the scanline are out of sync
     {
         vcount -= TOP_SCANLINE_OFFSET;
     }
