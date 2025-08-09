@@ -173,7 +173,7 @@ int get_jokers_top(void) {
     return jokers_top;
 }
 
-IntList* jokers_available_to_shop;
+IntList* jokers_available_to_shop; // List of joker IDs
 
 // Consts
 
@@ -1005,7 +1005,7 @@ void game_set_state(enum GameState new_game_state)
 void jokers_avialable_to_shop_init()
 {
     int num_defined_jokers = get_joker_registry_size();
-    jokers_available_to_shop = int_list_new(get_joker_registry_size());
+    jokers_available_to_shop = int_list_new(num_defined_jokers);
     for (int i = 0; i < num_defined_jokers; i++)
     {
         // Add all joker IDs sequentially
@@ -2140,17 +2140,14 @@ void game_round_end()
 static void game_shop_create_items(JokerObject *shop_jokers[])
 {
     tte_erase_rect_wrapper(SHOP_PRICES_TEXT_RECT);
+    if (int_list_get_size(jokers_available_to_shop) == 0)
+    {
+        // No jokers to create
+        return;
+    }
 
     for (int i = 0; i < MAX_SHOP_JOKERS; i++)
     {
-        
-        // Note: this needs to happen after the existing joker destruction above
-        if (int_list_get_size(jokers_available_to_shop) == 0)
-        {
-            // No jokers to create
-            continue;
-        }
-        
         // TODO: weight the random choice by joker rarity
         int joker_idx = random() % int_list_get_size(jokers_available_to_shop);
         int joker_id = int_list_get(jokers_available_to_shop, joker_idx);
@@ -2235,7 +2232,7 @@ static void game_shop_reroll(JokerObject** shop_jokers, int *reroll_cost)
 // Shop menu input and selection
 static void game_shop_process_user_input(JokerObject** shop_jokers)
 {
-    const int REROLL_BASE_COST = 5; // Base cost for rerolling the shop items
+    static const int REROLL_BASE_COST = 5; // Base cost for rerolling the shop items
     static int reroll_cost = REROLL_BASE_COST;
 
     // temp variables for future implementation
@@ -2469,7 +2466,7 @@ void game_shop()
                 joker_object_destroy(&shop_jokers[i]); // Destroy the joker objects
             }
 
-            increment_blind(BLIND_DEFEATED);
+            increment_blind(BLIND_DEFEATED); // TODO: Move to game_round_end()?
             game_set_state(GAME_BLIND_SELECT); // If we reach here, we should go to the blind select state
 
             break;
