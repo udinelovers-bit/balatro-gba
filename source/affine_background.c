@@ -5,6 +5,7 @@
 
 BG_AFFINE bgaff;
 AFF_SRC_EX asx = {32<<8, 64<<8, 120, 80, 0x0100, 0x0100, 0};
+static uint timer = 0;
 
 void affine_background_init()
 {
@@ -15,20 +16,24 @@ void affine_background_init()
     bgaff = bg_aff_default;
 }
 
-void affine_background_update()
+void affine_background_hblank()
 {
-    static uint timer = 0;
-    timer++;
+    const s32 timer_s32 = timer << 8;
+    const s32 vcount_s32 = REG_VCOUNT << 8;
+    const s16 vcount_s16 = REG_VCOUNT;
 
-    // These values are not permament, just the current configuration for the affine background
-    asx.tex_x += 5;
-    asx.tex_y += 12;
-    asx.sx = (lu_sin(timer * 100)) >> 8; // Scale the sine value to fit in a s16
-    asx.sx += 256; // Add 256 to the sine value to make it positive
-    asx.sy = (lu_sin(timer * 100 + 0x4000)) >> 8; // Scale the sine value to fit in a s16
-    asx.sy += 256; // Add 256 to the sine value to make it positive
+    asx.scr_y = vcount_s16 - 128; // 128 on x and y is an offset used to center the rotation
+    asx.scr_x = 128;
+    asx.tex_x = lu_sin(timer_s32 + vcount_s32) + timer / 8;
+    asx.alpha = (vcount_s32 + timer_s32) / 8;
+    
     bg_rotscale_ex(&bgaff, &asx);
     REG_BG_AFFINE[2] = bgaff;
+}
+
+void affine_background_update()
+{
+    timer++;
 }
 
 void affine_background_set_color(COLOR color)
