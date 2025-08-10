@@ -20,6 +20,8 @@
 #include "background_shop_gfx.h"
 #include "background_blind_select_gfx.h"
 #include "affine_background_gfx.h"
+#include "background_main_menu_gfx.h"
+#include "affine_main_menu_background_gfx.h"
 
 #include "soundbank.h"
 
@@ -33,7 +35,7 @@ static uint timer = 0; // This might already exist in libtonc but idk so i'm jus
 static int game_speed = 1;
 static int background = 0;
 
-static enum GameState game_state = GAME_BLIND_SELECT; // The current game state, this is used to determine what the game is doing at any given time
+static enum GameState game_state = GAME_MAIN_MENU; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
 static int state = 0; // General state variable, used for switch statements in each game state related function
@@ -241,6 +243,8 @@ static const Rect CASHOUT_RECT              = {88,      72,     UNDEFINED, UNDEF
 static const Rect SHOP_REROLL_RECT          = {88,      96,    UNDEFINED, UNDEFINED };
 
 //TODO: Properly define and use
+#define MAIN_MENU_BUTTONS 4
+
 #define MENU_POP_OUT_ANIM_FRAMES 20
 
 #define SCORED_CARD_TEXT_Y 48
@@ -429,7 +433,8 @@ void change_background(int id)
         }
         else
         {
-            REG_DISPCNT |= DCNT_WIN0; // Enable window 0 to make hand background transparent
+            toggle_windows(true, true); // Enable window 0 for the hand shadow
+            
             // Load the tiles and palette
             // Background
             memcpy(pal_bg_mem, background_gfxPal, 64); // This '64" isn't a specific number, I'm just using it to prevent the text colors from being overridden
@@ -484,16 +489,16 @@ void change_background(int id)
             background = BG_ID_ROUND_END;
         }
 
-        REG_DISPCNT &= ~DCNT_WIN0; // Disable window 0 so it doesn't make the cashout menu transparent
+       toggle_windows(false, true); // Disable window 0 so it doesn't make the cashout menu transparent
 
         main_bg_se_clear_rect(ROUND_END_MENU_RECT);
         tte_erase_rect_wrapper(HAND_SIZE_RECT);
     }
     else if (id == BG_ID_SHOP)
     {
-        REG_DISPCNT &= ~DCNT_WIN0;
+        toggle_windows(false, true);
 
-        memcpy(pal_bg_mem, background_shop_gfxPal, 64);
+        memcpy16(pal_bg_mem, background_shop_gfxPal, 64);
         GRIT_CPY(&tile_mem[MAIN_BG_CBB], background_shop_gfxTiles);
         GRIT_CPY(&se_mem[MAIN_BG_SBB], background_shop_gfxMap);
 
@@ -520,7 +525,7 @@ void change_background(int id)
         sprite_position(blind_select_tokens[BIG_BLIND], 120, default_y);
         sprite_position(blind_select_tokens[BOSS_BLIND], 160, default_y);
 
-        REG_DISPCNT &= ~DCNT_WIN0;
+        toggle_windows(false, true);
 
         memcpy16(pal_bg_mem, background_blind_select_gfxPal, 64);
         GRIT_CPY(&tile_mem[MAIN_BG_CBB], background_blind_select_gfxTiles);
@@ -618,6 +623,21 @@ void change_background(int id)
                 memcpy16(&se_mem[MAIN_BG_SBB][x_to + 32 * y_to], &se_mem[MAIN_BG_SBB][x_from + 32 * y_from], 3);
             }
         }
+    }
+    else if (id == BG_ID_MAIN_MENU)
+    {
+        toggle_windows(false, false);
+
+        tte_erase_screen();
+        memcpy16(pal_bg_mem, background_main_menu_gfxPal, PAL_ROW_LEN * 9);
+        GRIT_CPY(&tile_mem[MAIN_BG_CBB], background_main_menu_gfxTiles);
+        GRIT_CPY(&se_mem[MAIN_BG_SBB], background_main_menu_gfxMap);
+
+        // Disable the button highlight colors
+        // Select button PID is 5 and the outline is 3
+        memcpy16(&pal_bg_mem[3], &pal_bg_mem[5], 1);
+
+        affine_background_change_background(AFFINE_BG_MAIN_MENU);
     }
     else
     {
@@ -1015,10 +1035,7 @@ void jokers_avialable_to_shop_init()
 
 void game_init()
 {
-    jokers_avialable_to_shop_init();
-
-    hands = max_hands;
-    discards = max_discards;
+    change_background(BG_ID_MAIN_MENU);
 
     blind_select_tokens[SMALL_BLIND] = blind_token_new(SMALL_BLIND, 8, 18, MAX_SELECTION_SIZE + MAX_HAND_SIZE + 3);
     blind_select_tokens[BIG_BLIND] = blind_token_new(BIG_BLIND, 8, 18, MAX_SELECTION_SIZE + MAX_HAND_SIZE + 4);
@@ -1037,8 +1054,26 @@ void game_init()
             deck_push(card);
         }
     }
+}
 
-    change_background(BG_ID_BLIND_SELECT);
+void game_start()
+{
+    affine_background_change_background(AFFINE_BG_GAME);
+
+    jokers_avialable_to_shop_init();
+
+    hands = max_hands;
+    discards = max_discards;
+
+    // Fill the deck with all the cards. Later on this can be replaced with a more dynamic system that allows for different decks and card types.
+    for (int suit = 0; suit < NUM_SUITS; suit++)
+    {
+        for (int rank = 0; rank < NUM_RANKS; rank++)
+        {
+            Card *card = card_new(suit, rank);
+            deck_push(card);
+        }
+    }
 
     tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", DECK_SIZE_RECT.left, DECK_SIZE_RECT.top, deck_get_size(), deck_get_max_size()); // Deck size/max size
     
@@ -1055,6 +1090,9 @@ void game_init()
     display_money(money); // Set the money display
 
     tte_printf("#{P:%d,%d; cx:0xC000}%d#{cx:0xF000}/%d", ANTE_TEXT_RECT.left, ANTE_TEXT_RECT.top, ante, MAX_ANTE); // Ante
+
+    change_background(BG_ID_BLIND_SELECT);
+    game_set_state(GAME_BLIND_SELECT);
 }
 
 static void game_playing_process_hand_select_input()
@@ -2375,7 +2413,6 @@ static void game_shop_lights_anim_frame()
     memcpy16(&pal_bg_mem[8], &shifted_palette[3], 1);
 }
 
-
 void game_shop()
 {
     change_background(BG_ID_SHOP);
@@ -2472,8 +2509,6 @@ void game_shop()
             break;
     }
 }
-
-
 
 void game_blind_select()
 {
@@ -2639,6 +2674,48 @@ void game_blind_select()
     }
 }
 
+void game_main_menu()
+{
+    change_background(BG_ID_MAIN_MENU);
+
+    if (key_hit(KEY_LEFT))
+    {
+        if (selection_x > 0)
+        {
+            selection_x--;
+        }
+    }
+    else if (key_hit(KEY_RIGHT))
+    {
+        // TODO: Don't allow cursor on sold items
+        if (selection_x < MAIN_MENU_BUTTONS)
+        {
+            selection_x++;
+        }
+        else if (selection_x < MAIN_MENU_BUTTONS)
+        {
+            selection_x++;
+        }
+    }
+    
+    if (selection_x == 0) // Play button
+    {   
+        // Select button PID is 5 and the outline is 3
+        memset16(&pal_bg_mem[3], CLR_WHITE, 1);
+
+        if (key_hit(KEY_A))
+        {
+            // Start the game
+            game_start();
+        }
+    }
+    else
+    {
+        // Select button PID is 5 and the outline is 3
+        memcpy16(&pal_bg_mem[3], &pal_bg_mem[5], 1);
+    }
+}
+
 void game_update()
 {
     timer++;
@@ -2656,6 +2733,9 @@ void game_update()
 
     switch (game_state)
     {
+        case GAME_MAIN_MENU:
+            game_main_menu();
+            break;
         case GAME_PLAYING:
             game_playing();
             break;
