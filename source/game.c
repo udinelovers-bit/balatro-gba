@@ -2707,12 +2707,7 @@ void game_main_menu()
     }
     else if (key_hit(KEY_RIGHT))
     {
-        // TODO: Don't allow cursor on sold items
         if (selection_x < MAIN_MENU_BUTTONS)
-        {
-            selection_x++;
-        }
-        else if (selection_x < MAIN_MENU_BUTTONS)
         {
             selection_x++;
         }

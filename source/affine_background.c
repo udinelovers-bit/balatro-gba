@@ -30,7 +30,7 @@ void affine_background_update()
         asx.tex_y = 14400;
         asx.sx = 128;
         asx.sy = 128;
-        asx.alpha = 1000; // This slightly rotates it which increases the percieved resolution of the background
+        asx.alpha = 1000; // This slightly rotates it which increases the perceived resolution of the background
         break;
     case AFFINE_BG_GAME:
         asx.scr_x = 0;
@@ -66,7 +66,7 @@ void affine_background_load_palette(const u16 *src)
 void affine_background_change_background(enum AffineBackgroundID new_bg)
 {
     background = new_bg;
-    
+
     switch (background)
     {
     case AFFINE_BG_MAIN_MENU:
