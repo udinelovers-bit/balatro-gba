@@ -27,9 +27,7 @@
 
 #include "list.h"
 
-// This seed system is temporary.
-static uint rng_seed = 2048;
-static bool seeded = false;
+static uint rng_seed = 0;
 
 static uint timer = 0; // This might already exist in libtonc but idk so i'm just making my own
 static int game_speed = 1;
@@ -263,12 +261,8 @@ int get_num_discards_remaining(void) {
 // General functions
 void set_seed(int seed)
 {
-    if (!seeded)
-    {
-        seeded = true;
-        rng_seed = seed;
-        srand(rng_seed);
-    }
+    rng_seed = seed;
+    srand(rng_seed);
 }
 
 void sort_hand_by_suit()
@@ -1067,6 +1061,8 @@ void game_init()
 
 void game_start()
 {
+    set_seed(rng_seed);
+
     affine_background_change_background(AFFINE_BG_GAME);
 
     // Normally I would just cache these and hide/unhide but I didn't feel like dealing with defining a layer for it
@@ -2695,6 +2691,13 @@ void game_main_menu()
     main_menu_ace->sprite_object->trotation = lu_sin((timer << 8) / 2) / 3;
     main_menu_ace->sprite_object->rotation = main_menu_ace->sprite_object->trotation;
 
+    // Seed randomization
+    rng_seed++;
+    if (key_curr_state() != key_prev_state()) // If the keys have changed, make it more pseudo-random
+    {
+        rng_seed *= 2;
+    }
+
     if (key_hit(KEY_LEFT))
     {
         if (selection_x > 0)
@@ -2736,15 +2739,6 @@ void game_main_menu()
 void game_update()
 {
     timer++;
-
-    if (seeded == false)
-    {
-        rng_seed++;
-        if (key_curr_state() != key_prev_state()) // If the keys have changed, make it more pseudo-random
-        {
-            rng_seed *= 2;
-        }
-    }
 
     held_jokers_update_loop();
 
