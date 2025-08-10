@@ -42,6 +42,8 @@ static int state = 0; // General state variable, used for switch statements in e
 
 static enum HandType hand_type = NONE;
 
+static CardObject *main_menu_ace = NULL;
+
 static Sprite *playing_blind_token = NULL; // The sprite that displays the blind when in "GAME_PLAYING/GAME_ROUND_END" state
 static Sprite *round_end_blind_token = NULL; // The sprite that displays the blind when in "GAME_ROUND_END" state
 
@@ -51,31 +53,31 @@ static int current_blind = SMALL_BLIND;
 static enum BlindState blinds[MAX_BLINDS] = {BLIND_CURRENT, BLIND_UPCOMING, BLIND_UPCOMING}; // The current state of the blinds, this is used to determine what the game is doing at any given time
 
 // Red deck default (can later be moved to a deck.h file or something)
-static int max_hands = 4;
-static int max_discards = 4;
+static int max_hands;
+static int max_discards;
 // Set in game_init and game_round_init
-static int hands = 0;
-static int discards = 0;
+static int hands;
+static int discards;
 
-static int round = 0;
-static int ante = 1;
-static int money = 4;
-static int score = 0;
+static int round;
+static int ante;
+static int money;
+static int score;
 static int temp_score = 0; // This is the score that shows in the same spot as the hand type.
 static FIXED lerped_score = 0;
 static FIXED lerped_temp_score = 0;
 
-static int chips = 0;
-static int mult = 0;
+static int chips;
+static int mult;
 
-static int hand_size = 8; // Default hand size is 8
-static int cards_drawn = 0;
-static int hand_selections = 0;
+static int hand_size; // Default hand size is 8
+static int cards_drawn;
+static int hand_selections;
 
-static int selection_x = 0;
-static int selection_y = 0;
+static int selection_x;
+static int selection_y;
 
-static bool sort_by_suit = false;
+static bool sort_by_suit;
 
 // Stacks
 static JokerObject *jokers[MAX_JOKERS_HELD_SIZE] = {NULL};
@@ -117,6 +119,19 @@ static inline CardObject *played_pop()
 {
     if (played_top < 0) return NULL;
     return played[played_top--];
+}
+
+// Hand stack
+static inline void hand_push(CardObject *card_object)
+{
+    if (hand_top >= MAX_HAND_SIZE - 1) return;
+    hand[++hand_top] = card_object;
+}
+
+static inline CardObject *hand_pop()
+{
+    if (hand_top < 0) return NULL;
+    return hand[hand_top--];
 }
 
 // Deck stack
@@ -473,6 +488,7 @@ void change_background(int id)
         }
 
         REG_WIN0V = (REG_WIN0V << 8) | 0xA0; // Set window 0 bottom to 160
+        toggle_windows(true, true);
 
         for (int i = 0; i <= 2; i++)
         {
@@ -636,8 +652,6 @@ void change_background(int id)
         // Disable the button highlight colors
         // Select button PID is 5 and the outline is 3
         memcpy16(&pal_bg_mem[3], &pal_bg_mem[5], 1);
-
-        affine_background_change_background(AFFINE_BG_MAIN_MENU);
     }
     else
     {
@@ -993,11 +1007,27 @@ void game_round_init()
     deck_shuffle(); // Shuffle the deck at the start of the round
 }
 
+void game_main_menu_init()
+{
+    affine_background_change_background(AFFINE_BG_MAIN_MENU);
+    main_menu_ace = card_object_new(card_new(SPADES, ACE));
+    card_object_set_sprite(main_menu_ace, 0); // Set the sprite for the ace of spades
+    main_menu_ace->sprite_object->sprite->obj->attr0 |= ATTR0_AFF_DBL; // Make the sprite double sized
+    main_menu_ace->sprite_object->tx = int2fx(88);
+    main_menu_ace->sprite_object->x = main_menu_ace->sprite_object->tx;
+    main_menu_ace->sprite_object->ty = int2fx(26);
+    main_menu_ace->sprite_object->y = main_menu_ace->sprite_object->ty;
+    main_menu_ace->sprite_object->tscale = float2fx(0.8f);
+}
+
 void init_game_state(enum GameState game_state_to_init)
 {
     // Switch written out, add init for states as needed
     switch (game_state_to_init)
     {
+    case GAME_MAIN_MENU:
+        game_main_menu_init();
+        break;
     case GAME_PLAYING:
         game_round_init();
         break;
@@ -1045,25 +1075,54 @@ void game_init()
     obj_hide(blind_select_tokens[BIG_BLIND]->obj);
     obj_hide(blind_select_tokens[BOSS_BLIND]->obj);
 
-    // Fill the deck with all the cards. Later on this can be replaced with a more dynamic system that allows for different decks and card types.
-    for (int suit = 0; suit < NUM_SUITS; suit++)
-    {
-        for (int rank = 0; rank < NUM_RANKS; rank++)
-        {
-            Card *card = card_new(suit, rank);
-            deck_push(card);
-        }
-    }
+    game_set_state(game_state);
 }
 
 void game_start()
 {
     affine_background_change_background(AFFINE_BG_GAME);
 
+    // Normally I would just cache these and hide/unhide but I didn't feel like dealing with defining a layer for it
+    card_destroy(&main_menu_ace->card);
+    card_object_destroy(&main_menu_ace);
+
     jokers_avialable_to_shop_init();
+
+    current_blind = SMALL_BLIND;
+    blinds[0] = BLIND_CURRENT;
+    blinds[1] = BLIND_UPCOMING;
+    blinds[2] = BLIND_UPCOMING;
+
+    hand_state = HAND_DRAW;
+    play_state = PLAY_PLAYING;
+
+    hand_type = NONE;
+
+    max_hands = 4;
+    max_discards = 4;
 
     hands = max_hands;
     discards = max_discards;
+
+    round = 0;
+    ante = 1;
+    money = 4;
+    score = 0;
+    temp_score = 0; // This is the score that shows in the same spot as the hand type.
+    lerped_score = 0;
+    lerped_temp_score = 0;
+
+    chips = 0;
+    mult = 0;
+
+    hand_size = 8; // Default hand size is 8
+    cards_drawn = 0;
+    hand_selections = 0;
+
+    selection_x = 0;
+    selection_y = 0;
+
+    sort_by_suit = false;
 
     // Fill the deck with all the cards. Later on this can be replaced with a more dynamic system that allows for different decks and card types.
     for (int suit = 0; suit < NUM_SUITS; suit++)
@@ -2678,6 +2737,10 @@ void game_main_menu()
 {
     change_background(BG_ID_MAIN_MENU);
 
+    card_object_update(main_menu_ace);
+    main_menu_ace->sprite_object->trotation = lu_sin((timer << 8) / 2) / 3;
+    main_menu_ace->sprite_object->rotation = main_menu_ace->sprite_object->trotation;
+
     if (key_hit(KEY_LEFT))
     {
         if (selection_x > 0)
@@ -2716,6 +2779,39 @@ void game_main_menu()
     }
 }
 
+void game_lose()
+{
+    game_round_end_cleanup();
+
+    // Cleanup the stacks
+    while(hand_top >= 0)
+    {
+        CardObject *card_object = hand_pop();
+        card_destroy(&card_object->card);
+        card_object_destroy(&card_object);
+    }
+
+    while (deck_top >= 0)
+    {
+        Card *card = deck_pop();
+        card_destroy(&card);
+    }
+
+    while (discard_top >= 0)
+    {
+        Card *card = discard_pop();
+        card_destroy(&card);
+    }
+
+    while (jokers_top >= 0)
+    {
+        JokerObject *joker_object = joker_pop();
+        joker_object_destroy(&joker_object);
+    }
+
+    game_set_state(GAME_MAIN_MENU);
+}
+
 void game_update()
 {
     timer++;
@@ -2749,7 +2845,7 @@ void game_update()
             game_blind_select();
             break;
         case GAME_LOSE:
-            // Handle lose logic here
+            game_lose();
             break;
     }
 }
