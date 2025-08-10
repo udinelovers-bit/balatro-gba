@@ -18,16 +18,13 @@
 #include "soundbank.h"
 #include "soundbank_bin.h"
 
-#define SPLASH_DURATION (60 * 10) // FPS * SECONDS
+#define FPS (60)
+#define SPLASH_DURATION (FPS * 10) // FPS * SECONDS
 
 void init()
 {
     irq_init(NULL);
     irq_add(II_VBLANK, mmVBlank);
-
-    // Initialize maxmod
-    mmInitDefault((mm_addr)soundbank_bin, 12);
-    mmStart(MOD_MAIN_THEME, MM_PLAY_LOOP);
 
     // Initialize text engine
     tte_init_se(0, BG_CBB(TTE_CBB) | BG_SBB(TTE_SBB), 0, CLR_WHITE, 14, NULL, NULL);
@@ -76,7 +73,7 @@ void init()
     // Splash screen
     tte_printf("#{P:72,8; cx:0xF000}DISCLAIMER");
     tte_printf("#{P:8,24; cx:0xF000}This project is NOT endorsed \n by or affiliated with \n Playstack or LocalThunk.\n\n If you have paid for this, \n you have been scammed \n and should request a refund \n IMMEDIATELY. \n\n The only official place \n to obtain this is from: \n\n      'github.com/\n     cellos51/balatro-gba'");
-    tte_printf("#{P:24,144; cx:0xF000}(Press any key to skip)");
+    tte_printf("#{P:8,144; cx:0xF000}(Press any key to skip)");
     for (int i = 0; i < SPLASH_DURATION; i++)
     {
         VBlankIntrWait();
@@ -85,10 +82,14 @@ void init()
         {
             break;
         }
+        tte_erase_rect_wrapper((Rect){208, 144, 240, 152});
+        tte_printf("#{P:208,144; cx:0xF000}%d", 1 + (SPLASH_DURATION - i) / FPS);
     }
     tte_erase_screen();
 
     // Initialize subsystems
+    mmInitDefault((mm_addr)soundbank_bin, 12);
+    mmStart(MOD_MAIN_THEME, MM_PLAY_LOOP);
     affine_background_init();
     sprite_init();
     card_init();
