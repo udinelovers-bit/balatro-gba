@@ -18,6 +18,8 @@
 #include "soundbank.h"
 #include "soundbank_bin.h"
 
+#define SPLASH_DURATION (60 * 10) // FPS * SECONDS
+
 void init()
 {
     irq_init(NULL);
@@ -70,6 +72,21 @@ void init()
     REG_BLDALPHA = BLDA_BUILD(0, 13);
 
     REG_DISPCNT = DCNT_MODE1 | DCNT_OBJ_1D | DCNT_BG0 | DCNT_BG1 | DCNT_BG2 | DCNT_OBJ | DCNT_WIN0 | DCNT_WIN1;
+
+    // Splash screen
+    tte_printf("#{P:72,8; cx:0xF000}DISCLAIMER");
+    tte_printf("#{P:8,24; cx:0xF000}This project is NOT endorsed \n by or affiliated with \n Playstack or LocalThunk.\n\n If you have paid for this, \n you have been scammed \n and should request a refund \n IMMEDIATELY. \n\n The only official place \n to obtain this is from: \n\n      'github.com/\n     cellos51/balatro-gba'");
+    tte_printf("#{P:24,144; cx:0xF000}(Press any key to skip)");
+    for (int i = 0; i < SPLASH_DURATION; i++)
+    {
+        VBlankIntrWait();
+        key_poll();
+        if (key_hit(KEY_A | KEY_B | KEY_START | KEY_SELECT)) // Skip intro
+        {
+            break;
+        }
+    }
+    tte_erase_screen();
 
     // Initialize subsystems
     affine_background_init();

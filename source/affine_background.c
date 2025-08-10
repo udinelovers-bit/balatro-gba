@@ -12,6 +12,7 @@ enum AffineBackgroundID background = AFFINE_BG_MAIN_MENU;
 void affine_background_init()
 {   
     affine_background_change_background(background);
+    affine_background_update();
 
     bgaff = bg_aff_default;
 }
