@@ -7,7 +7,7 @@
 
 #define AFFINE_BG_PAL_LEN 5
 #define AFFINE_BG_PB (PAL_ROW_LEN * 15) // This isn't really a palette bank, just the starting index of the palette
-#define AFFINE_BG_IDX 2 // The index of BGCNT register etc.
+#define AFFINE_BG_IDX 2 // The index of the affine background BGCNT register etc.
 
 void affine_background_init();
 IWRAM_CODE void affine_background_hblank();
