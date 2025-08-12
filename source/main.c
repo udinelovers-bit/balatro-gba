@@ -45,7 +45,7 @@ void init()
     // BG1 is the main background layer
     REG_BG1CNT = BG_PRIO(1) | BG_CBB(MAIN_BG_CBB) | BG_SBB(MAIN_BG_SBB) | BG_8BPP;
 	// BG2 is the affine background layer
-    REG_BG2CNT = BG_PRIO(2) | BG_CBB(AFFINE_BG_CBB) | BG_SBB(AFFINE_BG_CBB) | BG_8BPP | BG_WRAP | BG_AFF_32x32;
+    REG_BG2CNT = BG_PRIO(2) | BG_CBB(AFFINE_BG_CBB) | BG_SBB(AFFINE_BG_SBB) | BG_8BPP | BG_WRAP | BG_AFF_32x32;
 
     int win1_left = 72;
     int win1_top = 44;
