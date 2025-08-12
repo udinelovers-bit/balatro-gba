@@ -163,7 +163,7 @@ void sprite_object_update(SpriteObject* sprite_object)
     sprite_object->vrotation += (sprite_object->trotation - sprite_object->rotation) / 8; // Rotate the card when it's played
 
     // set velocity to 0 if it's close enough to the target
-    const FIXED epsilon = FIX_ONE>>7; // 1/(2^7) = 1/128 = 0.0078125
+    const FIXED epsilon = float2fx(0.01f);
     if (sprite_object->vx < epsilon && sprite_object->vx > -epsilon && sprite_object->vy < epsilon && sprite_object->vy > -epsilon)
     {
         sprite_object->vx = 0;
@@ -211,8 +211,8 @@ void sprite_object_update(SpriteObject* sprite_object)
 
 void sprite_object_shake(SpriteObject* sprite_object, mm_word sound_id)
 {
-    sprite_object->vscale = FIX_ONE >> 2; // (1/4 = 0.25) Scale down the card when it's scored
-    sprite_object->vrotation = FIX_ONE << 3; // (2^3 = 8) Rotate the card when it's scored
+    sprite_object->vscale = float2fx(0.3f);
+    sprite_object->vrotation = float2fx(8.0f); //Rotate the card when it's scored
 
     if (sound_id == UNDEFINED) return; // If no sound ID is provided, do nothing
 
