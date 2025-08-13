@@ -242,9 +242,9 @@ static const Rect HAND_REWARD_RECT          = {168,     UNDEFINED, UNDEFINED, UN
 static const Rect CASHOUT_RECT              = {88,      72,     UNDEFINED, UNDEFINED };
 static const Rect SHOP_REROLL_RECT          = {88,      96,    UNDEFINED, UNDEFINED };
 
-//TODO: Properly define and use
 #define MAIN_MENU_BUTTONS 4
 
+//TODO: Properly define and use
 #define MENU_POP_OUT_ANIM_FRAMES 20
 
 #define SCORED_CARD_TEXT_Y 48
@@ -938,9 +938,6 @@ void increment_blind(enum BlindState increment_reason)
 
 void game_round_init()
 {
-    // once we have a main menu, move the seed set there. this is only here now because there isn't a way to set the seed to a psudorandom value unless there is something to wait on
-    set_seed(rng_seed);
-
     hand_state = HAND_DRAW;
     cards_drawn = 0;
     hand_selections = 0;

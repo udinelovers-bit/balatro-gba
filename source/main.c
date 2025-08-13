@@ -18,8 +18,9 @@
 #include "soundbank.h"
 #include "soundbank_bin.h"
 
-#define FPS (60)
-#define SPLASH_DURATION (FPS * 10) // FPS * SECONDS
+#define SPLASH_FPS 60
+#define SPLASH_DURATION_SECONDS 10
+#define SPLASH_DURATION_FRAMES (SPLASH_FPS * SPLASH_DURATION_SECONDS)
 
 void init()
 {
@@ -74,7 +75,7 @@ void init()
     tte_printf("#{P:72,8; cx:0xF000}DISCLAIMER");
     tte_printf("#{P:8,24; cx:0xF000}This project is NOT endorsed \n by or affiliated with \n Playstack or LocalThunk.\n\n If you have paid for this, \n you have been scammed \n and should request a refund \n IMMEDIATELY. \n\n The only official place \n to obtain this is from: \n\n      'github.com/\n     cellos51/balatro-gba'");
     tte_printf("#{P:8,144; cx:0xF000}(Press any key to skip)");
-    for (int i = 0; i < SPLASH_DURATION; i++)
+    for (int i = 0; i < SPLASH_DURATION_FRAMES; i++)
     {
         VBlankIntrWait();
         key_poll();
@@ -83,7 +84,7 @@ void init()
             break;
         }
         tte_erase_rect_wrapper((Rect){208, 144, 240, 152});
-        tte_printf("#{P:208,144; cx:0xF000}%d", 1 + (SPLASH_DURATION - i) / FPS);
+        tte_printf("#{P:208,144; cx:0xF000}%d", 1 + (SPLASH_DURATION_FRAMES - i) / SPLASH_FPS);
     }
     tte_erase_screen();
 
