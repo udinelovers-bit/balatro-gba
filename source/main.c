@@ -73,7 +73,7 @@ void init()
 
     // Splash screen
     tte_printf("#{P:72,8; cx:0xF000}DISCLAIMER");
-    tte_printf("#{P:8,24; cx:0xF000}This project is NOT endorsed \n by or affiliated with \n Playstack or LocalThunk.\n\n If you have paid for this, \n you have been scammed \n and should request a refund \n IMMEDIATELY. \n\n The only official place \n to obtain this is from: \n\n      'github.com/\n     cellos51/balatro-gba'");
+    tte_printf("#{P:8,24; cx:0xF000}This project is NOT endorsed \n by or affiliated with \n Playstack or LocalThunk.\n\n If you have paid for this, \n you have been scammed \n and should request a refund \n IMMEDIATELY. \n\n The only official place \n to obtain this is from: \n\n 'github.com/\n  cellos51/balatro-gba'");
     tte_printf("#{P:8,144; cx:0xF000}(Press any key to skip)");
     for (int i = 0; i < SPLASH_DURATION_FRAMES; i++)
     {
