@@ -1623,7 +1623,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
             FIXED played_x = int2fx(120);
             FIXED played_y = int2fx(70);
-            FIXED played_scale = float2fx(1.0f);
+            FIXED played_scale = FIX_ONE;
 
             played_x = played_x + (int2fx(played_top - i) - int2fx(played_top) / 2) * -27;
 
