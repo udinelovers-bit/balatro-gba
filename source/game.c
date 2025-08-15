@@ -174,7 +174,7 @@ int get_jokers_top(void) {
     return jokers_top;
 }
 
-IntList* jokers_available_to_shop; // List of joker IDs
+List* jokers_available_to_shop; // List of joker IDs
 
 // Consts
 
@@ -1009,8 +1009,8 @@ void game_set_state(enum GameState new_game_state)
 void jokers_available_to_shop_init()
 {
     int num_defined_jokers = get_joker_registry_size();
-    jokers_available_to_shop = int_list_new(num_defined_jokers);
-    for (int i = 0; i < num_defined_jokers; i++)
+    jokers_available_to_shop = list_new(num_defined_jokers);
+    for (intptr_t i = 0; i < num_defined_jokers; i++)
     {
         // Add all joker IDs sequentially
         int_list_append(jokers_available_to_shop, i);
@@ -2151,7 +2151,7 @@ static int reroll_cost = REROLL_BASE_COST;
 static void game_shop_create_items(JokerObject *shop_jokers[])
 {
     tte_erase_rect_wrapper(SHOP_PRICES_TEXT_RECT);
-    if (int_list_get_size(jokers_available_to_shop) == 0)
+    if (list_get_size(jokers_available_to_shop) == 0)
     {
         // No jokers to create
         return;
@@ -2160,9 +2160,9 @@ static void game_shop_create_items(JokerObject *shop_jokers[])
     for (int i = 0; i < MAX_SHOP_JOKERS; i++)
     {
         // TODO: weight the random choice by joker rarity
-        int joker_idx = random() % int_list_get_size(jokers_available_to_shop);
-        int joker_id = int_list_get(jokers_available_to_shop, joker_idx);
-        int_list_remove_by_idx(jokers_available_to_shop, joker_idx);
+        int joker_idx = random() % list_get_size(jokers_available_to_shop);
+        intptr_t joker_id = int_list_get(jokers_available_to_shop, joker_idx);
+        list_remove_by_idx(jokers_available_to_shop, joker_idx);
         
         shop_jokers[i] = joker_object_new(joker_new(joker_id));
         shop_jokers[i]->sprite_object->x = int2fx(120 + i * CARD_SPRITE_SIZE);
@@ -2220,7 +2220,7 @@ static void game_shop_reroll(JokerObject** shop_jokers, int *reroll_cost)
     {
         if (shop_jokers[i] != NULL)
         {
-            int_list_append(jokers_available_to_shop, shop_jokers[i]->joker->id);
+            int_list_append(jokers_available_to_shop, (intptr_t)shop_jokers[i]->joker->id);
             joker_object_destroy(&shop_jokers[i]); // Destroy the joker object if it exists
         }
     }
@@ -2482,7 +2482,7 @@ void game_shop()
                 if (shop_jokers[i] != NULL)
                 {
                     // Make the joker available back to shop
-                    int_list_append(jokers_available_to_shop, shop_jokers[i]->joker->id);
+                    int_list_append(jokers_available_to_shop, (intptr_t)shop_jokers[i]->joker->id);
                 }
                 joker_object_destroy(&shop_jokers[i]); // Destroy the joker objects
             }
