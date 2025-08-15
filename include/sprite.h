@@ -27,6 +27,8 @@ typedef struct
     FIXED rotation;
     FIXED vrotation;
     bool selected;
+    bool focused;
+    
 } SpriteObject;
 
 // Sprite methods
@@ -58,6 +60,7 @@ void sprite_object_shake(SpriteObject* sprite_object, mm_word sound_id);
 void sprite_object_set_selected(SpriteObject* sprite_object, bool selected);
 bool sprite_object_is_selected(SpriteObject* sprite_object);
 Sprite* sprite_object_get_sprite(SpriteObject* sprite_object);
-
+void sprite_object_set_focus(SpriteObject* sprite_object, bool focus);
+bool sprite_object_is_focused(SpriteObject* sprite_object);
 
 #endif // SPRITE_H

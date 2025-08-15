@@ -239,6 +239,7 @@ static const Rect ROUND_END_NUM_HANDS_RECT  = {88,      116,    UNDEFINED, UNDEF
 static const Rect HAND_REWARD_RECT          = {168,     UNDEFINED, UNDEFINED, UNDEFINED };
 static const Rect CASHOUT_RECT              = {88,      72,     UNDEFINED, UNDEFINED };
 static const Rect SHOP_REROLL_RECT          = {88,      96,    UNDEFINED, UNDEFINED };
+#define ITEM_SHOP_Y 71 // TODO: Needs to be a rect?
 
 //TODO: Properly define and use
 #define MENU_POP_OUT_ANIM_FRAMES 20
@@ -1002,7 +1003,7 @@ void game_set_state(enum GameState new_game_state)
     game_state = new_game_state;
 }
 
-void jokers_avialable_to_shop_init()
+void jokers_available_to_shop_init()
 {
     int num_defined_jokers = get_joker_registry_size();
     jokers_available_to_shop = int_list_new(num_defined_jokers);
@@ -1015,7 +1016,7 @@ void jokers_avialable_to_shop_init()
 
 void game_init()
 {
-    jokers_avialable_to_shop_init();
+    jokers_available_to_shop_init();
 
     hands = max_hands;
     discards = max_discards;
@@ -1789,11 +1790,6 @@ static void held_jokers_update_loop()
         jokers[i]->sprite_object->tx = hand_x - int2fx(spacing_lut[jokers_top][i]);
         jokers[i]->sprite_object->ty = hand_y;
 
-        if (joker_object_is_selected(jokers[i]))
-        {
-            jokers[i]->sprite_object->ty -= int2fx(10);
-        }
-
         joker_object_update(jokers[i]);
     }
 }
@@ -2154,10 +2150,10 @@ static void game_shop_create_items(JokerObject *shop_jokers[])
         int_list_remove_by_idx(jokers_available_to_shop, joker_idx);
         
         shop_jokers[i] = joker_object_new(joker_new(joker_id));
-        shop_jokers[i]->sprite_object->x = int2fx(120 + i * 32);
+        shop_jokers[i]->sprite_object->x = int2fx(120 + i * CARD_SPRITE_SIZE);
         shop_jokers[i]->sprite_object->y = int2fx(160);
         shop_jokers[i]->sprite_object->tx = shop_jokers[i]->sprite_object->x;
-        shop_jokers[i]->sprite_object->ty = int2fx(71);
+        shop_jokers[i]->sprite_object->ty = int2fx(ITEM_SHOP_Y);
 
         int x = fx2int(shop_jokers[i]->sprite_object->tx) + TILE_SIZE - (get_digits_even(shop_jokers[i]->joker->value) - 1) * TILE_SIZE;
         int y = fx2int(shop_jokers[i]->sprite_object->ty) + CARD_SPRITE_SIZE + TILE_SIZE;
@@ -2228,6 +2224,8 @@ static void game_shop_reroll(JokerObject** shop_jokers, int *reroll_cost)
     (*reroll_cost)++;
     tte_printf("#{P:%d,%d; cx:0xF000}$%d", SHOP_REROLL_RECT.left, SHOP_REROLL_RECT.top, *reroll_cost);
 }
+
+
 
 // Shop menu input and selection
 static void game_shop_process_user_input(JokerObject** shop_jokers)
@@ -2322,8 +2320,6 @@ static void game_shop_process_user_input(JokerObject** shop_jokers)
         {
             if (i == selection_x - 1 && selection_y == 0)
             {
-                shop_jokers[i]->sprite_object->ty = int2fx(61);
-
                 if (key_hit(SELECT_CARD) && jokers_top < MAX_JOKERS_HELD_SIZE - 1 && money >= shop_jokers[i]->joker->value)
                 {
                     joker_push(shop_jokers[i]);
@@ -2341,10 +2337,6 @@ static void game_shop_process_user_input(JokerObject** shop_jokers)
 
                     shop_jokers[i] = NULL; // Remove the joker from the shop
                 }
-            }
-            else
-            {
-                shop_jokers[i]->sprite_object->ty = int2fx(71);
             }
         }
     }
@@ -2374,7 +2366,6 @@ static void game_shop_lights_anim_frame()
     memcpy16(&pal_bg_mem[22], &shifted_palette[2], 1);
     memcpy16(&pal_bg_mem[8], &shifted_palette[3], 1);
 }
-
 
 void game_shop()
 {
@@ -2472,8 +2463,6 @@ void game_shop()
             break;
     }
 }
-
-
 
 void game_blind_select()
 {
