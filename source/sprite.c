@@ -1,5 +1,6 @@
 #include "sprite.h"
 #include "util.h"
+#include "audio_utils.h"
 
 #include <tonc.h>
 #include <stdlib.h>
@@ -100,6 +101,15 @@ void sprite_draw()
     oam_copy(oam_mem, obj_buffer, MAX_SPRITES);
 }
 
+int sprite_get_pb(const Sprite *sprite)
+{
+    if (sprite == NULL)
+    {
+        return UNDEFINED;
+    }
+    return (sprite->obj->attr2 & ATTR2_PALBANK_MASK) >> ATTR2_PALBANK_SHIFT;
+}
+
 // SpriteObject methods
 SpriteObject* sprite_object_new()
 {
@@ -135,9 +145,9 @@ void sprite_object_reset_transform(SpriteObject* sprite_object)
     sprite_object->y = 0;
     sprite_object->vx = 0;
     sprite_object->vy = 0;
-    sprite_object->tscale = float2fx(1.0f); // Target scale
-    sprite_object->scale = float2fx(1.0f);
-    sprite_object->vscale = float2fx(0.0f);
+    sprite_object->tscale = FIX_ONE; // Target scale
+    sprite_object->scale = FIX_ONE;
+    sprite_object->vscale = 0;
     sprite_object->trotation = 0; // Target rotation
     sprite_object->rotation = 0;
     sprite_object->vrotation = 0;
@@ -153,7 +163,7 @@ void sprite_object_update(SpriteObject* sprite_object)
     sprite_object->vrotation += (sprite_object->trotation - sprite_object->rotation) / 8; // Rotate the card when it's played
 
     // set velocity to 0 if it's close enough to the target
-    const float epsilon = float2fx(0.01f);
+    const FIXED epsilon = float2fx(0.01f);
     if (sprite_object->vx < epsilon && sprite_object->vx > -epsilon && sprite_object->vy < epsilon && sprite_object->vy > -epsilon)
     {
         sprite_object->vx = 0;
@@ -201,13 +211,12 @@ void sprite_object_update(SpriteObject* sprite_object)
 
 void sprite_object_shake(SpriteObject* sprite_object, mm_word sound_id)
 {
-    sprite_object->vscale = float2fx(0.3f); // Scale down the card when it's scored
-    sprite_object->vrotation = float2fx(8.0f); // Rotate the card when it's scored
+    sprite_object->vscale = float2fx(0.3f);
+    sprite_object->vrotation = float2fx(8.0f); //Rotate the card when it's scored
 
     if (sound_id == UNDEFINED) return; // If no sound ID is provided, do nothing
 
-    mm_sound_effect sfx_select = { {sound_id}, 1024, 0, 255, 128, };
-    mmEffectEx(&sfx_select);
+    play_sfx(sound_id, MM_BASE_PITCH_RATE);
 }
 
 void sprite_object_set_selected(SpriteObject* sprite_object, bool selected)
