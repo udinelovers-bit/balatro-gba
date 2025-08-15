@@ -15,6 +15,7 @@
 #include "graphic_utils.h"
 #include "tonc_video.h"
 #include "audio_utils.h"
+#include "selection_grid.h"
 
 #include "background_gfx.h"
 #include "background_shop_gfx.h"
@@ -245,6 +246,8 @@ static const Rect SHOP_REROLL_RECT          = {88,      96,    UNDEFINED, UNDEFI
 #define MENU_POP_OUT_ANIM_FRAMES 20
 
 #define SCORED_CARD_TEXT_Y 48
+
+#define HIGHLIGHT_COLOR 0xFFFF
 
 #define PITCH_STEP_DISCARD_SFX      (-64)
 #define PITCH_STEP_DRAW_SFX         24
@@ -2133,6 +2136,18 @@ void game_round_end()
     }
 }
 
+// Shop
+static JokerObject *shop_jokers[MAX_SHOP_JOKERS] = {NULL};
+#define REROLL_BASE_COST 5 // Base cost for rerolling the shop items
+static int reroll_cost = REROLL_BASE_COST;
+
+#define NEXT_ROUND_BTN_SEL_X 0
+
+#define NEXT_ROUND_BTN_FRAME_PAL_IDX    5
+#define NEXT_ROUND_BTN_PAL_IDX          16
+#define REROLL_BTN_FRAME_PAL_IDX        7
+#define REROLL_BTN_PAL_IDX              3
+
 static void game_shop_create_items(JokerObject *shop_jokers[])
 {
     tte_erase_rect_wrapper(SHOP_PRICES_TEXT_RECT);
@@ -2225,17 +2240,130 @@ static void game_shop_reroll(JokerObject** shop_jokers, int *reroll_cost)
     tte_printf("#{P:%d,%d; cx:0xF000}$%d", SHOP_REROLL_RECT.left, SHOP_REROLL_RECT.top, *reroll_cost);
 }
 
+// Shop input
+static int shop_top_row_get_size()
+{
+    // TODO: Make dynamic to not allow selecting sold items
+    return MAX_SHOP_JOKERS + 1; // + 1 to account for next round button
+}
 
+static void shop_top_row_on_key_hit(SelectionGrid* selection_grid, Selection* selection)
+{
+    if (!key_hit(SELECT_CARD))
+        return;
+
+    if (selection->x == NEXT_ROUND_BTN_SEL_X)
+    {
+        // Go to next blind selection game state
+        state = 2; // Go to the outro sequence state
+        timer = 0; // Reset the timer
+        reroll_cost = REROLL_BASE_COST;
+
+        memcpy16(&pal_bg_mem[NEXT_ROUND_BTN_FRAME_PAL_IDX], &pal_bg_mem[6], 1);
+
+        // memcpy16(&pal_bg_mem[16], &pal_bg_mem[6], 1); 
+        // This changes the color of the button to a dark red.
+        // However, it shares a palette with the shop icon, so it will change the color of the shop icon as well.
+        // And I don't care enough to fix it right now.
+    }
+    else 
+    {
+        int shop_joker_idx = selection->x - 1; // - 1 to account for next round button
+        if (shop_jokers[shop_joker_idx] == NULL 
+            || jokers_top >= MAX_JOKERS_HELD_SIZE - 1 
+            || money < shop_jokers[shop_joker_idx]->joker->value)
+        {
+            return;
+        }
+
+        joker_push(shop_jokers[shop_joker_idx]);
+        money -= shop_jokers[shop_joker_idx]->joker->value; // Deduct the money spent on the joker
+        display_money(money); // Update the money display
+
+        Rect joker_price_rect;
+        joker_price_rect.left = fx2int(shop_jokers[shop_joker_idx]->sprite_object->tx);
+        // 2*TILE_SIZE because the item is highlighted and raised by 1 additional tile
+        joker_price_rect.top = fx2int(shop_jokers[shop_joker_idx]->sprite_object->ty) + CARD_SPRITE_SIZE + 2*TILE_SIZE;
+        joker_price_rect.right = joker_price_rect.left + TILE_SIZE * 3;
+        joker_price_rect.bottom = joker_price_rect.top + TILE_SIZE;
+
+        tte_erase_rect_wrapper(joker_price_rect);
+
+        shop_jokers[shop_joker_idx] = NULL; // Remove the joker from the shop
+
+        selection_grid_move_selection_horz(selection_grid, -1);
+    }
+}
+
+static void shop_top_row_on_selection_changed(SelectionGrid* selection_grid, int row_idx, const Selection* prev_selection, const Selection* new_selection)
+{
+    if (prev_selection->y == row_idx)
+    {
+        if (prev_selection->x == NEXT_ROUND_BTN_SEL_X)
+        {
+            // Remove next round button highlight
+            memcpy16(&pal_bg_mem[NEXT_ROUND_BTN_FRAME_PAL_IDX], &pal_bg_mem[NEXT_ROUND_BTN_PAL_IDX], 1);
+        }
+        else 
+        {
+            sprite_object_set_focus(shop_jokers[prev_selection->x - 1]->sprite_object, false); 
+            // -1 to account for next round button
+        }
+    }
+
+    if (new_selection->y == row_idx)
+    {
+        if (new_selection->x == NEXT_ROUND_BTN_SEL_X)
+        {
+            // Highlight next round button
+            memset16(&pal_bg_mem[NEXT_ROUND_BTN_FRAME_PAL_IDX], HIGHLIGHT_COLOR, 1);
+        }
+        else 
+        {
+            sprite_object_set_focus(shop_jokers[new_selection->x - 1]->sprite_object, true); 
+            // -1 to account for next round button
+        }
+    }
+}
+
+static int shop_bottom_row_get_size()
+{
+    return 1; // Currently only the reroll button
+}
+
+static void shop_bottom_row_on_selection_changed(SelectionGrid* selection_grid, int row_idx, const Selection* prev_selection, const Selection* new_selection)
+{
+    if (row_idx == prev_selection->y)
+    {
+        // Remove highlight
+        memcpy16(&pal_bg_mem[REROLL_BTN_FRAME_PAL_IDX], &pal_bg_mem[REROLL_BTN_PAL_IDX], 1);
+    }
+    else if (row_idx == new_selection->y)
+    {
+        memset16(&pal_bg_mem[REROLL_BTN_FRAME_PAL_IDX], HIGHLIGHT_COLOR, 1);
+    }
+}
+
+static void shop_bottom_row_on_key_hit(SelectionGrid* selection_grid, Selection* selection)
+{
+    if (money >= reroll_cost)
+    {
+        game_shop_reroll(shop_jokers, &reroll_cost);
+    }
+}
+
+SelectionGridRow shop_selection_rows[] =
+{
+    {0, shop_top_row_get_size, shop_top_row_on_selection_changed, shop_top_row_on_key_hit},
+    {1, shop_bottom_row_get_size, shop_bottom_row_on_selection_changed, shop_bottom_row_on_key_hit}
+};
+
+// TODO: Initialize selection better
+SelectionGrid shop_selection_grid = {shop_selection_rows, NUM_ELEM_IN_ARR(shop_selection_rows), {0, 0}};
 
 // Shop menu input and selection
 static void game_shop_process_user_input(JokerObject** shop_jokers)
 {
-    static const int REROLL_BASE_COST = 5; // Base cost for rerolling the shop items
-    static int reroll_cost = REROLL_BASE_COST;
-
-    // temp variables for future implementation
-    const ushort max_items_top = MAX_SHOP_JOKERS; 
-    const ushort max_items_bottom = 0;
 
     if (timer == 1)
     {
@@ -2243,103 +2371,7 @@ static void game_shop_process_user_input(JokerObject** shop_jokers)
     }
 
     // Shop input logic
-    if (key_hit(KEY_UP))
-    {
-        selection_y = 0;
-
-        if (selection_x > max_items_top)
-        {
-            selection_x = max_items_top;
-        }
-    }
-    else if (key_hit(KEY_DOWN))
-    {
-        selection_y = 1;
-
-        if (selection_x > max_items_bottom)
-        {
-            selection_x = max_items_bottom;
-        }
-    }
-    else if (key_hit(KEY_LEFT))
-    {
-        if (selection_x > 0)
-        {
-            selection_x--;
-        }
-    }
-    else if (key_hit(KEY_RIGHT))
-    {
-        // TODO: Don't allow cursor on sold items
-        if (selection_y == 0 && selection_x < max_items_top)
-        {
-            selection_x++;
-        }
-        else if (selection_y == 1 && selection_x < max_items_bottom)
-        {
-            selection_x++;
-        }
-    }
-
-    memcpy16(&pal_bg_mem[7], &pal_bg_mem[3], 1);
-    memcpy16(&pal_bg_mem[5], &pal_bg_mem[16], 1);
-
-    // Shop selection logic
-    if (selection_x == 0 && selection_y == 0) // Next round button
-    {
-        memset16(&pal_bg_mem[5], 0xFFFF, 1);
-
-        if (key_hit(SELECT_CARD))
-        {
-            // Go to next blind selection game state
-            state = 2; // Go to the outro sequence state
-            timer = 0; // Reset the timer
-            reroll_cost = REROLL_BASE_COST;
-
-            memcpy16(&pal_bg_mem[5], &pal_bg_mem[6], 1);
-
-            // memcpy16(&pal_bg_mem[16], &pal_bg_mem[6], 1); 
-            // This changes the color of the button to a dark red.
-            // However, it shares a palette with the shop icon, so it will change the color of the shop icon as well.
-            // And I don't care enough to fix it right now.
-        }
-    }
-    else if (selection_x == 0 && selection_y == 1) // Reroll button
-    {
-        memset16(&pal_bg_mem[7], 0xFFFF, 1);
-
-        if (key_hit(SELECT_CARD) && money >= reroll_cost)
-        {
-            game_shop_reroll(shop_jokers, &reroll_cost);
-        }
-    }
-
-    for (int i = 0; i < MAX_SHOP_JOKERS; i++) // Item selection logic
-    {
-        if (shop_jokers[i] != NULL)
-        {
-            if (i == selection_x - 1 && selection_y == 0)
-            {
-                if (key_hit(SELECT_CARD) && jokers_top < MAX_JOKERS_HELD_SIZE - 1 && money >= shop_jokers[i]->joker->value)
-                {
-                    joker_push(shop_jokers[i]);
-                    money -= shop_jokers[i]->joker->value; // Deduct the money spent on the joker
-                    display_money(money); // Update the money display
-
-                    Rect joker_price_rect;
-                    joker_price_rect.left = fx2int(shop_jokers[i]->sprite_object->tx);
-                    // 2*TILE_SIZE because the item is highlighted and raised by 1 additional tile
-                    joker_price_rect.top = fx2int(shop_jokers[i]->sprite_object->ty) + CARD_SPRITE_SIZE + 2*TILE_SIZE;
-                    joker_price_rect.right = joker_price_rect.left + TILE_SIZE * 3;
-                    joker_price_rect.bottom = joker_price_rect.top + TILE_SIZE;
-
-                    tte_erase_rect_wrapper(joker_price_rect);
-
-                    shop_jokers[i] = NULL; // Remove the joker from the shop
-                }
-            }
-        }
-    }
+    selection_grid_process_input(&shop_selection_grid);
 }
 
 static void game_shop_lights_anim_frame()
@@ -2370,8 +2402,6 @@ static void game_shop_lights_anim_frame()
 void game_shop()
 {
     change_background(BG_ID_SHOP);
-
-    static JokerObject *shop_jokers[MAX_SHOP_JOKERS] = {NULL};
 
     for (int i = 0; i < MAX_SHOP_JOKERS; i++)
     {

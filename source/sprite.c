@@ -1,6 +1,7 @@
 #include "sprite.h"
 #include "util.h"
 #include "audio_utils.h"
+#include "soundbank.h"
 
 #include <tonc.h>
 #include <stdlib.h>
@@ -247,8 +248,10 @@ void sprite_object_set_focus(SpriteObject* sprite_object, bool focus)
     {
         return;
     }
-    
-    sprite_object->ty = sprite_object->ty + (focus ? -1 : 1) * SPRITE_FOCUS_RAISE_PX;
+    sprite_object->focused = focus;
+
+    play_sfx(SFX_CARD_FOCUS , MM_BASE_PITCH_RATE + rand() % 512);
+    sprite_object->ty = sprite_object->ty + int2fx((focus ? -1 : 1) * SPRITE_FOCUS_RAISE_PX);
 }
 
 bool sprite_object_is_focused(SpriteObject* sprite_object)
