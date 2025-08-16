@@ -1,6 +1,7 @@
 #include "sprite.h"
 #include "util.h"
 #include "audio_utils.h"
+#include "soundbank.h"
 
 #include <tonc.h>
 #include <stdlib.h>
@@ -8,6 +9,7 @@
 
 #define MAX_SPRITES 128
 #define MAX_AFFINES 32
+#define SPRITE_FOCUS_RAISE_PX 10
 
 OBJ_ATTR obj_buffer[MAX_SPRITES];
 OBJ_AFFINE *obj_aff_buffer = (OBJ_AFFINE*)obj_buffer;
@@ -145,9 +147,9 @@ void sprite_object_reset_transform(SpriteObject* sprite_object)
     sprite_object->y = 0;
     sprite_object->vx = 0;
     sprite_object->vy = 0;
-    sprite_object->tscale = float2fx(1.0f); // Target scale
-    sprite_object->scale = float2fx(1.0f);
-    sprite_object->vscale = float2fx(0.0f);
+    sprite_object->tscale = FIX_ONE; // Target scale
+    sprite_object->scale = FIX_ONE;
+    sprite_object->vscale = 0;
     sprite_object->trotation = 0; // Target rotation
     sprite_object->rotation = 0;
     sprite_object->vrotation = 0;
@@ -163,7 +165,7 @@ void sprite_object_update(SpriteObject* sprite_object)
     sprite_object->vrotation += (sprite_object->trotation - sprite_object->rotation) / 8; // Rotate the card when it's played
 
     // set velocity to 0 if it's close enough to the target
-    const float epsilon = float2fx(0.01f);
+    const FIXED epsilon = float2fx(0.01f);
     if (sprite_object->vx < epsilon && sprite_object->vx > -epsilon && sprite_object->vy < epsilon && sprite_object->vy > -epsilon)
     {
         sprite_object->vx = 0;
@@ -211,8 +213,8 @@ void sprite_object_update(SpriteObject* sprite_object)
 
 void sprite_object_shake(SpriteObject* sprite_object, mm_word sound_id)
 {
-    sprite_object->vscale = float2fx(0.3f); // Scale down the card when it's scored
-    sprite_object->vrotation = float2fx(8.0f); // Rotate the card when it's scored
+    sprite_object->vscale = float2fx(0.3f);
+    sprite_object->vrotation = float2fx(8.0f); //Rotate the card when it's scored
 
     if (sound_id == UNDEFINED) return; // If no sound ID is provided, do nothing
 
@@ -238,4 +240,21 @@ Sprite* sprite_object_get_sprite(SpriteObject* sprite_object)
     if (sprite_object == NULL)
         return NULL;
     return sprite_object->sprite;
+}
+
+void sprite_object_set_focus(SpriteObject* sprite_object, bool focus)
+{
+    if (sprite_object->focused == focus)
+    {
+        return;
+    }
+    sprite_object->focused = focus;
+
+    play_sfx(SFX_CARD_FOCUS , MM_BASE_PITCH_RATE + rand() % 512);
+    sprite_object->ty = sprite_object->ty + int2fx((focus ? -1 : 1) * SPRITE_FOCUS_RAISE_PX);
+}
+
+bool sprite_object_is_focused(SpriteObject* sprite_object)
+{
+    return sprite_object->focused;
 }

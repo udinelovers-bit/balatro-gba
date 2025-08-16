@@ -11,15 +11,20 @@
 #include "hand_analysis.h"
 #include "blind.h"
 #include "joker.h"
+#include "affine_background.h"
 #include "graphic_utils.h"
 #include "tonc_video.h"
 #include "audio_utils.h"
+#include "selection_grid.h"
 
 #include "background_gfx.h"
 #include "background_shop_gfx.h"
 #include "background_blind_select_gfx.h"
+#include "affine_background_gfx.h"
 
 #include "soundbank.h"
+
+#include "list.h"
 
 // This seed system is temporary.
 static uint rng_seed = 2048;
@@ -29,7 +34,7 @@ static uint timer = 0; // This might already exist in libtonc but idk so i'm jus
 static int game_speed = 1;
 static int background = 0;
 
-static enum GameState game_state = GAME_SHOP; // The current game state, this is used to determine what the game is doing at any given time
+static enum GameState game_state = GAME_BLIND_SELECT; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
 static int state = 0; // General state variable, used for switch statements in each game state related function
@@ -148,6 +153,11 @@ int get_hand_top(void) {
     return hand_top;
 }
 
+int hand_get_size(void)
+{
+    return hand_top + 1;
+}
+
 CardObject **get_played_array(void) {
     return played;
 }
@@ -163,6 +173,8 @@ JokerObject **get_jokers(void) {
 int get_jokers_top(void) {
     return jokers_top;
 }
+
+List* jokers_available_to_shop; // List of joker IDs
 
 // Consts
 
@@ -228,16 +240,23 @@ static const Rect ROUND_END_NUM_HANDS_RECT  = {88,      116,    UNDEFINED, UNDEF
 static const Rect HAND_REWARD_RECT          = {168,     UNDEFINED, UNDEFINED, UNDEFINED };
 static const Rect CASHOUT_RECT              = {88,      72,     UNDEFINED, UNDEFINED };
 static const Rect SHOP_REROLL_RECT          = {88,      96,    UNDEFINED, UNDEFINED };
+#define ITEM_SHOP_Y 71 // TODO: Needs to be a rect?
 
 //TODO: Properly define and use
 #define MENU_POP_OUT_ANIM_FRAMES 20
 
 #define SCORED_CARD_TEXT_Y 48
 
+#define HIGHLIGHT_COLOR 0xFFFF
+
 #define PITCH_STEP_DISCARD_SFX      (-64)
 #define PITCH_STEP_DRAW_SFX         24
 #define PITCH_STEP_UNDISCARD_SFX    2*PITCH_STEP_DRAW_SFX    
 // Naming the stage where cards return from the discard pile to the deck "undiscard"
+
+int get_num_discards_remaining(void) {
+    return discards;
+}
 
 // General functions
 void set_seed(int seed)
@@ -428,6 +447,8 @@ void change_background(int id)
             else if (current_blind == BOSS_BLIND)
             {
                 main_bg_se_copy_rect(BOSS_BLIND_TITLE_SRC_RECT, TOP_LEFT_BLIND_TITLE_POINT);
+
+                affine_background_set_color(blind_get_color(BOSS_BLIND, BLIND_SHADOW_COLOR_INDEX));
             }
 
             bg_copy_current_item_to_top_left_panel();
@@ -849,11 +870,6 @@ void hand_change_sort()
     sort_cards();
 }
 
-int hand_get_size()
-{
-    return hand_top + 1;
-}
-
 int hand_get_max_size()
 {
     return hand_size;
@@ -990,8 +1006,21 @@ void game_set_state(enum GameState new_game_state)
     game_state = new_game_state;
 }
 
+void jokers_available_to_shop_init()
+{
+    int num_defined_jokers = get_joker_registry_size();
+    jokers_available_to_shop = list_new(num_defined_jokers);
+    for (intptr_t i = 0; i < num_defined_jokers; i++)
+    {
+        // Add all joker IDs sequentially
+        int_list_append(jokers_available_to_shop, i);
+    }
+}
+
 void game_init()
 {
+    jokers_available_to_shop_init();
+
     hands = max_hands;
     discards = max_discards;
 
@@ -1551,7 +1580,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
             FIXED played_x = int2fx(120);
             FIXED played_y = int2fx(70);
-            FIXED played_scale = float2fx(1.0f);
+            FIXED played_scale = FIX_ONE;
 
             played_x = played_x + (int2fx(played_top - i) - int2fx(played_top) / 2) * -27;
 
@@ -1615,7 +1644,7 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                                     tte_set_special(0xD000); // Set text color to blue from background memory
 
                                     // Write the score to a character buffer variable
-                                    char score_buffer[5]; // Assuming the maximum score is 99, we need 4 characters (2 digits + null terminator)
+                                    char score_buffer[INT_MAX_DIGITS + 2]; // for '+' and null terminator
                                     snprintf(score_buffer, sizeof(score_buffer), "+%d", card_get_value(played[j]->card));
                                     tte_write(score_buffer);
 
@@ -1764,11 +1793,6 @@ static void held_jokers_update_loop()
         jokers[i]->sprite_object->tx = hand_x - int2fx(spacing_lut[jokers_top][i]);
         jokers[i]->sprite_object->ty = hand_y;
 
-        if (joker_object_is_selected(jokers[i]))
-        {
-            jokers[i]->sprite_object->ty -= int2fx(10);
-        }
-
         joker_object_update(jokers[i]);
     }
 }
@@ -1808,41 +1832,6 @@ static void game_round_end_cashout()
 
     score = 0;
     display_score(score); // Set the score display
-}
-
-static void game_shop_create_items(JokerObject *shop_jokers[], bool first_time)
-{
-    tte_erase_rect_wrapper(SHOP_PRICES_TEXT_RECT);
-
-    for (int i = 0; i < MAX_SHOP_JOKERS; i++)
-    {
-        if (shop_jokers[i] != NULL)
-        {
-            joker_object_destroy(&shop_jokers[i]); // Destroy the joker object if it exists
-        }
-        
-        u8 joker_id = random() % get_joker_registry_size();
-        // TODO: don't pick a joker that we already own
-        // TODO: weight the random choice by joker rarity
-
-        shop_jokers[i] = joker_object_new(joker_new(joker_id));
-        shop_jokers[i]->sprite_object->x = int2fx(120 + i * 32);
-        shop_jokers[i]->sprite_object->y = int2fx(160);
-        shop_jokers[i]->sprite_object->tx = shop_jokers[i]->sprite_object->x;
-        shop_jokers[i]->sprite_object->ty = int2fx(71);
-
-        int x = fx2int(shop_jokers[i]->sprite_object->tx) + TILE_SIZE - (get_digits_even(shop_jokers[i]->joker->value) - 1) * TILE_SIZE;
-        int y = fx2int(shop_jokers[i]->sprite_object->ty) + CARD_SPRITE_SIZE + TILE_SIZE;
-        tte_printf("#{P:%d,%d; cx:0xC000}$%d", x, y, shop_jokers[i]->joker->value);
-
-        if (first_time == false)
-        {
-            shop_jokers[i]->sprite_object->y = shop_jokers[i]->sprite_object->ty; // If it's not the first time, set the y position to the target position
-            joker_object_shake(shop_jokers[i], UNDEFINED); // Give the joker a little wiggle animation
-        }
-
-        sprite_position(joker_object_get_sprite(shop_jokers[i]), fx2int(shop_jokers[i]->sprite_object->x), fx2int(shop_jokers[i]->sprite_object->y));
-    }
 }
 
 void game_playing()
@@ -1986,6 +1975,7 @@ void game_round_end()
                 tte_erase_rect_wrapper(BLIND_REWARD_RECT);
                 tte_erase_rect_wrapper(BLIND_REQ_TEXT_RECT);
                 obj_hide(playing_blind_token->obj);
+                affine_background_load_palette(affine_background_gfxPal);
                 state = 5;
                 timer = 0;
             }
@@ -2146,13 +2136,60 @@ void game_round_end()
     }
 }
 
-void game_shop_intro(JokerObject* shop_jokers[])
+// Shop
+static List *shop_jokers = NULL;
+#define REROLL_BASE_COST 5 // Base cost for rerolling the shop items
+static int reroll_cost = REROLL_BASE_COST;
+
+#define NEXT_ROUND_BTN_SEL_X 0
+
+#define NEXT_ROUND_BTN_FRAME_PAL_IDX    5
+#define NEXT_ROUND_BTN_PAL_IDX          16
+#define REROLL_BTN_FRAME_PAL_IDX        7
+#define REROLL_BTN_PAL_IDX              3
+
+static void game_shop_create_items()
+{
+    tte_erase_rect_wrapper(SHOP_PRICES_TEXT_RECT);
+    if (list_get_size(jokers_available_to_shop) == 0)
+    {
+        // No jokers to create
+        return;
+    }
+
+    shop_jokers = list_new(MAX_SHOP_JOKERS);
+
+    for (int i = 0; i < MAX_SHOP_JOKERS; i++)
+    {
+        // TODO: weight the random choice by joker rarity
+        int joker_idx = random() % list_get_size(jokers_available_to_shop);
+        intptr_t joker_id = int_list_get(jokers_available_to_shop, joker_idx);
+        list_remove_by_idx(jokers_available_to_shop, joker_idx);
+        
+        JokerObject *joker_object = joker_object_new(joker_new(joker_id));
+
+        joker_object->sprite_object->x = int2fx(120 + i * CARD_SPRITE_SIZE);
+        joker_object->sprite_object->y = int2fx(160);
+        joker_object->sprite_object->tx = joker_object->sprite_object->x;
+        joker_object->sprite_object->ty = int2fx(ITEM_SHOP_Y);
+
+        int x = fx2int(joker_object->sprite_object->tx) + TILE_SIZE - (get_digits_even(joker_object->joker->value) - 1) * TILE_SIZE;
+        int y = fx2int(joker_object->sprite_object->ty) + CARD_SPRITE_SIZE + TILE_SIZE;
+        tte_printf("#{P:%d,%d; cx:0xC000}$%d", x, y, joker_object->joker->value);
+
+        sprite_position(joker_object_get_sprite(joker_object), fx2int(joker_object->sprite_object->x), fx2int(joker_object->sprite_object->y));
+        list_append(shop_jokers, joker_object);
+    }
+}
+
+// Intro sequence (menu and shop icon coming into frame)
+static void game_shop_intro()
 {
     main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_UP);
 
     if (timer == 1)
     {
-        game_shop_create_items(shop_jokers, true);
+        game_shop_create_items();
     }
 
     if (timer >= 7) // Shift the shop icon
@@ -2179,236 +2216,322 @@ void game_shop_intro(JokerObject* shop_jokers[])
     }
 }
 
+static void game_shop_reroll(int *reroll_cost)
+{
+    money -= *reroll_cost;
+    display_money(money); // Update the money display
+    for (int i = 0; i < list_get_size(shop_jokers); i++)
+    {
+        JokerObject *joker_object = list_get(shop_jokers, i);
+        if (joker_object != NULL)
+        {
+            int_list_append(jokers_available_to_shop, joker_object->joker->id);
+            joker_object_destroy(&joker_object); // Destroy the joker object if it exists
+        }
+    }
+
+    list_destroy(&shop_jokers);
+
+    game_shop_create_items();
+    
+    for (int i = 0; i < list_get_size(shop_jokers); i++)
+    {
+        JokerObject *joker_object = list_get(shop_jokers, i);
+        if (joker_object != NULL)
+        {
+            joker_object->sprite_object->y = joker_object->sprite_object->ty; // Set the y position to the target position
+            joker_object_shake(joker_object, UNDEFINED); // Give the joker a little wiggle animation
+        }
+    }
+
+    (*reroll_cost)++;
+    tte_printf("#{P:%d,%d; cx:0xF000}$%d", SHOP_REROLL_RECT.left, SHOP_REROLL_RECT.top, *reroll_cost);
+}
+
+// Shop input
+static int shop_top_row_get_size()
+{
+    return list_get_size(shop_jokers) + 1; // + 1 to account for next round button
+}
+
+static void game_shop_buy_joker(int shop_joker_idx)
+{
+    JokerObject *joker_object = list_get(shop_jokers, shop_joker_idx);
+    joker_push(joker_object);
+    money -= joker_object->joker->value; // Deduct the money spent on the joker
+    display_money(money);                // Update the money display
+
+    Rect joker_price_rect;
+    joker_price_rect.left = fx2int(joker_object->sprite_object->tx);
+    // 2*TILE_SIZE because the item is highlighted and raised by 1 additional tile
+    joker_price_rect.top = fx2int(joker_object->sprite_object->ty) + CARD_SPRITE_SIZE + 2 * TILE_SIZE;
+    joker_price_rect.right = joker_price_rect.left + TILE_SIZE * 3;
+    joker_price_rect.bottom = joker_price_rect.top + TILE_SIZE;
+
+    tte_erase_rect_wrapper(joker_price_rect);
+
+    list_remove_by_idx(shop_jokers, shop_joker_idx); // Remove the joker from the shop
+}
+
+static void shop_top_row_on_key_hit(SelectionGrid* selection_grid, Selection* selection)
+{
+    if (!key_hit(SELECT_CARD))
+        return;
+
+    if (selection->x == NEXT_ROUND_BTN_SEL_X)
+    {
+        // Go to next blind selection game state
+        state = 2; // Go to the outro sequence state
+        timer = 0; // Reset the timer
+        reroll_cost = REROLL_BASE_COST;
+
+        memcpy16(&pal_bg_mem[NEXT_ROUND_BTN_FRAME_PAL_IDX], &pal_bg_mem[6], 1);
+
+        // memcpy16(&pal_bg_mem[16], &pal_bg_mem[6], 1); 
+        // This changes the color of the button to a dark red.
+        // However, it shares a palette with the shop icon, so it will change the color of the shop icon as well.
+        // And I don't care enough to fix it right now.
+    }
+    else 
+    {
+        int shop_joker_idx = selection->x - 1; // - 1 to account for next round button
+        JokerObject *joker_object = list_get(shop_jokers, shop_joker_idx);
+        if (joker_object == NULL 
+            || jokers_top >= MAX_JOKERS_HELD_SIZE - 1 
+            || money < joker_object->joker->value)
+        {
+            return;
+        }
+
+        game_shop_buy_joker(shop_joker_idx);
+
+        // In Balatro the selection actually stays on the purchased joker it's easier to just move it left
+        selection_grid_move_selection_horz(selection_grid, -1);
+    }
+}
+
+
+
+static void shop_top_row_on_selection_changed(SelectionGrid* selection_grid, int row_idx, 
+                                              const Selection* prev_selection, 
+                                              const Selection* new_selection)
+{
+    // The selection grid system only guarantees that the new selection is within bounds
+    if (prev_selection->y == row_idx && prev_selection->x >= 0 && prev_selection->x < shop_top_row_get_size())
+    {
+        if (prev_selection->x == NEXT_ROUND_BTN_SEL_X)
+        {
+            // Remove next round button highlight
+            memcpy16(&pal_bg_mem[NEXT_ROUND_BTN_FRAME_PAL_IDX], &pal_bg_mem[NEXT_ROUND_BTN_PAL_IDX], 1);
+        }
+        else 
+        {
+            JokerObject *joker = list_get(shop_jokers, prev_selection->x - 1);
+            sprite_object_set_focus(joker->sprite_object, false); 
+            // -1 to account for next round button
+        }
+    }
+
+    if (new_selection->y == row_idx)
+    {
+        if (new_selection->x == NEXT_ROUND_BTN_SEL_X)
+        {
+            // Highlight next round button
+            memset16(&pal_bg_mem[NEXT_ROUND_BTN_FRAME_PAL_IDX], HIGHLIGHT_COLOR, 1);
+        }
+        else 
+        {
+            JokerObject *joker = list_get(shop_jokers, new_selection->x - 1);
+            sprite_object_set_focus(joker->sprite_object, true); 
+            // -1 to account for next round button
+        }
+    }
+}
+
+static int shop_bottom_row_get_size()
+{
+    return 1; // Currently only the reroll button
+}
+
+static void shop_bottom_row_on_selection_changed(SelectionGrid* selection_grid, int row_idx, const Selection* prev_selection, const Selection* new_selection)
+{
+    if (row_idx == prev_selection->y)
+    {
+        // Remove highlight
+        memcpy16(&pal_bg_mem[REROLL_BTN_FRAME_PAL_IDX], &pal_bg_mem[REROLL_BTN_PAL_IDX], 1);
+    }
+    else if (row_idx == new_selection->y)
+    {
+        memset16(&pal_bg_mem[REROLL_BTN_FRAME_PAL_IDX], HIGHLIGHT_COLOR, 1);
+    }
+}
+
+static void shop_bottom_row_on_key_hit(SelectionGrid* selection_grid, Selection* selection)
+{
+    if (money >= reroll_cost)
+    {
+        game_shop_reroll(&reroll_cost);
+    }
+}
+
+SelectionGridRow shop_selection_rows[] =
+{
+    {0, shop_top_row_get_size, shop_top_row_on_selection_changed, shop_top_row_on_key_hit},
+    {1, shop_bottom_row_get_size, shop_bottom_row_on_selection_changed, shop_bottom_row_on_key_hit}
+};
+
+static const Selection SHOP_INIT_SEL = {-1, 0};
+
+SelectionGrid shop_selection_grid = {shop_selection_rows, NUM_ELEM_IN_ARR(shop_selection_rows), SHOP_INIT_SEL};
+
+// Shop menu input and selection
+static void game_shop_process_user_input()
+{
+    if (timer == 1)
+    {
+        // The selection grid is initialized outside of bounds and moved 
+        // to trigger the selection change so the initial selection is visible
+        shop_selection_grid.selection = SHOP_INIT_SEL;
+        selection_grid_move_selection_horz(&shop_selection_grid, 1);
+        tte_printf("#{P:%d,%d; cx:0xF000}$%d", SHOP_REROLL_RECT.left, SHOP_REROLL_RECT.top, reroll_cost);
+    }
+
+    // Shop input logic
+    selection_grid_process_input(&shop_selection_grid);
+}
+
+static void game_shop_lights_anim_frame()
+{
+    // Shift palette around the border of the shop icon
+    COLOR shifted_palette[4];
+    memcpy16(&shifted_palette[0], &pal_bg_mem[14], 1);
+    memcpy16(&shifted_palette[1], &pal_bg_mem[17], 1);
+    memcpy16(&shifted_palette[2], &pal_bg_mem[22], 1);
+    memcpy16(&shifted_palette[3], &pal_bg_mem[8], 1);
+
+    // Circularly shift the palette
+    int last = shifted_palette[3];
+
+    for (int i = 3; i > 0; --i)
+    {
+        shifted_palette[i] = shifted_palette[i - 1];
+    }
+
+    shifted_palette[0] = last;
+
+    memcpy16(&pal_bg_mem[14], &shifted_palette[0], 1); // Copy the shifted palette to the next 4 slots
+    memcpy16(&pal_bg_mem[17], &shifted_palette[1], 1);
+    memcpy16(&pal_bg_mem[22], &shifted_palette[2], 1);
+    memcpy16(&pal_bg_mem[8], &shifted_palette[3], 1);
+}
+
+// Outro sequence (menu and shop icon going out of frame)
+static void game_shop_outro()
+{
+    // Shift the shop panel
+    main_bg_se_move_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
+
+    main_bg_se_copy_rect_1_tile_vert(TOP_LEFT_PANEL_ANIM_RECT, SE_UP);
+
+    if (timer == 1)
+    {
+        tte_erase_rect_wrapper(SHOP_PRICES_TEXT_RECT); // Erase the shop prices text
+
+        for (int i = 0; i < list_get_size(shop_jokers); i++)
+        {
+            JokerObject *joker_object = list_get(shop_jokers, i);
+            if (joker_object != NULL)
+            {
+                joker_object->sprite_object->ty = int2fx(160);
+            }
+        }
+
+        int y = 6;
+        memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0006, 1);
+        memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0007, 2);
+        memset16(&se_mem[MAIN_BG_SBB][3 + 32 * (y - 1)], 0x0008, 1);
+        memset16(&se_mem[MAIN_BG_SBB][4 + 32 * (y - 1)], 0x0009, 4);
+        memset16(&se_mem[MAIN_BG_SBB][7 + 32 * (y - 1)], 0x000A, 1);
+        memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0406, 1);
+    }
+    else if (timer == 2)
+    {
+        int y = 5;
+        memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0001, 1);
+        memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0002, 7);
+        memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0401, 1);
+    }
+
+    if (timer >= MENU_POP_OUT_ANIM_FRAMES)
+    {
+        state = 3; // Go to the next state
+        timer = 0; // Reset the timer
+    }
+}
+
 void game_shop()
 {
     change_background(BG_ID_SHOP);
 
-    static JokerObject *shop_jokers[MAX_SHOP_JOKERS] = {NULL};
-
-    for (int i = 0; i < MAX_SHOP_JOKERS; i++)
+    if (shop_jokers != NULL)
     {
-        if (shop_jokers[i] != NULL)
+        for (int i = 0; i < list_get_size(shop_jokers); i++)
         {
-            joker_object_update(shop_jokers[i]);
+            JokerObject *joker_object = list_get(shop_jokers, i);
+            if (joker_object != NULL)
+            {
+                joker_object_update(joker_object);
+            }
         }
     }
+    
 
-    const int reroll_base_cost = 5; // Base cost for rerolling the shop items
-    static int reroll_cost = reroll_base_cost;
-
-    // temp variables for future implementation
-    const ushort max_items_top = MAX_SHOP_JOKERS; 
-    const ushort max_items_bottom = 0;
-
-    if (timer % 20 == 0) // Shift palette around the border of the shop icon
+    if (timer % 20 == 0)
     {
-        COLOR shifted_palette[4];
-        memcpy16(&shifted_palette[0], &pal_bg_mem[14], 1);
-        memcpy16(&shifted_palette[1], &pal_bg_mem[17], 1);
-        memcpy16(&shifted_palette[2], &pal_bg_mem[22], 1);
-        memcpy16(&shifted_palette[3], &pal_bg_mem[8], 1);
-
-        // Circularly shift the palette
-        int last = shifted_palette[3];
-
-        for (int i = 3; i > 0; --i) {
-            shifted_palette[i] = shifted_palette[i - 1];
-        }
-
-        shifted_palette[0] = last;
-
-        memcpy16(&pal_bg_mem[14], &shifted_palette[0], 1); // Copy the shifted palette to the next 4 slots
-        memcpy16(&pal_bg_mem[17], &shifted_palette[1], 1);
-        memcpy16(&pal_bg_mem[22], &shifted_palette[2], 1);
-        memcpy16(&pal_bg_mem[8], &shifted_palette[3], 1);
+        game_shop_lights_anim_frame();
     }
 
     switch (state) // I'm only using magic numbers here for the sake of simplicity since it's just sequential, but you can replace them with named constants or enums if it makes it clearer
     {
-        case 0: // Intro sequence (menu and shop icon coming into frame)
+        case 0: 
         {           
-            game_shop_intro(shop_jokers);
+            game_shop_intro();
             break;
         }    
-        case 1: // Shop menu input and selection
+        case 1:
         {
-            if (timer == 1)
-            {
-                tte_printf("#{P:%d,%d; cx:0xF000}$%d", SHOP_REROLL_RECT.left, SHOP_REROLL_RECT.top, reroll_cost);
-            }
-
-            // Shop input logic
-            if (key_hit(KEY_UP))
-            {
-                selection_y = 0;
-
-                if (selection_x > max_items_top)
-                {
-                    selection_x = max_items_top;
-                }
-            }
-            else if (key_hit(KEY_DOWN))
-            {
-                selection_y = 1;
-
-                if (selection_x > max_items_bottom)
-                {
-                    selection_x = max_items_bottom;
-                }
-            }
-            else if (key_hit(KEY_LEFT))
-            {
-                if (selection_x > 0)
-                {
-                    selection_x--;
-                }
-            }
-            else if (key_hit(KEY_RIGHT))
-            {
-                if (selection_y == 0 && selection_x < max_items_top)
-                {
-                    selection_x++;
-                }
-                else if (selection_y == 1 && selection_x < max_items_bottom)
-                {
-                    selection_x++;
-                }
-            }
-
-            memcpy16(&pal_bg_mem[7], &pal_bg_mem[3], 1);
-            memcpy16(&pal_bg_mem[5], &pal_bg_mem[16], 1);
-
-            // Shop selection logic
-            if (selection_x == 0 && selection_y == 0)
-            {
-                memset16(&pal_bg_mem[5], 0xFFFF, 1);
-
-                if (key_hit(SELECT_CARD))
-                {
-                    // Go to next blind selection game state
-                    state = 2; // Go to the outro sequence state
-                    timer = 0; // Reset the timer
-
-                    memcpy16(&pal_bg_mem[5], &pal_bg_mem[6], 1);
-
-                    // memcpy16(&pal_bg_mem[16], &pal_bg_mem[6], 1); 
-                    // This changes the color of the button to a dark red.
-                    // However, it shares a palette with the shop icon, so it will change the color of the shop icon as well.
-                    // And I don't care enough to fix it right now.
-                }
-            }
-            else if (selection_x == 0 && selection_y == 1)
-            {
-                memset16(&pal_bg_mem[7], 0xFFFF, 1);
-
-                if (key_hit(SELECT_CARD) && money >= reroll_cost)
-                {
-                    money -= reroll_cost;
-                    display_money(money); // Update the money display
-                
-                    game_shop_create_items(shop_jokers, false);
-
-                    reroll_cost++;
-                    tte_printf("#{P:%d,%d; cx:0xF000}$%d", SHOP_REROLL_RECT.left, SHOP_REROLL_RECT.top, reroll_cost);
-                }
-            }
-
-            for (int i = 0; i < MAX_SHOP_JOKERS; i++)
-            {
-                if (shop_jokers[i] != NULL)
-                {
-                    if (i == selection_x - 1 && selection_y == 0)
-                    {
-                        shop_jokers[i]->sprite_object->ty = int2fx(61);
-
-                        if (key_hit(SELECT_CARD) && jokers_top < MAX_JOKERS_HELD_SIZE - 1 && money >= shop_jokers[i]->joker->value)
-                        {
-                            joker_push(shop_jokers[i]);
-                            money -= shop_jokers[i]->joker->value; // Deduct the money spent on the joker
-                            display_money(money); // Update the money display
-
-                            Rect joker_price_rect;
-                            joker_price_rect.left = fx2int(shop_jokers[i]->sprite_object->tx);
-                            // 2*TILE_SIZE because the item is highlighted and raised by 1 additional tile
-                            joker_price_rect.top = fx2int(shop_jokers[i]->sprite_object->ty) + CARD_SPRITE_SIZE + 2*TILE_SIZE;
-                            joker_price_rect.right = joker_price_rect.left + TILE_SIZE * 3;
-                            joker_price_rect.bottom = joker_price_rect.top + TILE_SIZE;
-
-                            tte_erase_rect_wrapper(joker_price_rect);
-
-                            shop_jokers[i] = NULL; // Remove the joker from the shop
-                        }
-                    }
-                    else
-                    {
-                        shop_jokers[i]->sprite_object->ty = int2fx(71);
-                    }
-                }
-            }
-
+            game_shop_process_user_input();
             break;
         }
-        case 2: // Outro sequence (menu and shop icon going out of frame)
+        case 2: 
         {
-            // Shift the shop panel
-            main_bg_se_move_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
-
-            main_bg_se_copy_rect_1_tile_vert(TOP_LEFT_PANEL_ANIM_RECT, SE_UP);
-            
-            if (timer == 1)
-            {
-                tte_erase_rect_wrapper(SHOP_PRICES_TEXT_RECT); // Erase the shop prices text
-
-                for (int i = 0; i < MAX_SHOP_JOKERS; i++)
-                {
-                    if (shop_jokers[i] != NULL)
-                    {
-                        shop_jokers[i]->sprite_object->ty = int2fx(160);
-                    }
-                }
-
-                int y = 6;
-                memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0006, 1);
-                memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0007, 2);
-                memset16(&se_mem[MAIN_BG_SBB][3 + 32 * (y - 1)], 0x0008, 1);
-                memset16(&se_mem[MAIN_BG_SBB][4 + 32 * (y - 1)], 0x0009, 4);
-                memset16(&se_mem[MAIN_BG_SBB][7 + 32 * (y - 1)], 0x000A, 1);
-                memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0406, 1);
-            }
-            else if (timer == 2)
-            {
-                int y = 5;
-                memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0001, 1);
-                memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0002, 7);
-                memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0401, 1);
-            }
-
-            if (timer >= MENU_POP_OUT_ANIM_FRAMES)
-            {
-                state = 3; // Go to the next state
-                timer = 0; // Reset the timer
-            }
-
+            game_shop_outro();
             break;
         }
         default:
             state = 0; // Reset the state
-            reroll_cost = reroll_base_cost;
 
-            selection_x = 0; // Reset the selection
-            selection_y = 0; // Reset the selection
-
-            for (int i = 0; i < MAX_SHOP_JOKERS; i++)
+            for (int i = 0; i < list_get_size(shop_jokers); i++)
             {
-                joker_object_destroy(&shop_jokers[i]); // Destroy the joker objects
+                JokerObject* joker_object = list_get(shop_jokers, i);
+                if (joker_object != NULL)
+                {
+                    // Make the joker available back to shop                    
+                    int_list_append(jokers_available_to_shop, (intptr_t)joker_object->joker->id);
+                }
+                joker_object_destroy(&joker_object); // Destroy the joker objects
             }
 
-            increment_blind(BLIND_DEFEATED);
+            list_destroy(&shop_jokers);
+
+            increment_blind(BLIND_DEFEATED); // TODO: Move to game_round_end()?
             game_set_state(GAME_BLIND_SELECT); // If we reach here, we should go to the blind select state
 
             break;
     }
 }
+
+
 
 void game_blind_select()
 {
