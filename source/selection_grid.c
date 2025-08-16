@@ -55,7 +55,10 @@ void selection_grid_move_selection_vert(SelectionGrid *selection_grid, int direc
             // Clip selection to row size
             new_selection.x = new_row_size - 1;
         }
-        selection_grid->rows[selection.y].on_selection_changed(selection_grid, selection.y, &selection, &new_selection);
+        if (selection.y >= 0 && selection.y < selection_grid->num_rows)
+        {
+            selection_grid->rows[selection.y].on_selection_changed(selection_grid, selection.y, &selection, &new_selection);
+        }
         selection_grid->rows[new_selection.y].on_selection_changed(selection_grid, new_selection.y, &selection, &new_selection);
         selection_grid->selection = new_selection;
     }

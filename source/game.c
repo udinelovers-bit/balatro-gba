@@ -2251,7 +2251,6 @@ static void game_shop_reroll(int *reroll_cost)
 // Shop input
 static int shop_top_row_get_size()
 {
-    // TODO: Make dynamic to not allow selecting sold items
     return list_get_size(shop_jokers) + 1; // + 1 to account for next round button
 }
 
@@ -2317,7 +2316,8 @@ static void shop_top_row_on_selection_changed(SelectionGrid* selection_grid, int
                                               const Selection* prev_selection, 
                                               const Selection* new_selection)
 {
-    if (prev_selection->y == row_idx)
+    // The selection grid system only guarantees that the new selection is within bounds
+    if (prev_selection->y == row_idx && prev_selection->x >= 0 && prev_selection->x < shop_top_row_get_size())
     {
         if (prev_selection->x == NEXT_ROUND_BTN_SEL_X)
         {
@@ -2380,15 +2380,19 @@ SelectionGridRow shop_selection_rows[] =
     {1, shop_bottom_row_get_size, shop_bottom_row_on_selection_changed, shop_bottom_row_on_key_hit}
 };
 
-// TODO: Initialize selection better
-SelectionGrid shop_selection_grid = {shop_selection_rows, NUM_ELEM_IN_ARR(shop_selection_rows), {0, 0}};
+static const Selection SHOP_INIT_SEL = {-1, 0};
+
+SelectionGrid shop_selection_grid = {shop_selection_rows, NUM_ELEM_IN_ARR(shop_selection_rows), SHOP_INIT_SEL};
 
 // Shop menu input and selection
 static void game_shop_process_user_input()
 {
-
     if (timer == 1)
     {
+        // The selection grid is initialized outside of bounds and moved 
+        // to trigger the selection change so the initial selection is visible
+        shop_selection_grid.selection = SHOP_INIT_SEL;
+        selection_grid_move_selection_horz(&shop_selection_grid, 1);
         tte_printf("#{P:%d,%d; cx:0xF000}$%d", SHOP_REROLL_RECT.left, SHOP_REROLL_RECT.top, reroll_cost);
     }
 
@@ -2419,6 +2423,50 @@ static void game_shop_lights_anim_frame()
     memcpy16(&pal_bg_mem[17], &shifted_palette[1], 1);
     memcpy16(&pal_bg_mem[22], &shifted_palette[2], 1);
     memcpy16(&pal_bg_mem[8], &shifted_palette[3], 1);
+}
+
+// Outro sequence (menu and shop icon going out of frame)
+static void game_shop_outro()
+{
+    // Shift the shop panel
+    main_bg_se_move_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
+
+    main_bg_se_copy_rect_1_tile_vert(TOP_LEFT_PANEL_ANIM_RECT, SE_UP);
+
+    if (timer == 1)
+    {
+        tte_erase_rect_wrapper(SHOP_PRICES_TEXT_RECT); // Erase the shop prices text
+
+        for (int i = 0; i < list_get_size(shop_jokers); i++)
+        {
+            JokerObject *joker_object = list_get(shop_jokers, i);
+            if (joker_object != NULL)
+            {
+                joker_object->sprite_object->ty = int2fx(160);
+            }
+        }
+
+        int y = 6;
+        memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0006, 1);
+        memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0007, 2);
+        memset16(&se_mem[MAIN_BG_SBB][3 + 32 * (y - 1)], 0x0008, 1);
+        memset16(&se_mem[MAIN_BG_SBB][4 + 32 * (y - 1)], 0x0009, 4);
+        memset16(&se_mem[MAIN_BG_SBB][7 + 32 * (y - 1)], 0x000A, 1);
+        memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0406, 1);
+    }
+    else if (timer == 2)
+    {
+        int y = 5;
+        memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0001, 1);
+        memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0002, 7);
+        memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0401, 1);
+    }
+
+    if (timer >= MENU_POP_OUT_ANIM_FRAMES)
+    {
+        state = 3; // Go to the next state
+        timer = 0; // Reset the timer
+    }
 }
 
 void game_shop()
@@ -2455,63 +2503,20 @@ void game_shop()
             game_shop_process_user_input();
             break;
         }
-        case 2: // Outro sequence (menu and shop icon going out of frame)
+        case 2: 
         {
-            // Shift the shop panel
-            main_bg_se_move_rect_1_tile_vert(POP_MENU_ANIM_RECT, SE_DOWN);
-
-            main_bg_se_copy_rect_1_tile_vert(TOP_LEFT_PANEL_ANIM_RECT, SE_UP);
-            
-            if (timer == 1)
-            {
-                tte_erase_rect_wrapper(SHOP_PRICES_TEXT_RECT); // Erase the shop prices text
-
-                for (int i = 0; i < list_get_size(shop_jokers); i++)
-                {
-                    JokerObject *joker_object = list_get(shop_jokers, i);
-                    if (joker_object != NULL)
-                    {
-                        joker_object->sprite_object->ty = int2fx(160);
-                    }
-                }
-
-                int y = 6;
-                memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0006, 1);
-                memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0007, 2);
-                memset16(&se_mem[MAIN_BG_SBB][3 + 32 * (y - 1)], 0x0008, 1);
-                memset16(&se_mem[MAIN_BG_SBB][4 + 32 * (y - 1)], 0x0009, 4);
-                memset16(&se_mem[MAIN_BG_SBB][7 + 32 * (y - 1)], 0x000A, 1);
-                memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0406, 1);
-            }
-            else if (timer == 2)
-            {
-                int y = 5;
-                memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0001, 1);
-                memset16(&se_mem[MAIN_BG_SBB][1 + 32 * (y - 1)], 0x0002, 7);
-                memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0401, 1);
-            }
-
-            if (timer >= MENU_POP_OUT_ANIM_FRAMES)
-            {
-                state = 3; // Go to the next state
-                timer = 0; // Reset the timer
-            }
-
+            game_shop_outro();
             break;
         }
         default:
             state = 0; // Reset the state
-
-            selection_x = 0; // Reset the selection
-            selection_y = 0; // Reset the selection
 
             for (int i = 0; i < list_get_size(shop_jokers); i++)
             {
                 JokerObject* joker_object = list_get(shop_jokers, i);
                 if (joker_object != NULL)
                 {
-                    // Make the joker available back to shop
-                    
+                    // Make the joker available back to shop                    
                     int_list_append(jokers_available_to_shop, (intptr_t)joker_object->joker->id);
                 }
                 joker_object_destroy(&joker_object); // Destroy the joker objects
@@ -2525,6 +2530,8 @@ void game_shop()
             break;
     }
 }
+
+
 
 void game_blind_select()
 {
