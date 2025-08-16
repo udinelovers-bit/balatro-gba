@@ -77,6 +77,7 @@ static int selection_y = 0;
 static bool sort_by_suit = false;
 
 static List *jokers = NULL;
+static List *discarded_jokers = NULL;
 
 // Stacks
 static CardObject *played[MAX_SELECTION_SIZE] = {NULL};
@@ -224,6 +225,7 @@ static const Rect CASHOUT_RECT              = {88,      72,     UNDEFINED, UNDEF
 static const Rect SHOP_REROLL_RECT          = {88,      96,    UNDEFINED, UNDEFINED };
 
 static const BG_POINT HELD_JOKERS_POS       = {108,     10};
+static const BG_POINT JOKER_DISCARD_TARGET  = {240,     30};
 
 #define ITEM_SHOP_Y 71 // TODO: Needs to be a rect?
 
@@ -1010,6 +1012,9 @@ void game_init()
     if (jokers) list_destroy(&jokers);
     jokers = list_new(MAX_JOKERS_HELD_SIZE);
 
+    if (discarded_jokers != NULL) list_destroy(&discarded_jokers);
+    discarded_jokers = list_new(MAX_JOKERS_HELD_SIZE);
+
     hands = max_hands;
     discards = max_discards;
 
@@ -1767,6 +1772,26 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
     }
 }
 
+static void discarded_jokers_update_loop()
+{
+    if (discarded_jokers == NULL)
+        return;
+    
+    // Iterating backwards because of removal within loop
+    for (int i = list_get_size(discarded_jokers) - 1; i >= 0; i--)
+    {
+        JokerObject* joker_object = list_get(discarded_jokers, i);
+        joker_object_update(joker_object);
+        if (joker_object->sprite_object->x == joker_object->sprite_object->tx
+            && joker_object->sprite_object->y == joker_object->sprite_object->ty)
+        {
+            list_remove_by_idx(discarded_jokers, i);
+            joker_object_destroy(&joker_object);        
+        }
+    }
+    
+}
+
 static void held_jokers_update_loop()
 {
     const int spacing_lut[MAX_JOKERS_HELD_SIZE][MAX_JOKERS_HELD_SIZE] = 
@@ -1788,6 +1813,12 @@ static void held_jokers_update_loop()
 
         joker_object_update(joker);
     }
+}
+
+static void jokers_update_loop()
+{
+    held_jokers_update_loop();
+    discarded_jokers_update_loop();
 }
 
 static void game_playing_ui_text_update()
@@ -2283,6 +2314,13 @@ static void jokers_sel_row_on_selection_changed(SelectionGrid *selection_grid,
     }
 }
 
+void joker_start_discard_animation(JokerObject *joker_object)
+{
+    joker_object->sprite_object->tx = int2fx(JOKER_DISCARD_TARGET.x);
+    joker_object->sprite_object->ty = int2fx(JOKER_DISCARD_TARGET.y);
+    list_append(discarded_jokers, joker_object);
+}
+
 void game_sell_joker(int joker_idx)
 {
     if (joker_idx < 0 || joker_idx > list_get_size(jokers))
@@ -2296,8 +2334,7 @@ void game_sell_joker(int joker_idx)
     list_remove_by_idx(jokers, joker_idx);
     int_list_append(jokers_available_to_shop, (intptr_t)joker_object->joker->id);
 
-    // TODO: Discard animation
-    joker_object_destroy(&joker_object);
+    joker_start_discard_animation(joker_object);
 }
 
 static void jokers_sel_row_on_key_hit(SelectionGrid* selection_grid, Selection* selection)
@@ -2771,7 +2808,7 @@ void game_update()
         }
     }
 
-    held_jokers_update_loop();
+    jokers_update_loop();
 
     switch (game_state)
     {
