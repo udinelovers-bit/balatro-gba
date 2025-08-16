@@ -76,10 +76,9 @@ static int selection_y = 0;
 
 static bool sort_by_suit = false;
 
-// Stacks
-static JokerObject *jokers[MAX_JOKERS_HELD_SIZE] = {NULL};
-static int jokers_top = -1;
+static List *jokers = NULL;
 
+// Stacks
 static CardObject *played[MAX_SELECTION_SIZE] = {NULL};
 static int played_top = -1;
 
@@ -92,17 +91,11 @@ static int deck_top = -1;
 static Card *discard_pile[MAX_DECK_SIZE] = {NULL};
 static int discard_top = -1;
 
-// Joker stack
+// Joker stack using List
 static inline void joker_push(JokerObject *joker)
 {
-    if (jokers_top >= MAX_JOKERS_HELD_SIZE - 1) return;
-    jokers[++jokers_top] = joker;
-}
-
-static inline JokerObject *joker_pop()
-{
-    if (jokers_top < 0) return NULL;
-    return jokers[jokers_top--];
+    if (list_get_size(jokers) >= MAX_JOKERS_HELD_SIZE) return;
+    list_append(jokers, joker);
 }
 
 // Played stack
@@ -166,15 +159,11 @@ int get_played_top(void) {
     return played_top;
 }
 
-JokerObject **get_jokers(void) {
+List *get_jokers(void) {
     return jokers;
 }
 
-int get_jokers_top(void) {
-    return jokers_top;
-}
-
-List* jokers_available_to_shop; // List of joker IDs
+List *jokers_available_to_shop; // List of joker IDs
 
 // Consts
 
@@ -1021,6 +1010,10 @@ void game_init()
 {
     jokers_available_to_shop_init();
 
+    // Initialize jokers list
+    if (jokers) list_destroy(&jokers);
+    jokers = list_new(MAX_JOKERS_HELD_SIZE);
+
     hands = max_hands;
     discards = max_discards;
 
@@ -1614,9 +1607,10 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
                             if (*played_selections > 0)
                             {
-                                for (int k = 0; k <= jokers_top; k++)
+                                for (int k = 0; k < list_get_size(jokers); k++)
                                 {
-                                    if (joker_object_score(jokers[k], played[*played_selections - 1]->card, &chips, &mult, NULL, &money, NULL)) // NULLs aren't implemented yet
+                                    JokerObject *joker = list_get(jokers, k);
+                                    if (joker_object_score(joker, played[*played_selections - 1]->card, &chips, &mult, NULL, &money, NULL)) // NULLs aren't implemented yet
                                     {
                                         display_chips(chips);
                                         display_mult(mult);
@@ -1632,11 +1626,12 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                                 scored_cards = j + 1; // Count the number of cards that have been scored
                                 if (scored_cards > *played_selections)
                                 {
-                                    for (int k = 0; k <= jokers_top; k++)
+                                    for (int k = 0; k < list_get_size(jokers); k++)
                                     {
-                                        if (jokers[k] != NULL)
+                                        JokerObject *joker = list_get(jokers, k);
+                                        if (joker != NULL)
                                         {
-                                            jokers[k]->joker->processed = false; // Reset the joker's processed state for the next score
+                                            joker->joker->processed = false; // Reset the joker's processed state for the next score
                                         }
                                     }
 
@@ -1663,9 +1658,10 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                             {
                                 tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
 
-                                for (int k = 0; k <= jokers_top; k++) // Independent joker scoring loop
+                                for (int k = 0; k <= list_get_size(jokers); k++) // Independent joker scoring loop
                                 {
-                                    if (joker_object_score(jokers[k], NULL, &chips, &mult, NULL, &money, NULL)) // NULLs aren't implemented yet
+                                    JokerObject *joker = list_get(jokers, k);
+                                    if (joker_object_score(joker, NULL, &chips, &mult, NULL, &money, NULL)) // NULLs aren't implemented yet
                                     {
                                         display_chips(chips);
                                         display_mult(mult);
@@ -1675,11 +1671,12 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                                     }
                                 }
 
-                                for (int k = 0; k <= jokers_top; k++)
+                                for (int k = 0; k <= list_get_size(jokers); k++)
                                 {
-                                    if (jokers[k] != NULL)
+                                    JokerObject *joker = list_get(jokers, k);
+                                    if (joker != NULL)
                                     {
-                                        jokers[k]->joker->processed = false; // Reset the joker's processed state for the next round
+                                        joker->joker->processed = false; // Reset the joker's processed state for the next round
                                     }
                                 }
 
@@ -1788,12 +1785,14 @@ static void held_jokers_update_loop()
     FIXED hand_x = int2fx(108);
     FIXED hand_y = int2fx(10);
 
+    int jokers_top = list_get_size(jokers) - 1;
     for (int i = jokers_top; i >= 0; i--)
     {
-        jokers[i]->sprite_object->tx = hand_x - int2fx(spacing_lut[jokers_top][i]);
-        jokers[i]->sprite_object->ty = hand_y;
+        JokerObject *joker = list_get(jokers, i);
+        joker->sprite_object->tx = hand_x - int2fx(spacing_lut[jokers_top][i]);
+        joker->sprite_object->ty = hand_y;
 
-        joker_object_update(jokers[i]);
+        joker_object_update(joker);
     }
 }
 
@@ -2297,7 +2296,7 @@ static void shop_top_row_on_key_hit(SelectionGrid* selection_grid, Selection* se
         int shop_joker_idx = selection->x - 1; // - 1 to account for next round button
         JokerObject *joker_object = list_get(shop_jokers, shop_joker_idx);
         if (joker_object == NULL 
-            || jokers_top >= MAX_JOKERS_HELD_SIZE - 1 
+            || list_get_size(jokers) >= MAX_JOKERS_HELD_SIZE
             || money < joker_object->joker->value)
         {
             return;
