@@ -23,6 +23,7 @@
 #define PEEK_DECK KEY_L // Not implemented
 #define SORT_HAND KEY_R
 #define PAUSE_GAME KEY_START // Not implemented
+#define SELL_KEY KEY_L
 
 enum GameState
 {
