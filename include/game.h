@@ -89,6 +89,8 @@ CardObject**    get_played_array(void);
 int             get_played_top(void);
 List*           get_jokers(void);
 
+int get_deck_top(void);
 int get_num_discards_remaining(void);
+int get_money(void);
 
 #endif // GAME_H

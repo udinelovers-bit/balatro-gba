@@ -78,6 +78,7 @@ static bool sort_by_suit = false;
 
 static List *jokers = NULL;
 static List *discarded_jokers = NULL;
+static List* jokers_available_to_shop; // List of joker IDs
 
 // Stacks
 static CardObject *played[MAX_SELECTION_SIZE] = {NULL};
@@ -157,7 +158,20 @@ List *get_jokers(void) {
     return jokers;
 }
 
-List *jokers_available_to_shop; // List of joker IDs
+
+
+int get_deck_top(void) {
+    return deck_top;
+}
+
+int get_num_discards_remaining(void) {
+    return discards;
+}
+
+int get_money(void) {
+    return money;
+}
+
 
 // Consts
 
@@ -240,10 +254,6 @@ static const BG_POINT JOKER_DISCARD_TARGET  = {240,     30};
 #define PITCH_STEP_DRAW_SFX         24
 #define PITCH_STEP_UNDISCARD_SFX    2*PITCH_STEP_DRAW_SFX    
 // Naming the stage where cards return from the discard pile to the deck "undiscard"
-
-int get_num_discards_remaining(void) {
-    return discards;
-}
 
 // General functions
 void set_seed(int seed)
