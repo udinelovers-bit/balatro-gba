@@ -313,15 +313,15 @@ static JokerEffect raised_fist_joker_effect(Joker *joker, Card *scored_card) {
     // Aces are always considered high value, even in an ace-low straight
     u8 lowest_value = IMPOSSIBLY_HIGH_CARD_VALUE;
     CardObject** hand = get_hand_array();
-    int hand_top = get_hand_top();
-    for (int i = 0; i < hand_top; i++ )
+    int hand_size = hand_get_size();
+    for (int i = 0; i < hand_size; i++ )
     {
         u8 value = card_get_value(hand[i]->card);
         if (lowest_value > value)
             lowest_value = value;
     }
 
-    if (lowest_value != 99)
+    if (lowest_value != IMPOSSIBLY_HIGH_CARD_VALUE)
         effect.mult = lowest_value * 2;
 
     return effect;
@@ -333,8 +333,8 @@ static JokerEffect reserved_parking_joker_effect(Joker *joker, Card *scored_card
         return effect; // if card != null, we are not at the end-phase of scoring yet
 
     CardObject** hand = get_hand_array();
-    int hand_top = get_hand_top();
-    for (int i = 0; i < hand_top; i++ )
+    int hand_size = hand_get_size();
+    for (int i = 0; i < hand_size; i++ )
     {
         switch (hand[i]->card->rank) {
             case KING: case QUEEN: case JACK:
@@ -356,12 +356,10 @@ static JokerEffect business_card_joker_effect(Joker *joker, Card *scored_card) {
     switch (scored_card->rank) {
         case KING: case QUEEN: case JACK:
             if (random() % 2 == 0)
-                effect.money = 1;
+                effect.money = 2;
         default:
             break;
     }
-
-    effect.chips = 1;
 
     return effect;
 }
@@ -400,8 +398,8 @@ static JokerEffect abstract_joker_effect(Joker *joker, Card *scored_card) {
         return effect; // if card != null, we are not at the end-phase of scoring yet
 
     // +1 xmult per occupied joker slot
-    int jokers_top = get_jokers_top();
-    effect.mult = (jokers_top + 1) * 3;
+    int num_jokers = list_get_size(get_jokers());
+    effect.mult = num_jokers * 3;
 
     return effect;
 }
