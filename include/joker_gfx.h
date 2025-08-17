@@ -13,5 +13,7 @@
 #include "joker_gfx9.h"
 #include "joker_gfx10.h"
 #include "joker_gfx11.h"
+#include "joker_gfx12.h"
+#include "joker_gfx13.h"
 
 #endif
