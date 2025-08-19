@@ -145,6 +145,59 @@ void main_bg_se_fill_rect_with_se(SE se, Rect se_rect)
     }
 }
 
+void main_bg_se_copy_expand_3x3_rect(Rect se_dest_rect, BG_POINT src_top_left_pnt)
+{
+    clip_se_rect_to_screenblock(&se_dest_rect);
+
+    int dest_rect_width = rect_width(&se_dest_rect);
+    int dest_rect_height = rect_height(&se_dest_rect);
+
+    // Verify the dest rect is at least 2x2
+    if (dest_rect_width < 2 || dest_rect_height < 2)
+    {
+        return;
+    }
+
+    // Copy the corners
+    SE top_left_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y][src_top_left_pnt.x];
+    se_mat[MAIN_BG_SBB][se_dest_rect.top][se_dest_rect.left] = top_left_se;
+
+    SE top_right_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y][src_top_left_pnt.x + 2];
+    se_mat[MAIN_BG_SBB][se_dest_rect.top][se_dest_rect.left + dest_rect_width - 1] = top_right_se;
+
+    SE bottom_left_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y + 2][src_top_left_pnt.x];
+    se_mat[MAIN_BG_SBB][se_dest_rect.top + dest_rect_height - 1][se_dest_rect.left] = bottom_left_se;
+
+    SE bottom_right_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y + 2][src_top_left_pnt.x + 2];
+    se_mat[MAIN_BG_SBB][se_dest_rect.top + dest_rect_height - 1][se_dest_rect.left + dest_rect_width - 1] = bottom_right_se;
+
+    // Copy top and bottom sides
+    if (dest_rect_width > 2)
+    {
+        SE top_middle_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y][src_top_left_pnt.x + 1];
+        SE bottom_middle_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y + 2][src_top_left_pnt.x + 1];
+        memset16(&se_mat[MAIN_BG_SBB][se_dest_rect.top][se_dest_rect.left + 1], top_middle_se, dest_rect_width - 2);
+        memset16(&se_mat[MAIN_BG_SBB][se_dest_rect.bottom][se_dest_rect.left + 1], bottom_middle_se, dest_rect_width - 2);
+    }
+
+    // Copy left and right sides
+    SE middle_left_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y + 1][src_top_left_pnt.x];
+    SE middle_right_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y + 1][src_top_left_pnt.x + 2];
+    for (int y = 1;  y < dest_rect_height - 1; y++)
+    {
+        se_mat[MAIN_BG_SBB][se_dest_rect.top + y][se_dest_rect.left] = middle_left_se;
+        se_mat[MAIN_BG_SBB][se_dest_rect.top + y][se_dest_rect.left + dest_rect_width - 1] = middle_right_se;
+    }
+    
+    if (dest_rect_width > 2 && dest_rect_height > 2)
+    {
+        SE middle_fill_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y + 1][src_top_left_pnt.x + 1];
+        Rect dest_inner_fill_rect = {se_dest_rect.left + 1, se_dest_rect.top + 1, se_dest_rect.right - 1, se_dest_rect.bottom - 1};
+        main_bg_se_fill_rect_with_se(middle_fill_se, dest_inner_fill_rect);
+    }
+    
+}
+
 void tte_erase_rect_wrapper(Rect rect)
 {
     tte_erase_rect(rect.left, rect.top, rect.right, rect.bottom);

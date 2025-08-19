@@ -104,11 +104,21 @@ void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction);
  */
 void main_bg_se_copy_rect(Rect se_rect, BG_POINT pos);
 
-/* Copies a tile to a rect in the main background.
+/* Copies a screen entry to a rect in the main background.
  * se_rect dimensions are in number of tiles.
  * The tile is copied to the top left corner of the rect.
  */
-void main_bg_se_fill_rect_with_se(u16 tile, Rect se_rect);
+void main_bg_se_fill_rect_with_se(SE tile, Rect se_rect);
+
+/* Copies a 3x3 rect into se_rect_dest, the 3x3 rect is stretched to fill se_rect_dest. 
+ * The corners are copied, the sides are stretched, and the center is filled.
+ * The parameter se_rect_src_3x3_top_left points to the top left corner of the source
+ * 3x3 rect.
+ * Dest rect sides can be of length 2, then the sides are not copied, only the corners.
+ * But dest rect sides must be at least 2.
+ */
+void main_bg_se_copy_expand_3x3_rect(Rect se_rect_dest, BG_POINT se_rect_src_3x3_top_left);
+
 /* Moves a rect in the main background vertically in direction by a single tile.
  * Note that tiles in the previous location will be transparent (0x000)
  * so maybe copy would be a better choice if you don't want to delete things

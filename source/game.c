@@ -205,8 +205,8 @@ static const Rect TOP_LEFT_PANEL_ANIM_RECT  = {0,       0,      8,      4  };
 static const BG_POINT TOP_LEFT_BLIND_TITLE_POINT = {0,  21, };
 static const Rect BIG_BLIND_TITLE_SRC_RECT  = {0,       26,     8,      26 };
 static const Rect BOSS_BLIND_TITLE_SRC_RECT = {0,       27,     8,      27 };
-// static const BG_POINT GAME_OVER_SRC_RECT_3X3_POS = {25, 29};
-// static const Rect GAME_OVER_MSG_DEST_RECT   = {10,      6,      24,     10 };
+static const BG_POINT GAME_OVER_SRC_RECT_3X3_POS = {25, 29};
+static const Rect GAME_OVER_DIALOG_DEST_RECT= {11,      6,      23,     11 };
 
 // Rects for TTE (in pixels)
 static const Rect HAND_SIZE_RECT            = {128,     128,    152,    160 }; // Seems to include both SELECT and PLAYING
@@ -239,7 +239,7 @@ static const Rect ROUND_END_NUM_HANDS_RECT  = {88,      116,    UNDEFINED, UNDEF
 static const Rect HAND_REWARD_RECT          = {168,     UNDEFINED, UNDEFINED, UNDEFINED };
 static const Rect CASHOUT_RECT              = {88,      72,     UNDEFINED, UNDEFINED };
 static const Rect SHOP_REROLL_RECT          = {88,      96,     UNDEFINED, UNDEFINED };
-// static const Rect GAME_OVER_MSG_TEXT_RECT   = {104,     56,     UNDEFINED, UNDEFINED};
+static const Rect GAME_OVER_MSG_TEXT_RECT   = {104,     64,     UNDEFINED, UNDEFINED};
 
 static const BG_POINT HELD_JOKERS_POS       = {108,     10};
 static const BG_POINT JOKER_DISCARD_TARGET  = {240,     30};
@@ -979,9 +979,12 @@ void game_round_init()
 
 void game_lose_init()
 {
+    // Disable window so it doesn't make the game over menu transparent
+    REG_DISPCNT &= ~DCNT_WIN0;
     // Using the text color to match the "Game Over" text, another shade of red could work better
     affine_background_set_color(TEXT_CLR_RED);
-
+    main_bg_se_copy_expand_3x3_rect(GAME_OVER_DIALOG_DEST_RECT, GAME_OVER_SRC_RECT_3X3_POS);
+    tte_printf("#{P:%d,%d; cx:0x%X000}GAME OVER", GAME_OVER_MSG_TEXT_RECT.left, GAME_OVER_MSG_TEXT_RECT.top, TTE_RED_PB);
 }
 
 void init_game_state(enum GameState game_state_to_init)
