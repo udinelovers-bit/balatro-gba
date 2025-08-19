@@ -979,7 +979,8 @@ void game_round_init()
 
 void game_lose_init()
 {
-    affine_background_set_color(CLR_RED); // TODO: Use text color?
+    // Using the text color to match the "Game Over" text, another shade of red could work better
+    affine_background_set_color(TEXT_CLR_RED);
     
 }
 
