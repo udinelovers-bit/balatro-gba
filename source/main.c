@@ -28,15 +28,15 @@ void init()
     mmStart(MOD_MAIN_THEME, MM_PLAY_LOOP);
 
     // Initialize text engine
-    tte_init_se(0, BG_CBB(TTE_CBB) | BG_SBB(TTE_SBB), 0, CLR_WHITE, 14, NULL, NULL);
+    tte_init_se(0, BG_CBB(TTE_CBB) | BG_SBB(TTE_SBB), 0, CLR_WHITE, TTE_BIT_UNPACK_OFFSET, NULL, NULL);
     tte_erase_screen();
     tte_init_con();
 
     // TTE palette setup
-    pal_bg_bank[12][15] = 0x029F; // Yellow. honestly fuck libtonc because i cannot figure out how you're supposed to select a color from the palette index so i'm doing it like this
-    pal_bg_bank[13][15] = 0x7E40; // Blue
-    pal_bg_bank[14][15] = 0x213F; // Red
-    pal_bg_bank[15][15] = CLR_WHITE;
+    pal_bg_bank[TTE_YELLOW_PB][TTE_BIT_ON_CLR_IDX] = TEXT_CLR_YELLOW; // honestly fuck libtonc because i cannot figure out how you're supposed to select a color from the palette index so i'm doing it like this
+    pal_bg_bank[TTE_BLUE_PB][TTE_BIT_ON_CLR_IDX] = TEXT_CLR_BLUE; 
+    pal_bg_bank[TTE_RED_PB][TTE_BIT_ON_CLR_IDX] = TEXT_CLR_RED; 
+    pal_bg_bank[TTE_WHITE_PB][TTE_BIT_ON_CLR_IDX] = TEXT_CLR_WHITE;
 
     // Set up the video mode
     // BG0 is the TTE text layer

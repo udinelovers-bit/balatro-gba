@@ -24,6 +24,19 @@
 #define PAL_ROW_LEN 16
 #define NUM_PALETTES 16
 
+#define TTE_BIT_UNPACK_OFFSET 14
+#define TTE_BIT_ON_CLR_IDX TTE_BIT_UNPACK_OFFSET + 1
+
+#define TTE_YELLOW_PB   12  // 0xC
+#define TTE_BLUE_PB     13  // 0xD
+#define TTE_RED_PB      14  // 0xE
+#define TTE_WHITE_PB    15  // 0xF
+
+#define TEXT_CLR_YELLOW RGB15(31, 20, 0)    // 0x029F
+#define TEXT_CLR_BLUE   RGB15(0, 18, 31)    // 0x7E40
+#define TEXT_CLR_RED    RGB15(31, 9, 8)     // 0x213F
+#define TEXT_CLR_WHITE  CLR_WHITE
+
 /* Dimensions for a screenblock.
  * A 1024 size screenblock is arranged in a grid of 32x32 screen entries
  * Interestingly since each block is 8x8 pixels, the 240x160 GBA screen

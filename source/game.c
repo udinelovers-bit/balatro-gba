@@ -519,7 +519,7 @@ void change_background(int id)
         obj_unhide(blind_select_tokens[BIG_BLIND]->obj, 0);
         obj_unhide(blind_select_tokens[BOSS_BLIND]->obj, 0);
 
-        const int default_y = 89 + (TILE_SIZE * 12); // Default y position for the blind select tokens. 8 is the size of a tile and 12 is the amound of tiles the background is shifted down by
+        const int default_y = 89 + (TILE_SIZE * 12); // Default y position for the blind select tokens. 12 is the amound of tiles the background is shifted down by
         sprite_position(blind_select_tokens[SMALL_BLIND], 80, default_y);
         sprite_position(blind_select_tokens[BIG_BLIND], 120, default_y);
         sprite_position(blind_select_tokens[BOSS_BLIND], 160, default_y);
@@ -635,7 +635,7 @@ void display_temp_score(int value)
 {
     int x_offset = 40 - get_digits_even(value) * TILE_SIZE;
     tte_erase_rect_wrapper(TEMP_SCORE_RECT);
-    tte_printf("#{P:%d,%d; cx:0xF000}%d", x_offset, TEMP_SCORE_RECT.top, value);
+    tte_printf("#{P:%d,%d; cx:0x%X000}%d", x_offset, TEMP_SCORE_RECT.top, TTE_WHITE_PB, value);
 }
 
 void display_score(int value)
@@ -664,14 +664,14 @@ void display_score(int value)
     int rect_width = SCORE_RECT.right - SCORE_RECT.left;
     int x_offset = SCORE_RECT.left + (rect_width - text_width) / 2;
     
-    tte_printf("#{P:%d,48; cx:0xF000}%d%c", x_offset, display_value, score_suffix);
+    tte_printf("#{P:%d,48; cx:0x%X000}%d%c", x_offset, TTE_WHITE_PB, display_value, score_suffix);
 }
 
 void display_money(int value)
 {
     int x_offset = 32 - get_digits_odd(value) * TILE_SIZE;
     tte_erase_rect_wrapper(MONEY_TEXT_RECT);
-    tte_printf("#{P:%d,%d; cx:0xC000}$%d", x_offset, MONEY_TEXT_RECT.top, value);
+    tte_printf("#{P:%d,%d; cx:0x%X000}$%d", x_offset, MONEY_TEXT_RECT.top, TTE_YELLOW_PB, value);
 }
 
 void display_chips(int value)
@@ -679,19 +679,19 @@ void display_chips(int value)
     Rect chips_text_rect = CHIPS_TEXT_RECT;
     tte_erase_rect_wrapper(CHIPS_TEXT_RECT);
     update_text_rect_to_right_align_num(&chips_text_rect, value, OVERFLOW_LEFT);
-    tte_printf("#{P:%d,%d; cx:0xF000;}%d", chips_text_rect.left, chips_text_rect.top, value);
+    tte_printf("#{P:%d,%d; cx:0x%X000;}%d", chips_text_rect.left, chips_text_rect.top, TTE_WHITE_PB, value);
 }
 
 void display_mult(int value)
 {
     tte_erase_rect_wrapper(MULT_TEXT_RECT);
-    tte_printf("#{P:%d,%d; cx:0xF000;}%d", MULT_TEXT_RECT.left, MULT_TEXT_RECT.top, value); // Mult
+    tte_printf("#{P:%d,%d; cx:0x%X000;}%d", MULT_TEXT_RECT.left, MULT_TEXT_RECT.top, TTE_WHITE_PB, value); // Mult
 }
 
 void display_round(int value)
 {
     //tte_erase_rect_wrapper(ROUND_TEXT_RECT);
-    tte_printf("#{P:%d,%d; cx:0xC000}%d", ROUND_TEXT_RECT.left, ROUND_TEXT_RECT.top, round);
+    tte_printf("#{P:%d,%d; cx:0x%X000}%d", ROUND_TEXT_RECT.left, ROUND_TEXT_RECT.top, TTE_YELLOW_PB, round);
 }
 
 void display_ante(int value)
@@ -715,7 +715,7 @@ static void print_hand_type(const char* hand_type_str)
 {
     if (hand_type_str == NULL)
         return; // NULL-checking paranoia
-    tte_printf("#{P:%d,%d; cx:0xF000}%s", HAND_TYPE_RECT.left, HAND_TYPE_RECT.top, hand_type_str);
+    tte_printf("#{P:%d,%d; cx:0x%X000}%s", HAND_TYPE_RECT.left, HAND_TYPE_RECT.top, TTE_WHITE_PB, hand_type_str);
 }
 
 void set_hand()
@@ -971,8 +971,8 @@ void game_round_init()
         blind_req_text_rect.left -= TILE_SIZE; // Move left by one character width to make room for 'k'
     }
 
-    tte_printf("#{P:%d,%d; cx:0xE000}%d%c", blind_req_text_rect.left, blind_req_text_rect.top, blind_requirement, score_suffix); // Blind requirement
-    tte_printf("#{P:%d,%d; cx:0xC000}$%d", BLIND_REWARD_RECT.left, BLIND_REWARD_RECT.top, blind_get_reward(current_blind)); // Blind reward
+    tte_printf("#{P:%d,%d; cx:0x%X000}%d%c", blind_req_text_rect.left, blind_req_text_rect.top, TTE_RED_PB, blind_requirement, score_suffix); // Blind requirement
+    tte_printf("#{P:%d,%d; cx:0x%X000}$%d", BLIND_REWARD_RECT.left, BLIND_REWARD_RECT.top, TTE_YELLOW_PB, blind_get_reward(current_blind)); // Blind reward
 
     deck_shuffle(); // Shuffle the deck at the start of the round
 }
@@ -1058,7 +1058,7 @@ void game_init()
 
     change_background(BG_ID_BLIND_SELECT);
 
-    tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", DECK_SIZE_RECT.left, DECK_SIZE_RECT.top, deck_get_size(), deck_get_max_size()); // Deck size/max size
+    tte_printf("#{P:%d,%d; cx:0x%X000}%d/%d", DECK_SIZE_RECT.left, DECK_SIZE_RECT.top, TTE_WHITE_PB, deck_get_size(), deck_get_max_size()); // Deck size/max size
     
     display_round(round); // Set the round display
     display_score(score); // Set the score display
@@ -1069,10 +1069,9 @@ void game_init()
     display_hands(hands); // Hand
     display_discards(discards); // Discard
 
-    //tte_printf("#{P:24,120; cx:0xC000}$%d", money); // Money
     display_money(money); // Set the money display
 
-    tte_printf("#{P:%d,%d; cx:0xC000}%d#{cx:0xF000}/%d", ANTE_TEXT_RECT.left, ANTE_TEXT_RECT.top, ante, MAX_ANTE); // Ante
+    tte_printf("#{P:%d,%d; cx:0x%X000}%d#{cx:0x%X000}/%d", ANTE_TEXT_RECT.left, ANTE_TEXT_RECT.top, TTE_YELLOW_PB, ante, TTE_WHITE_PB, MAX_ANTE); // Ante
 }
 
 static void game_playing_process_hand_select_input()
@@ -1146,7 +1145,7 @@ static void game_playing_process_hand_select_input()
                 selection_y = 0;
                 display_hands(--discards);
                 set_hand();
-                tte_printf("#{P:%d,%d; cx:0xE000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, discards);
+                tte_printf("#{P:%d,%d; cx:0x%X000}%d", DISCARDS_TEXT_RECT.left, DISCARDS_TEXT_RECT.top, TTE_RED_PB, discards);
             }
         }
     }
@@ -1854,14 +1853,14 @@ static void game_playing_ui_text_update()
     {
         if (background == BG_ID_CARD_SELECTING)
         {
-            tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", HAND_SIZE_RECT_SELECT.left, HAND_SIZE_RECT_SELECT.top, hand_get_size(), hand_get_max_size()); // Hand size/max size
+            tte_printf("#{P:%d,%d; cx:0x%X000}%d/%d", HAND_SIZE_RECT_SELECT.left, HAND_SIZE_RECT_SELECT.top, TTE_WHITE_PB, hand_get_size(), hand_get_max_size()); // Hand size/max size
         }
         else if (background == BG_ID_CARD_PLAYING)
         {
-            tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", HAND_SIZE_RECT_PLAYING.left, HAND_SIZE_RECT_PLAYING.top, hand_get_size(), hand_get_max_size()); // Hand size/max size
+            tte_printf("#{P:%d,%d; cx:0x%X000}%d/%d", HAND_SIZE_RECT_PLAYING.left, HAND_SIZE_RECT_PLAYING.top, TTE_WHITE_PB, hand_get_size(), hand_get_max_size()); // Hand size/max size
         }
 
-        tte_printf("#{P:%d,%d; cx:0xF000}%d/%d", DECK_SIZE_RECT.left, DECK_SIZE_RECT.top, deck_get_size(), deck_get_max_size()); // Deck size/max size
+        tte_printf("#{P:%d,%d; cx:0x%X000}%d/%d", DECK_SIZE_RECT.left, DECK_SIZE_RECT.top, TTE_WHITE_PB, deck_get_size(), deck_get_max_size()); // Deck size/max size
 
         last_hand_size = hand_get_size();
         last_deck_size = deck_get_size();
@@ -1963,7 +1962,7 @@ void game_round_end()
             int blind_req = blind_get_requirement(current_blind, current_ante);
             update_text_rect_to_right_align_num(&blind_req_rect, blind_req, OVERFLOW_RIGHT);
 
-            tte_printf("#{P:%d,%d; cx:0xE000}%d", blind_req_rect.left, blind_req_rect.top, blind_req);
+            tte_printf("#{P:%d,%d; cx:0x%X000}%d", blind_req_rect.left, blind_req_rect.top, TTE_RED_PB, blind_req);
 
             if (timer == 1)
             {
@@ -2008,8 +2007,8 @@ void game_round_end()
             if (blind_reward > 0)
             {
                 blind_reward--;
-                tte_printf("#{P:%d,%d; cx:0xC000}$%d", BLIND_REWARD_RECT.left , BLIND_REWARD_RECT.top, blind_reward);
-                tte_printf("#{P:%d,%d; cx:0xC000}$%d", ROUND_END_BLIND_REWARD_RECT.left, ROUND_END_BLIND_REWARD_RECT.top, blind_get_reward(current_blind) - blind_reward);
+                tte_printf("#{P:%d,%d; cx:0x%X000}$%d", BLIND_REWARD_RECT.left , BLIND_REWARD_RECT.top, TTE_YELLOW_PB, blind_reward);
+                tte_printf("#{P:%d,%d; cx:0x%X000}$%d", ROUND_END_BLIND_REWARD_RECT.left, ROUND_END_BLIND_REWARD_RECT.top, TTE_YELLOW_PB, blind_get_reward(current_blind) - blind_reward);
             }
             else if (timer > FRAMES(20))
             {
@@ -2090,7 +2089,7 @@ void game_round_end()
                 int x = (8 + timer) * TILE_SIZE;
                 int y = (13) * TILE_SIZE;
 
-                tte_printf("#{P:%d,%d; cx:0xF000}.", x, y); 
+                tte_printf("#{P:%d,%d; cx:0x%X000}.", x, y, TTE_WHITE_PB); 
             }
             else if (timer >= 30 && hand_reward > 0) // Wait an additional 15 frames since the last sequenced action
             {
@@ -2101,13 +2100,13 @@ void game_round_end()
                     single_line_rect.bottom = single_line_rect.top + 1;
                     main_bg_se_copy_rect_1_tile_vert(single_line_rect, SE_DOWN);
 
-                    tte_printf("#{P:%d,%d; cx:0xD000}%d #{cx:0xF000}Hands", ROUND_END_NUM_HANDS_RECT.left, ROUND_END_NUM_HANDS_RECT.top, hand_reward); // Print the hand reward
+                    tte_printf("#{P:%d,%d; cx:0x%X000}%d #{cx:0x%X000}Hands", ROUND_END_NUM_HANDS_RECT.left, ROUND_END_NUM_HANDS_RECT.top, TTE_BLUE_PB,  hand_reward, TTE_WHITE_PB); // Print the hand reward
                 }
                 else if (timer > 45 && timer % FRAMES(20) == 0) // After 15 frames, every 20 frames, increment the hand reward text until the hand reward variable is depleted
                 {
                     int y = (13 + hand_y) * TILE_SIZE;
                     hand_reward--;
-                    tte_printf("#{P:%d, %d; cx:0xC000}$%d", HAND_REWARD_RECT.left, y, hands - hand_reward); // Print the hand reward
+                    tte_printf("#{P:%d, %d; cx:0x%X000}$%d", HAND_REWARD_RECT.left, y, TTE_YELLOW_PB, hands - hand_reward); // Print the hand reward
                 }
             }
 
@@ -2137,7 +2136,7 @@ void game_round_end()
                 BG_POINT bottom_point = {6, 31};
                 main_bg_se_copy_tile_to_rect(main_bg_se_get_tile(bottom_point), bottom_rect);
 
-                tte_printf("#{P:%d, %d; cx:0xF000}Cash Out: $%d", CASHOUT_RECT.left, CASHOUT_RECT.top, hands + blind_get_reward(current_blind)); // Print the cash out amount
+                tte_printf("#{P:%d, %d; cx:0x%X000}Cash Out: $%d", CASHOUT_RECT.left, CASHOUT_RECT.top, TTE_WHITE_PB, hands + blind_get_reward(current_blind)); // Print the cash out amount
             }
             else if (timer > FRAMES(40) && key_hit(SELECT_CARD)) // Wait until the player presses A to cash out
             {
@@ -2193,7 +2192,7 @@ void print_price_under_sprite_object(SpriteObject *sprite_object, int price)
 {
     int x = fx2int(sprite_object->tx) + TILE_SIZE - (get_digits_even(price) - 1) * TILE_SIZE;
     int y = fx2int(sprite_object->ty) + CARD_SPRITE_SIZE + TILE_SIZE; // TODO: Should probably extract the sprite size
-    tte_printf("#{P:%d,%d; cx:0xC000}$%d", x, y, price);
+    tte_printf("#{P:%d,%d; cx:0x%X000}$%d", x, y, TTE_YELLOW_PB, price);
 }
 
 void erase_price_under_sprite_object(SpriteObject *sprite_object)
@@ -2303,7 +2302,7 @@ static void game_shop_reroll(int *reroll_cost)
     }
 
     (*reroll_cost)++;
-    tte_printf("#{P:%d,%d; cx:0xF000}$%d", SHOP_REROLL_RECT.left, SHOP_REROLL_RECT.top, *reroll_cost);
+    tte_printf("#{P:%d,%d; cx:0x%X000}$%d", SHOP_REROLL_RECT.left, SHOP_REROLL_RECT.top, TTE_WHITE_PB, *reroll_cost);
 }
 
 static int jokers_sel_row_get_size()
@@ -2510,7 +2509,7 @@ static void game_shop_process_user_input()
         // to trigger the selection change so the initial selection is visible
         shop_selection_grid.selection = SHOP_INIT_SEL;
         selection_grid_move_selection_horz(&shop_selection_grid, 1);
-        tte_printf("#{P:%d,%d; cx:0xF000}$%d", SHOP_REROLL_RECT.left, SHOP_REROLL_RECT.top, reroll_cost);
+        tte_printf("#{P:%d,%d; cx:0x%X000}$%d", SHOP_REROLL_RECT.left, SHOP_REROLL_RECT.top, TTE_WHITE_PB, reroll_cost);
     }
 
     // Shop input logic
