@@ -34,14 +34,20 @@
 #define SE_COL_LEN 32
 
 // Since y direction goes from the top of the screen to the bottom
-#define SE_UP	-1
-#define SE_DOWN 1
+#define SCREEN_UP 	-1
+#define SCREEN_DOWN 1
+#define SCREEN_LEFT -1
+#define SCREEN_RIGHT 1
 
-#define OVERFLOW_LEFT	-1
-#define OVERFLOW_RIGHT	1
+#define SE_UP	SCREEN_UP
+#define SE_DOWN SCREEN_DOWN
+
+#define OVERFLOW_LEFT	SCREEN_LEFT
+#define OVERFLOW_RIGHT	SCREEN_RIGHT
 
 // Tile size in pixels, both height and width as tiles are square
 #define TILE_SIZE 8
+#define EFFECT_TEXT_SEPARATION_AMOUNT 32; // If we need to show multiple effects at once
 
 // By default TTE characters occupy a single tile
 #define TTE_CHAR_SIZE TILE_SIZE

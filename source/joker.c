@@ -130,6 +130,8 @@ void joker_init()
     joker_gfxTiles[9] = joker_gfx9Tiles;
     joker_gfxTiles[10] = joker_gfx10Tiles;
     joker_gfxTiles[11] = joker_gfx11Tiles;
+    joker_gfxTiles[12] = joker_gfx12Tiles;
+    joker_gfxTiles[13] = joker_gfx13Tiles;
 
     joker_gfxPal[0] = joker_gfx0Pal;
     joker_gfxPal[1] = joker_gfx1Pal;
@@ -143,6 +145,8 @@ void joker_init()
     joker_gfxPal[9] = joker_gfx9Pal;
     joker_gfxPal[10] = joker_gfx10Pal;
     joker_gfxPal[11] = joker_gfx11Pal;
+    joker_gfxPal[12] = joker_gfx12Pal;
+    joker_gfxPal[13] = joker_gfx13Pal;
 
     for (int i = 0; i < num_spritesheets; i++)
     {
@@ -179,6 +183,16 @@ JokerEffect joker_get_score_effect(Joker *joker, Card *scored_card)
     if (!jinfo) return (JokerEffect){0};
 
     return jinfo->effect(joker, scored_card);
+}
+
+int joker_get_sell_value(const Joker* joker)
+{
+    if (joker == NULL)
+    {
+        return UNDEFINED;
+    }
+
+    return joker->value/2;
 }
 
 // JokerObject methods
@@ -319,7 +333,6 @@ bool joker_object_score(JokerObject *joker_object, Card* scored_card, int *chips
 
     return false;
 }
-
 
 void joker_object_set_selected(JokerObject* joker_object, bool selected)
 {
