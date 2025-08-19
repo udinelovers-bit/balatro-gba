@@ -52,13 +52,8 @@
 // By default TTE characters occupy a single tile
 #define TTE_CHAR_SIZE TILE_SIZE
 
-typedef struct
-{
-	int left;
-	int top;
-	int right;
-	int bottom;
-} Rect;
+// When making this, missed that it already exists in tonc_math.h
+typedef RECT Rect;
 
 /* Gets the screenblock tile for the given coordinates (x, y).
  * x and y are in number of tiles.
@@ -68,15 +63,15 @@ u16 main_bg_se_get_tile(BG_POINT pos);
 
 INLINE int rect_width(const Rect* rect)
 {
-	/* Extra parens to avoid issues in case compiler turns INLINE into macro
-	 * Not sure if necessary, could be just paranoia
-	 */ 
-	return (((rect)->right) - ((rect)->left) + 1);
+    /* Extra parens to avoid issues in case compiler turns INLINE into macro
+     * Not sure if necessary, could be just paranoia
+     */ 
+    return (((rect)->right) - ((rect)->left) + 1);
 }
 
 INLINE int rect_height(const Rect* rect)
 {
-	return (((rect)->bottom) - ((rect)->top) + 1);
+    return (((rect)->bottom) - ((rect)->top) + 1);
 }
 
 /* Clears a rect in the main background.

@@ -205,6 +205,8 @@ static const Rect TOP_LEFT_PANEL_ANIM_RECT  = {0,       0,      8,      4  };
 static const BG_POINT TOP_LEFT_BLIND_TITLE_POINT = {0,  21, };
 static const Rect BIG_BLIND_TITLE_SRC_RECT  = {0,       26,     8,      26 };
 static const Rect BOSS_BLIND_TITLE_SRC_RECT = {0,       27,     8,      27 };
+// static const BG_POINT GAME_OVER_SRC_RECT_3X3_POS = {25, 29};
+// static const Rect GAME_OVER_MSG_DEST_RECT   = {10,      6,      24,     10 };
 
 // Rects for TTE (in pixels)
 static const Rect HAND_SIZE_RECT            = {128,     128,    152,    160 }; // Seems to include both SELECT and PLAYING
@@ -236,7 +238,8 @@ static const Rect ROUND_END_BLIND_REWARD_RECT = { 168,  96,     UNDEFINED, UNDEF
 static const Rect ROUND_END_NUM_HANDS_RECT  = {88,      116,    UNDEFINED, UNDEFINED };
 static const Rect HAND_REWARD_RECT          = {168,     UNDEFINED, UNDEFINED, UNDEFINED };
 static const Rect CASHOUT_RECT              = {88,      72,     UNDEFINED, UNDEFINED };
-static const Rect SHOP_REROLL_RECT          = {88,      96,    UNDEFINED, UNDEFINED };
+static const Rect SHOP_REROLL_RECT          = {88,      96,     UNDEFINED, UNDEFINED };
+// static const Rect GAME_OVER_MSG_TEXT_RECT   = {104,     56,     UNDEFINED, UNDEFINED};
 
 static const BG_POINT HELD_JOKERS_POS       = {108,     10};
 static const BG_POINT JOKER_DISCARD_TARGET  = {240,     30};
@@ -974,6 +977,12 @@ void game_round_init()
     deck_shuffle(); // Shuffle the deck at the start of the round
 }
 
+void game_lose_init()
+{
+    affine_background_set_color(CLR_RED); // TODO: Use text color?
+    
+}
+
 void init_game_state(enum GameState game_state_to_init)
 {
     // Switch written out, add init for states as needed
@@ -989,6 +998,7 @@ void init_game_state(enum GameState game_state_to_init)
     case GAME_BLIND_SELECT:
         break;
     case GAME_LOSE:
+        game_lose_init();
         break;
     default:
         break;
@@ -1753,6 +1763,10 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
                                         display_ante(++ante);
                                     }
                                 }
+                                else if (hands <= 0)
+                                {
+                                    game_set_state(GAME_LOSE);
+                                }
                                 else
                                 {
                                     hand_state = HAND_DRAW;
@@ -1870,13 +1884,6 @@ static void game_round_end_cashout()
 
 void game_playing()
 {
-    // TODO: Blind rect sliding into view animation...
-    if (hand_state == HAND_SELECT && hands == 0) 
-    {
-        // TODO: Check if it's safe to change to game_set_state() without side effects
-        game_state = GAME_LOSE;
-    }
-
     // Background logic (thissss might be moved to the card'ssss logic later. I'm a sssssnake)
     if (hand_state == HAND_DRAW || hand_state == HAND_DISCARD || hand_state == HAND_SELECT)
     {
