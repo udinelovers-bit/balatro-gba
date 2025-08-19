@@ -981,7 +981,7 @@ void game_lose_init()
 {
     // Using the text color to match the "Game Over" text, another shade of red could work better
     affine_background_set_color(TEXT_CLR_RED);
-    
+
 }
 
 void init_game_state(enum GameState game_state_to_init)
@@ -2127,15 +2127,15 @@ void game_round_end()
 
                 Rect top_rect = {11, 8, 22, 8};
                 BG_POINT top_point = {6, 29};
-                main_bg_se_copy_tile_to_rect(main_bg_se_get_tile(top_point), top_rect);
+                main_bg_se_fill_rect_with_se(main_bg_se_get_se(top_point), top_rect);
 
                 Rect middle_rect = {11, 9, 22, 9};
                 BG_POINT middle_point = {6, 30};
-                main_bg_se_copy_tile_to_rect(main_bg_se_get_tile(middle_point), middle_rect);
+                main_bg_se_fill_rect_with_se(main_bg_se_get_se(middle_point), middle_rect);
 
                 Rect bottom_rect = {11, 10, 22, 10};
                 BG_POINT bottom_point = {6, 31};
-                main_bg_se_copy_tile_to_rect(main_bg_se_get_tile(bottom_point), bottom_rect);
+                main_bg_se_fill_rect_with_se(main_bg_se_get_se(bottom_point), bottom_rect);
 
                 tte_printf("#{P:%d, %d; cx:0x%X000}Cash Out: $%d", CASHOUT_RECT.left, CASHOUT_RECT.top, TTE_WHITE_PB, hands + blind_get_reward(current_blind)); // Print the cash out amount
             }

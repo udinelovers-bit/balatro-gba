@@ -68,11 +68,11 @@
 // When making this, missed that it already exists in tonc_math.h
 typedef RECT Rect;
 
-/* Gets the screenblock tile for the given coordinates (x, y).
+/* Gets the screenblock entry for the given coordinates (x, y).
  * x and y are in number of tiles.
- * Returns the screenblock tile.
+ * Returns the screenblock entry.
  */
-u16 main_bg_se_get_tile(BG_POINT pos);
+SE main_bg_se_get_se(BG_POINT pos);
 
 INLINE int rect_width(const Rect* rect)
 {
@@ -108,7 +108,7 @@ void main_bg_se_copy_rect(Rect se_rect, BG_POINT pos);
  * se_rect dimensions are in number of tiles.
  * The tile is copied to the top left corner of the rect.
  */
-void main_bg_se_copy_tile_to_rect(u16 tile, Rect se_rect);
+void main_bg_se_fill_rect_with_se(u16 tile, Rect se_rect);
 /* Moves a rect in the main background vertically in direction by a single tile.
  * Note that tiles in the previous location will be transparent (0x000)
  * so maybe copy would be a better choice if you don't want to delete things

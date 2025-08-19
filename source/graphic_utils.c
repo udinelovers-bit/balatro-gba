@@ -24,7 +24,7 @@ static void clip_se_rect_to_screenblock(Rect* rect)
     clip_se_rect_to_bounding_rect(rect, &FULL_SCREENBLOCK_RECT);
 }
 
-u16 main_bg_se_get_tile(BG_POINT pos)
+SE main_bg_se_get_se(BG_POINT pos)
 {
     return se_mat[MAIN_BG_SBB][pos.y][pos.x];
 }
@@ -108,20 +108,18 @@ void main_bg_se_copy_rect(Rect se_rect, BG_POINT pos)
 
     int width = rect_width(&se_rect);
     int height = rect_height(&se_rect);
-    u16 tile_map[height][width];
+    SE tile_map[height][width];
 
     // Copy the rect to the tile map
     for (int sy = 0; sy < height; sy++)
     {
-        for (int sx = 0; sx < width; sx++)
-        {
-            BG_POINT pt;
-            pt.x = se_rect.left + sx;
-            pt.y = se_rect.top + sy;
-            tile_map[sy][sx] = main_bg_se_get_tile(pt);
-        }
+        memcpy16(&tile_map[sy][0],
+                 &se_mat[MAIN_BG_SBB][se_rect.top + sy][se_rect.left], 
+                 width);
     }
-
+    
+    // TODO: Avoid overflow
+    // Copy the tilemap to the new rect position
     for (int sy = 0; sy < height; sy++)
     {
         memcpy16(&se_mat[MAIN_BG_SBB][pos.y + sy][pos.x],
@@ -130,7 +128,7 @@ void main_bg_se_copy_rect(Rect se_rect, BG_POINT pos)
     }
 }
 
-void main_bg_se_copy_tile_to_rect(u16 tile, Rect se_rect)
+void main_bg_se_fill_rect_with_se(SE se, Rect se_rect)
 {
     if (se_rect.left > se_rect.right || se_rect.top > se_rect.bottom)
         return;
@@ -143,7 +141,7 @@ void main_bg_se_copy_tile_to_rect(u16 tile, Rect se_rect)
 
     for (int sy = 0; sy < height; sy++)
     {
-        memset16(&se_mat[MAIN_BG_SBB][se_rect.top + sy][se_rect.left], tile, width);
+        memset16(&se_mat[MAIN_BG_SBB][se_rect.top + sy][se_rect.left], se, width);
     }
 }
 
