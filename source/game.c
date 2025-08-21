@@ -186,7 +186,7 @@ static const Rect POP_MENU_ANIM_RECT        = {9,       7,      24,     31 };
 // This is because when popping, the target position is blank so we just animate 
 // the whole rect so we don't have to track its position
 
-static const Rect SINGLE_BLIND_SELECT_RECT = { 9,       7,      13,     32 };
+static const Rect SINGLE_BLIND_SELECT_RECT  = {9,       7,      13,     32 };
 
 static const Rect HAND_BG_RECT_SELECTING    = {9,       11,     24,     17 };
 // TODO: Currently unused, remove?
@@ -206,7 +206,8 @@ static const BG_POINT TOP_LEFT_BLIND_TITLE_POINT = {0,  21, };
 static const Rect BIG_BLIND_TITLE_SRC_RECT  = {0,       26,     8,      26 };
 static const Rect BOSS_BLIND_TITLE_SRC_RECT = {0,       27,     8,      27 };
 static const BG_POINT GAME_OVER_SRC_RECT_3X3_POS = {25, 29};
-static const Rect GAME_OVER_DIALOG_DEST_RECT= {11,      6,      23,     11 };
+static const Rect GAME_OVER_DIALOG_DEST_RECT= {11,      21,      23,     26};
+static const Rect GAME_OVER_ANIM_RECT       = {11,      8,       23,     26};
 
 // Rects for TTE (in pixels)
 static const Rect HAND_SIZE_RECT            = {128,     128,    152,    160 }; // Seems to include both SELECT and PLAYING
@@ -239,7 +240,9 @@ static const Rect ROUND_END_NUM_HANDS_RECT  = {88,      116,    UNDEFINED, UNDEF
 static const Rect HAND_REWARD_RECT          = {168,     UNDEFINED, UNDEFINED, UNDEFINED };
 static const Rect CASHOUT_RECT              = {88,      72,     UNDEFINED, UNDEFINED };
 static const Rect SHOP_REROLL_RECT          = {88,      96,     UNDEFINED, UNDEFINED };
-static const Rect GAME_OVER_MSG_TEXT_RECT   = {104,     64,     UNDEFINED, UNDEFINED};
+static const Rect GAME_LOSE_MSG_TEXT_RECT   = {104,     72,     UNDEFINED, UNDEFINED};
+// 1 character to the right oF GAME_LOSE
+static const Rect GAME_WIN_MSG_TEXT_RECT    = {112,      72,     UNDEFINED, UNDEFINED};
 
 static const BG_POINT HELD_JOKERS_POS       = {108,     10};
 static const BG_POINT JOKER_DISCARD_TARGET  = {240,     30};
@@ -248,6 +251,7 @@ static const BG_POINT JOKER_DISCARD_TARGET  = {240,     30};
 
 //TODO: Properly define and use
 #define MENU_POP_OUT_ANIM_FRAMES 20
+#define GAME_OVER_ANIM_FRAMES 15
 
 #define SCORED_CARD_TEXT_Y 48
 
@@ -925,7 +929,7 @@ void increment_blind(enum BlindState increment_reason)
     }
 }
 
-void game_round_init()
+static void game_round_init()
 {
     // once we have a main menu, move the seed set there. this is only here now because there isn't a way to set the seed to a psudorandom value unless there is something to wait on
     set_seed(rng_seed);
@@ -977,17 +981,29 @@ void game_round_init()
     deck_shuffle(); // Shuffle the deck at the start of the round
 }
 
-void game_lose_init()
+static void game_over_init()
 {
-    // Disable window so it doesn't make the game over menu transparent
-    REG_DISPCNT &= ~DCNT_WIN0;
-    // Using the text color to match the "Game Over" text, another shade of red could work better
-    affine_background_set_color(TEXT_CLR_RED);
+    // Clears the round end menu
+    main_bg_se_clear_rect(POP_MENU_ANIM_RECT);
     main_bg_se_copy_expand_3x3_rect(GAME_OVER_DIALOG_DEST_RECT, GAME_OVER_SRC_RECT_3X3_POS);
-    tte_printf("#{P:%d,%d; cx:0x%X000}GAME OVER", GAME_OVER_MSG_TEXT_RECT.left, GAME_OVER_MSG_TEXT_RECT.top, TTE_RED_PB);
 }
 
-void init_game_state(enum GameState game_state_to_init)
+static void game_lose_init()
+{
+    game_over_init();
+    // Using the text color to match the "Game Over" text
+    affine_background_set_color(TEXT_CLR_RED);
+
+}
+
+static void game_win_init()
+{
+    game_over_init();
+    // Using the text color to match the "You Win" text
+    affine_background_set_color(TEXT_CLR_BLUE);
+}
+
+static void init_game_state(enum GameState game_state_to_init)
 {
     // Switch written out, add init for states as needed
     switch (game_state_to_init)
@@ -1004,13 +1020,16 @@ void init_game_state(enum GameState game_state_to_init)
     case GAME_LOSE:
         game_lose_init();
         break;
+    case GAME_WIN:
+        game_win_init();
+        break;
     default:
         break;
     }
 }
 
 // Game functions
-void game_set_state(enum GameState new_game_state)
+static void game_set_state(enum GameState new_game_state)
 {
     timer = 0; // Reset the timer
     init_game_state(new_game_state);
@@ -1249,6 +1268,37 @@ static void game_playing_process_card_draw()
     }
 }
 
+static bool game_round_is_over()
+{
+    return hands == 0 || score >= blind_get_requirement(current_blind, ante);
+}
+
+static void game_playing_handle_round_over()
+{
+    enum GameState next_state = GAME_ROUND_END;
+
+    if (score >= blind_get_requirement(current_blind, ante))
+    {
+        if (current_blind == BOSS_BLIND)
+        {
+            if (ante < MAX_ANTE)
+            {
+                display_ante(++ante);
+            }
+            else
+            {
+                next_state = GAME_WIN;
+            }
+        }
+    }
+    else if (hands == 0)
+    {
+        next_state = GAME_LOSE;
+    }
+
+    game_set_state(next_state);
+}
+
 static void game_playing_discarded_cards_loop()
 {
     // Discarded cards loop (mainly for shuffling)
@@ -1287,7 +1337,8 @@ static void game_playing_discarded_cards_loop()
 
         if (discard_top == -1 && discarded_card_object == NULL) // If there are no more discarded cards, stop shuffling
         {
-            game_set_state(GAME_ROUND_END); // Set the game state back to playing
+            // After HAND_SHUFFLING the round is over
+            game_playing_handle_round_over();
         }
     }
 }
@@ -1296,6 +1347,12 @@ static const int HAND_SPACING_LUT[MAX_HAND_SIZE] = { 28, 28, 28, 28, 27, 21, 18,
 
 void card_in_hand_loop_handle_discard_and_shuffling(int card_idx, bool* discarded_card, FIXED* hand_x, FIXED* hand_y, bool* sound_played, bool* break_loop)
 {
+    if (hand_state != HAND_DISCARD && hand_state != HAND_SHUFFLING)
+    {
+        // Assumes hand_state is one of these
+        return;
+    }
+
     *break_loop = false;
     if (card_object_is_selected(hand[card_idx]) || hand_state == HAND_SHUFFLING)
     {
@@ -1347,6 +1404,7 @@ void card_in_hand_loop_handle_discard_and_shuffling(int card_idx, bool* discarde
 
     if (card_idx == 0 && *discarded_card == false && timer % FRAMES(10) == 0)
     {
+        // This is never reached in the case of HAND_SHUFFLING.        // Not sure why but that's how it's supposed to be.
         hand_state = HAND_DRAW;
         *sound_played = false;
         cards_drawn = 0;
@@ -1766,18 +1824,9 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
 
                             if (i == played_top)
                             {
-                                if (score >= blind_get_requirement(current_blind, ante))
+                                if (game_round_is_over())
                                 {
                                     hand_state = HAND_SHUFFLING;
-
-                                    if (current_blind == BOSS_BLIND)
-                                    {
-                                        display_ante(++ante);
-                                    }
-                                }
-                                else if (hands <= 0)
-                                {
-                                    game_set_state(GAME_LOSE);
                                 }
                                 else
                                 {
@@ -2824,6 +2873,35 @@ static void jokers_update_loop()
     discarded_jokers_update_loop();
 }
 
+static void game_over_anim_frame()
+{
+    main_bg_se_move_rect_1_tile_vert(GAME_OVER_ANIM_RECT, SE_UP);
+}
+
+static void game_lose()
+{
+    if (timer < GAME_OVER_ANIM_FRAMES)
+    {
+        game_over_anim_frame();
+    }
+    else if (timer == GAME_OVER_ANIM_FRAMES)
+    {
+        tte_printf("#{P:%d,%d; cx:0x%X000}GAME OVER", GAME_LOSE_MSG_TEXT_RECT.left, GAME_LOSE_MSG_TEXT_RECT.top, TTE_RED_PB);
+    }
+}
+
+static void game_win()
+{
+    if (timer < GAME_OVER_ANIM_FRAMES)
+    {
+        game_over_anim_frame();
+    }
+    else if (timer == GAME_OVER_ANIM_FRAMES)
+    {
+        tte_printf("#{P:%d,%d; cx:0x%X000}YOU WIN", GAME_WIN_MSG_TEXT_RECT.left, GAME_WIN_MSG_TEXT_RECT.top, TTE_BLUE_PB);
+    }
+}
+
 void game_update()
 {
     timer++;
@@ -2854,7 +2932,10 @@ void game_update()
             game_blind_select();
             break;
         case GAME_LOSE:
-            // Handle lose logic here
+            game_lose();
+            break;
+        case GAME_WIN:
+            game_win();
             break;
     }
 }

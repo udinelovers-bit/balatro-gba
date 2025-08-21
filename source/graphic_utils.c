@@ -59,11 +59,10 @@ void main_bg_se_clear_rect(Rect se_rect)
     }
 }
 
-
 // Internal static function to merge implementation of move/copy functions.
-static void main_bg_se_copy_or_move_rect_1_tile_vert(Rect se_rect, int direction, bool move)
+static void bg_se_copy_or_move_rect_1_tile_vert(u16 bg_sbb, Rect se_rect, int direction, bool move)
 {
-    if (se_rect.left > se_rect.right
+     if (se_rect.left > se_rect.right
         || (direction != SE_UP && direction != SE_DOWN))
     {
         return;
@@ -77,15 +76,30 @@ static void main_bg_se_copy_or_move_rect_1_tile_vert(Rect se_rect, int direction
 
     for (int y = start; y != end - direction; y -= direction)
     {
-        memcpy16(&(se_mat[MAIN_BG_SBB][y + direction][se_rect.left]),
-                 &se_mat[MAIN_BG_SBB][y][se_rect.left],
+        memcpy16(&(se_mat[bg_sbb][y + direction][se_rect.left]),
+                 &se_mat[bg_sbb][y][se_rect.left],
                  rect_width(&se_rect));
     }
 
     if (move)
     {
-        memset16(&se_mat[MAIN_BG_SBB][end][se_rect.left], 0x0000, rect_width(&se_rect));
+        memset16(&se_mat[bg_sbb][end][se_rect.left], 0x0000, rect_width(&se_rect));
     }
+}
+
+static void main_bg_se_copy_or_move_rect_1_tile_vert(Rect se_rect, int direction, bool move)
+{
+   bg_se_copy_or_move_rect_1_tile_vert(MAIN_BG_SBB, se_rect, direction, move);
+}
+
+void bg_se_copy_rect_1_tile_vert(u16 bg_sbb, Rect se_rect, int direction)
+{
+    bg_se_copy_or_move_rect_1_tile_vert(MAIN_BG_SBB, se_rect, direction, false);
+}
+
+void bg_se_move_rect_1_tile_vert(u16 bg_sbb, Rect se_rect, int direction)
+{
+    bg_se_copy_or_move_rect_1_tile_vert(MAIN_BG_SBB, se_rect, direction, true);
 }
 
 void main_bg_se_copy_rect_1_tile_vert(Rect se_rect, int direction)

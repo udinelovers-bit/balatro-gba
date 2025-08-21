@@ -1,6 +1,8 @@
 #ifndef GRAPHIC_UTILS_H
 #define GRAPHIC_UTILS_H
 
+#include <tonc_video.h>
+
 /* This file contains general utils and wrappers that relate to 
  * graphics/video/vram and generally displaying things on the screen.
  * Mostly wrappers and defines for using tonc.
@@ -86,6 +88,15 @@ INLINE int rect_height(const Rect* rect)
 {
     return (((rect)->bottom) - ((rect)->top) + 1);
 }
+
+/* Copies an SE rect vertically in direction by a single tile.
+ * bg_sbb is the SBB of the background in which to move the rect
+ * direction must be either SE_UP or SE_DOWN.
+ * se_rect dimensions are in number of tiles.
+ * 
+ * NOTE: This does not work with TTE_SBB, probably because it's 4BPP...
+ */
+void bg_se_copy_rect_1_tile_vert(u16 bg_sbb, Rect se_rect, int direction);
 
 /* Clears a rect in the main background.
  * The se_rect dimensions need to be in number of tiles.
