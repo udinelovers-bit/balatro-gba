@@ -1292,21 +1292,84 @@ static void game_playing_discarded_cards_loop()
     }
 }
 
+static const int HAND_SPACING_LUT[MAX_HAND_SIZE] = { 28, 28, 28, 28, 27, 21, 18, 15, 13, 12, 10, 9, 9, 8, 8, 7 }; // This is a stupid way to do this but I don't care
+
+void card_in_hand_loop_handle_discard_and_shuffling(int card_idx, bool* discarded_card, FIXED* hand_x, FIXED* hand_y, bool* sound_played, bool* break_loop)
+{
+    *break_loop = false;
+    if (card_object_is_selected(hand[card_idx]) || hand_state == HAND_SHUFFLING)
+    {
+        if (!*discarded_card)
+        {
+            *hand_x = int2fx(240);
+            *hand_y = int2fx(70);
+
+            if (!*sound_played)
+            {
+                play_sfx(SFX_CARD_DRAW, MM_BASE_PITCH_RATE + cards_drawn * PITCH_STEP_DISCARD_SFX);
+                *sound_played = true;
+            }
+
+            if (hand[card_idx]->sprite_object->x >= *hand_x)
+            {
+                discard_push(hand[card_idx]->card);
+                card_object_destroy(&hand[card_idx]);
+                sort_cards();
+
+                hand_top--;
+                cards_drawn++; // This technically isn't drawing cards, I'm just reusing the variable
+                *sound_played = false;
+                timer = 0;
+
+                *hand_y = hand[card_idx]->sprite_object->y;
+                *hand_x = hand[card_idx]->sprite_object->x;
+            }
+
+            *discarded_card = true;
+        }
+        else
+        {
+            if (hand_state == HAND_DISCARD)
+            {
+                *hand_y -= int2fx(15); // Don't raise the card if we're mass discarding, it looks stupid.
+            }
+            else // hand_state == HAND_SHUFFLING
+            {
+                *hand_y += int2fx(24);
+            }
+            *hand_x = *hand_x + (int2fx(card_idx) - int2fx(hand_top) / 2) * -HAND_SPACING_LUT[hand_top];
+        }
+    }
+    else
+    {
+        *hand_x = *hand_x + (int2fx(card_idx) - int2fx(hand_top) / 2) * -HAND_SPACING_LUT[hand_top];
+    }
+
+    if (card_idx == 0 && *discarded_card == false && timer % FRAMES(10) == 0)
+    {
+        hand_state = HAND_DRAW;
+        *sound_played = false;
+        cards_drawn = 0;
+        hand_selections = 0;
+        timer = 0;
+        *break_loop = true;
+        return;
+    };
+}
+
 static void cards_in_hand_update_loop(bool* discarded_card, int* played_selections, bool* sound_played)
 {
     for (int i = hand_top + 1; i >= 0; i--) // Start from the end of the hand and work backwards because that's how Balatro does it
     {
         if (hand[i] != NULL)
         {
-            const int spacing_lut[MAX_HAND_SIZE] = { 28, 28, 28, 28, 27, 21, 18, 15, 13, 12, 10, 9, 9, 8, 8, 7 }; // This is a stupid way to do this but I don't care
-
             FIXED hand_x = int2fx(120);
             FIXED hand_y = int2fx(90);
 
             switch (hand_state)
             {
             case HAND_DRAW:
-                hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
+                hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -HAND_SPACING_LUT[hand_top];
                 break;
             case HAND_SELECT:
                 bool is_focused = (i == selection_x && selection_y == 0);
@@ -1330,72 +1393,18 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
                     hand[i]->sprite_object->vy = 0;
                 }
 
-                hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top]; // TODO: Change this later to reference a 2D LUT of positions
+                hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -HAND_SPACING_LUT[hand_top]; // TODO: Change this later to reference a 2D LUT of positions
                 break;
             case HAND_SHUFFLING:
                 /* FALL THROUGH */
             case HAND_DISCARD: // TODO: Add sound
-                if (card_object_is_selected(hand[i]) || hand_state == HAND_SHUFFLING)
-                {
-                    if (!*discarded_card)
-                    {
-                        hand_x = int2fx(240);
-                        hand_y = int2fx(70);
-
-                        if (!*sound_played)
-                        {
-                            play_sfx(SFX_CARD_DRAW, MM_BASE_PITCH_RATE + cards_drawn*PITCH_STEP_DISCARD_SFX);
-                            *sound_played = true;
-                        }
-
-                        if (hand[i]->sprite_object->x >= hand_x)
-                        {
-                            discard_push(hand[i]->card);
-                            card_object_destroy(&hand[i]);
-                            sort_cards();
-
-                            hand_top--;
-                            cards_drawn++; // This technically isn't drawing cards, I'm just reusing the variable
-                            *sound_played = false;
-                            timer = 0;
-
-                            hand_y = hand[i]->sprite_object->y;
-                            hand_x = hand[i]->sprite_object->x;
-                        }
-
-                        *discarded_card = true;
-                    }
-                    else
-                    {
-                        if (hand_state == HAND_DISCARD)
-                        {
-                            hand_y -= int2fx(15); // Don't raise the card if we're mass discarding, it looks stupid.
-                        }
-                        else
-                        {
-                            hand_y += int2fx(24);
-                        }
-                        hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
-                    }
-                }
-                else
-                {
-                    hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
-                }
-
-                if (i == 0 && *discarded_card == false && timer % FRAMES(10) == 0)
-                {
-                    hand_state = HAND_DRAW;
-                    *sound_played = false;
-                    cards_drawn = 0;
-                    hand_selections = 0;
-                    timer = 0;
-                    break;
-                }
+                bool break_loop;
+                card_in_hand_loop_handle_discard_and_shuffling(i, discarded_card, &hand_x, &hand_y, sound_played, &break_loop);
+                if (break_loop) break;
 
                 break;
             case HAND_PLAY:
-                hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
+                hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -HAND_SPACING_LUT[hand_top];
                 hand_y += int2fx(24);
 
                 if (card_object_is_selected(hand[i]) && *discarded_card == false && timer % FRAMES(10) == 0)
@@ -1569,7 +1578,7 @@ static void cards_in_hand_update_loop(bool* discarded_card, int* played_selectio
 
                 break;
             case HAND_PLAYING: // Don't need to do anything here, just wait for the player to select cards
-                hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -spacing_lut[hand_top];
+                hand_x = hand_x + (int2fx(i) - int2fx(hand_top) / 2) * -HAND_SPACING_LUT[hand_top];
                 hand_y += int2fx(24);
                 break;
             }
@@ -1797,55 +1806,6 @@ static void played_cards_update_loop(bool* discarded_card, int* played_selection
             card_object_update(played[i]);
         }
     }
-}
-
-static void discarded_jokers_update_loop()
-{
-    if (discarded_jokers == NULL)
-        return;
-    
-    // Iterating backwards because of removal within loop
-    for (int i = list_get_size(discarded_jokers) - 1; i >= 0; i--)
-    {
-        JokerObject* joker_object = list_get(discarded_jokers, i);
-        joker_object_update(joker_object);
-        if (joker_object->sprite_object->x == joker_object->sprite_object->tx
-            && joker_object->sprite_object->y == joker_object->sprite_object->ty)
-        {
-            list_remove_by_idx(discarded_jokers, i);
-            joker_object_destroy(&joker_object);        
-        }
-    }
-    
-}
-
-static void held_jokers_update_loop()
-{
-    const int spacing_lut[MAX_JOKERS_HELD_SIZE][MAX_JOKERS_HELD_SIZE] = 
-    {
-        {0, 0, 0, 0, 0},
-        {13, -13, 0, 0, 0},
-        {26, 0, -26, 0, 0},
-        {39, 13, -13, -39, 0},
-        {40, 20, 0, -20, -40}
-    };
-
-    FIXED hand_x = int2fx(HELD_JOKERS_POS.x);
-
-    int jokers_top = list_get_size(jokers) - 1;
-    for (int i = jokers_top; i >= 0; i--)
-    {
-        JokerObject *joker = list_get(jokers, i);
-        joker->sprite_object->tx = hand_x - int2fx(spacing_lut[jokers_top][i]);
-
-        joker_object_update(joker);
-    }
-}
-
-static void jokers_update_loop()
-{
-    held_jokers_update_loop();
-    discarded_jokers_update_loop();
 }
 
 static void game_playing_ui_text_update()
@@ -2813,6 +2773,55 @@ void game_blind_select()
             game_set_state(GAME_PLAYING);
             break;
     }
+}
+
+static void discarded_jokers_update_loop()
+{
+    if (discarded_jokers == NULL)
+        return;
+    
+    // Iterating backwards because of removal within loop
+    for (int i = list_get_size(discarded_jokers) - 1; i >= 0; i--)
+    {
+        JokerObject* joker_object = list_get(discarded_jokers, i);
+        joker_object_update(joker_object);
+        if (joker_object->sprite_object->x == joker_object->sprite_object->tx
+            && joker_object->sprite_object->y == joker_object->sprite_object->ty)
+        {
+            list_remove_by_idx(discarded_jokers, i);
+            joker_object_destroy(&joker_object);        
+        }
+    }
+    
+}
+
+static void held_jokers_update_loop()
+{
+    const int spacing_lut[MAX_JOKERS_HELD_SIZE][MAX_JOKERS_HELD_SIZE] = 
+    {
+        {0, 0, 0, 0, 0},
+        {13, -13, 0, 0, 0},
+        {26, 0, -26, 0, 0},
+        {39, 13, -13, -39, 0},
+        {40, 20, 0, -20, -40}
+    };
+
+    FIXED hand_x = int2fx(HELD_JOKERS_POS.x);
+
+    int jokers_top = list_get_size(jokers) - 1;
+    for (int i = jokers_top; i >= 0; i--)
+    {
+        JokerObject *joker = list_get(jokers, i);
+        joker->sprite_object->tx = hand_x - int2fx(spacing_lut[jokers_top][i]);
+
+        joker_object_update(joker);
+    }
+}
+
+static void jokers_update_loop()
+{
+    held_jokers_update_loop();
+    discarded_jokers_update_loop();
 }
 
 void game_update()
