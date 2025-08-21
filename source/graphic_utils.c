@@ -159,6 +159,46 @@ void main_bg_se_fill_rect_with_se(SE se, Rect se_rect)
     }
 }
 
+// Helper: Copy the corners of a 3x3 tile block
+static void main_bg_se_expand_3x3_copy_corners(const Rect* se_dest_rect, const BG_POINT* src_top_left_pnt, int dest_rect_width, int dest_rect_height)
+{
+    SE top_left_se = se_mat[MAIN_BG_SBB][src_top_left_pnt->y][src_top_left_pnt->x];
+    se_mat[MAIN_BG_SBB][se_dest_rect->top][se_dest_rect->left] = top_left_se;
+
+    SE top_right_se = se_mat[MAIN_BG_SBB][src_top_left_pnt->y][src_top_left_pnt->x + 2];
+    se_mat[MAIN_BG_SBB][se_dest_rect->top][se_dest_rect->left + dest_rect_width - 1] = top_right_se;
+
+    SE bottom_left_se = se_mat[MAIN_BG_SBB][src_top_left_pnt->y + 2][src_top_left_pnt->x];
+    se_mat[MAIN_BG_SBB][se_dest_rect->top + dest_rect_height - 1][se_dest_rect->left] = bottom_left_se;
+
+    SE bottom_right_se = se_mat[MAIN_BG_SBB][src_top_left_pnt->y + 2][src_top_left_pnt->x + 2];
+    se_mat[MAIN_BG_SBB][se_dest_rect->top + dest_rect_height - 1][se_dest_rect->left + dest_rect_width - 1] = bottom_right_se;
+}
+
+// Helper: Copy the top and bottom sides of a 3x3 tile block
+static void main_bg_se_expand_3x3_copy_top_bottom(const Rect* se_dest_rect, const BG_POINT* src_top_left_pnt, int dest_rect_width)
+{
+    if (dest_rect_width > 2)
+    {
+        SE top_middle_se = se_mat[MAIN_BG_SBB][src_top_left_pnt->y][src_top_left_pnt->x + 1];
+        SE bottom_middle_se = se_mat[MAIN_BG_SBB][src_top_left_pnt->y + 2][src_top_left_pnt->x + 1];
+        memset16(&se_mat[MAIN_BG_SBB][se_dest_rect->top][se_dest_rect->left + 1], top_middle_se, dest_rect_width - 2);
+        memset16(&se_mat[MAIN_BG_SBB][se_dest_rect->bottom][se_dest_rect->left + 1], bottom_middle_se, dest_rect_width - 2);
+    }
+}
+
+// Helper: Copy the left and right sides of a 3x3 tile block
+static void main_bg_se_expand_3x3_copy_left_right(const Rect* se_dest_rect, const BG_POINT* src_top_left_pnt, int dest_rect_width, int dest_rect_height)
+{
+    SE middle_left_se = se_mat[MAIN_BG_SBB][src_top_left_pnt->y + 1][src_top_left_pnt->x];
+    SE middle_right_se = se_mat[MAIN_BG_SBB][src_top_left_pnt->y + 1][src_top_left_pnt->x + 2];
+    for (int y = 1;  y < dest_rect_height - 1; y++)
+    {
+        se_mat[MAIN_BG_SBB][se_dest_rect->top + y][se_dest_rect->left] = middle_left_se;
+        se_mat[MAIN_BG_SBB][se_dest_rect->top + y][se_dest_rect->left + dest_rect_width - 1] = middle_right_se;
+    }
+}
+
 void main_bg_se_copy_expand_3x3_rect(Rect se_dest_rect, BG_POINT src_top_left_pnt)
 {
     clip_se_rect_to_screenblock(&se_dest_rect);
@@ -173,43 +213,21 @@ void main_bg_se_copy_expand_3x3_rect(Rect se_dest_rect, BG_POINT src_top_left_pn
     }
 
     // Copy the corners
-    SE top_left_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y][src_top_left_pnt.x];
-    se_mat[MAIN_BG_SBB][se_dest_rect.top][se_dest_rect.left] = top_left_se;
-
-    SE top_right_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y][src_top_left_pnt.x + 2];
-    se_mat[MAIN_BG_SBB][se_dest_rect.top][se_dest_rect.left + dest_rect_width - 1] = top_right_se;
-
-    SE bottom_left_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y + 2][src_top_left_pnt.x];
-    se_mat[MAIN_BG_SBB][se_dest_rect.top + dest_rect_height - 1][se_dest_rect.left] = bottom_left_se;
-
-    SE bottom_right_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y + 2][src_top_left_pnt.x + 2];
-    se_mat[MAIN_BG_SBB][se_dest_rect.top + dest_rect_height - 1][se_dest_rect.left + dest_rect_width - 1] = bottom_right_se;
+    main_bg_se_expand_3x3_copy_corners(&se_dest_rect, &src_top_left_pnt, dest_rect_width, dest_rect_height);
 
     // Copy top and bottom sides
-    if (dest_rect_width > 2)
-    {
-        SE top_middle_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y][src_top_left_pnt.x + 1];
-        SE bottom_middle_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y + 2][src_top_left_pnt.x + 1];
-        memset16(&se_mat[MAIN_BG_SBB][se_dest_rect.top][se_dest_rect.left + 1], top_middle_se, dest_rect_width - 2);
-        memset16(&se_mat[MAIN_BG_SBB][se_dest_rect.bottom][se_dest_rect.left + 1], bottom_middle_se, dest_rect_width - 2);
-    }
+    main_bg_se_expand_3x3_copy_top_bottom(&se_dest_rect, &src_top_left_pnt, dest_rect_width);
 
     // Copy left and right sides
-    SE middle_left_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y + 1][src_top_left_pnt.x];
-    SE middle_right_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y + 1][src_top_left_pnt.x + 2];
-    for (int y = 1;  y < dest_rect_height - 1; y++)
-    {
-        se_mat[MAIN_BG_SBB][se_dest_rect.top + y][se_dest_rect.left] = middle_left_se;
-        se_mat[MAIN_BG_SBB][se_dest_rect.top + y][se_dest_rect.left + dest_rect_width - 1] = middle_right_se;
-    }
-    
+    main_bg_se_expand_3x3_copy_left_right(&se_dest_rect, &src_top_left_pnt, dest_rect_width, dest_rect_height);
+
+    // Fill the center if needed
     if (dest_rect_width > 2 && dest_rect_height > 2)
     {
         SE middle_fill_se = se_mat[MAIN_BG_SBB][src_top_left_pnt.y + 1][src_top_left_pnt.x + 1];
         Rect dest_inner_fill_rect = {se_dest_rect.left + 1, se_dest_rect.top + 1, se_dest_rect.right - 1, se_dest_rect.bottom - 1};
         main_bg_se_fill_rect_with_se(middle_fill_se, dest_inner_fill_rect);
     }
-    
 }
 
 void tte_erase_rect_wrapper(Rect rect)
