@@ -382,7 +382,6 @@ static JokerEffect scholar_joker_effect(Joker *joker, Card *scored_card) {
     return effect;
 }
 
-__attribute__((unused))
 static JokerEffect scary_face_joker_effect(Joker *joker, Card *scored_card) {
     JokerEffect effect = {0};
     if (scored_card == NULL)
@@ -422,7 +421,6 @@ static JokerEffect bull_joker_effect(Joker *joker, Card *scored_card) {
     return effect;
 }
 
-__attribute__((unused))
 static JokerEffect smiley_face_joker_effect(Joker *joker, Card *scored_card) {
     JokerEffect effect = {0};
     if (scored_card == NULL)
@@ -505,16 +503,17 @@ const JokerInfo joker_registry[] = {
     { COMMON_JOKER, 4, scholar_joker_effect },          // 26
     { COMMON_JOKER, 4, business_card_joker_effect },    // 27
     // Business card should be paired with Shortcut for palette optimization when it's added
+    { COMMON_JOKER, 4, scary_face_joker_effect },       // 28
+    { COMMON_JOKER, 4, smiley_face_joker_effect },      // 29
 
     // The following jokers don't have sprites yet, 
     // uncomment them when their sprites are added.
 #if 0
     { COMMON_JOKER, 5, raised_fist_joker_effect },
     { COMMON_JOKER, 6, reserved_parking_joker_effect },
-    { COMMON_JOKER, 4, scary_face_joker_effect },
+
     { COMMON_JOKER, 4, abstract_joker_effect },
     { UNCOMMON_JOKER, 6, bull_joker_effect},
-    { COMMON_JOKER, 4, smiley_face_joker_effect },
 #endif
 };
 
