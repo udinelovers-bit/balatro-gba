@@ -1,24 +1,40 @@
-# Balatro GBA
-This is an attempt to recreate the game 'Balatro' as accurately as possible, including all of the visual effects that make Balatro feel satisfying to play.
+# Balatro-GBA
 
-This tech-demo/proof of concept is strictly limited in content to a minimal version of Balatro and will not recreate the full game.
-### **Disclaimer: This project is NOT endorsed by or affiliated with Playstack or LocalThunk**
-#### This is a non-profit community fan project solely aimed to recreate a minimal version of Balatro on the Game Boy Advance as a tribute to the full Balatro and is not meant to infringe or draw sales away from the full game's release or any of the established works by Playstack and LocalThunk. 
-#### All rights are reserved to their respective holders. 
-This version is meant for people who already own and know the official full game.
+This is an attempt to recreate the game **'Balatro'** as accurately as possible, including all of the visual effects that make Balatro feel satisfying to play.
 
-## Buy the official full version from these sources:
+This **tech-demo/proof of concept** is strictly limited in content to a minimal version of Balatro and will **NOT** recreate the full game. **This version is intended for people who already own and know how the official full game works.** Please refer to the Balatro Wiki for any information regarding Joker effects and such.
+
+## Disclaimer: This project is NOT endorsed by or affiliated with Playstack or LocalThunk
+### This is a non-profit community fan project solely aimed to recreate a minimal version of Balatro on the Game Boy Advance as a tribute to the full Balatro and is not intended to infringe or draw sales away from the full game's release or any of the established works by Playstack and LocalThunk. 
+### All rights are reserved to their respective holders. 
+
+## Buy the official full version from these sources below:
+
+<!-- I had to figure out some actual coding shit to get the Xbox logo to show up, hopefully it works and to understand this comment, look at the previous commit -->
 
 [![Balatro on Steam](https://custom-icon-badges.demolab.com/badge/Balatro%20on%20Steam-194c84?logo=steam&logoColor=fff)](https://store.steampowered.com/app/2379780/Balatro/)
 [![Balatro on Google Play](https://custom-icon-badges.demolab.com/badge/Balatro%20on%20Google%20Play-414141?logo=Google-play&logoColor=fff)](https://play.google.com/store/apps/details?id=com.playstack.balatro.android)
 [![Balatro on Apple App Store](https://custom-icon-badges.demolab.com/badge/Balatro%20on%20Apple%20App%20Store-0D96F6?logo=app-store&logoColor=fff)](https://apps.apple.com/us/app/balatro/id6502453075)
 [![Balatro on Nintendo eShop](https://custom-icon-badges.demolab.com/badge/Balatro%20on%20Nintendo%20eShop-e60012?logo=nintendo&logoColor=fff)](https://www.nintendo.com/us/store/products/balatro-switch/)
 [![Balatro on PlayStation Store](https://custom-icon-badges.demolab.com/badge/Balatro%20on%20PlayStation%20Store-006FCD?logo=PlayStation&logoColor=fff)](https://store.playstation.com/en-us/concept/10010334)
-<!-- I had to manually embed an Xbox Logo for it to display on the button. It was a real pain in the ass to figure out but it works. -->
-[![Balatro on Xbox](https://custom-icon-badges.demolab.com/badge/Balatro%20on%20Xbox-107C10?logo=data:image/svg%2bxml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAzNzIuMzcgMzcyLjU3IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8dGl0bGU%2BWGJveCBMb2dvPC90aXRsZT4KPGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTEuNTcwNyAxMi4zNTcpIj4KPHBhdGggZD0ibTE2OS4xOSAzNTkuNDVjLTI4LjY4My0yLjc0NzEtNTcuNzIzLTEzLjA0OC04Mi42NjktMjkuMzI0LTIwLjkwNC0xMy42MzktMjUuNjI1LTE5LjI0Ni0yNS42MjUtMzAuNDM1IDAtMjIuNDc1IDI0LjcxMi02MS44NCA2Ni45OTItMTA2LjcyIDI0LjAxMi0yNS40ODYgNTcuNDYtNTUuMzYgNjEuMDc4LTU0LjU1MSA3LjAzMDkgMS41NzI0IDYzLjI1IDU2LjQxMSA4NC4yOTcgODIuMjI1IDMzLjI4MSA0MC44MjEgNDguNTgxIDc0LjI0NSA0MC44MDggODkuMTQ3LTUuOTA4NyAxMS4zMjgtNDIuNTcyIDMzLjQ2Ny02OS41MDggNDEuOTcyLTIyLjIgNy4wMTAxLTUxLjM1NSA5Ljk4MTMtNzUuMzcyIDcuNjgxMXptLTEzNi41My04My4xMjZjLTE3LjM3MS0yNi42NS0yNi4xNDctNTIuODg2LTMwLjM4NS05MC44MzItMS4zOTkyLTEyLjUzLTAuODk3NzgtMTkuNjk3IDMuMTc3Mi00NS40MTUgNS4wNzg4LTMyLjA1NCAyMy4zMzMtNjkuMTM2IDQ1LjI2Ny05MS45NTggOS4zNDE5LTkuNzE5NyAxMC4xNzYtOS45NTY1IDIxLjU2My02LjEyMDUgMTMuODI4IDQuNjU4NCAyOC41OTYgMTQuODU3IDUxLjQ5OCAzNS41NjdsMTMuMzYzIDEyLjA4My03LjI5NjkgOC45NjQzYy0zMy44NzIgNDEuNjEzLTY5LjYzIDEwMC42LTgzLjEwNSAxMzcuMDktNy4zMjYgMTkuODM5LTEwLjI4MSAzOS43NTMtNy4xMjg3IDQ4LjA0NCAyLjEyODIgNS41OTc1IDAuMTczMzkgMy41MTA5LTYuOTUyOC03LjQyMTV6bTMwNC45MiA0LjUzMjZjMS43MTYtOC4zNzcyLTAuNDU0NC0yMy43NjMtNS41NDEzLTM5LjI4LTExLjAxNy0zMy42MDYtNDcuODQtOTYuMTI0LTgxLjY1My0xMzguNjNsLTEwLjY0NC0xMy4zODEgMTEuNTE2LTEwLjU3NGMxNS4wMzYtMTMuODA3IDI1LjQ3Ni0yMi4wNzQgMzYuNzQtMjkuMDk1IDguODg4OC01LjU0MDIgMjEuNTkxLTEwLjQ0NSAyNy4wNTEtMTAuNDQ1IDMuMzY2MyAwIDE1LjIxNyAxMi4yOTkgMjQuNzg0IDI1LjcyMSAxNC44MTcgMjAuNzg4IDI1LjcxOCA0NS45ODcgMzEuMjQgNzIuMjIgMy41NjgzIDE2Ljk1IDMuODY1NyA1My4yMzEgMC41NzQ4NiA3MC4xMzktMi43MDA3IDEzLjg3Ni04LjQwMzEgMzEuODc1LTEzLjk2NiA0NC4wODItNC4xNjgyIDkuMTQ2Ni0xNC41MzUgMjYuOTEtMTkuMDc4IDMyLjY5MS0yLjMzNTcgMi45NzE4LTIuMzM3NiAyLjk2NTMtMS4wMjM5LTMuNDQ3N3ptLTE2NS4zMi0yNDcuNzVjLTE1LjYwMS03LjkyMjctMzkuNjctMTYuNDI3LTUyLjk2NS0xOC43MTUtNC42NjEtMC44MDIxMi0xMi42MTItMS4yNDk1LTE3LjY2OS0wLjk5NDExLTEwLjk3IDAuNTUzOTQtMTAuNDgtMC4wMTk3IDcuMTE3OC04LjMzMzcgMTQuNjMtNi45MTIxIDI2LjgzNC0xMC45NzcgNDMuNC0xNC40NTUgMTguNjM2LTMuOTEzMSA1My42NjYtMy45NTkgNzIuMDA1LTAuMDk0NCAxOS44MDggNC4xNzQxIDQzLjEzMyAxMi44NTQgNTYuMjc2IDIwLjk0MmwzLjkwNjMgMi40MDM5LTguOTYyNS0wLjQ1MjU4Yy0xNy44MS0wLjg5OTM3LTQzLjc2NiA2LjI5NTktNzEuNjMzIDE5Ljg1Ny04LjQwNTQgNC4wOTA1LTE1LjcxOCA3LjM1NzUtMTYuMjUgNy4yNi0wLjUzMjExLTAuMDk3NTQtNy4zODQzLTMuNDM1OS0xNS4yMjctNy40MTg2eiIgZmlsbD0iI2ZmZiIvPgo8L2c%2BCjwvc3ZnPgo=&logoColor=fff)](https://www.xbox.com/en-US/games/store/balatro/9PK087LNGJC5)
+[![Balatro on Xbox](https://custom-icon-badges.demolab.com/badge/Balatro%20on%20Xbox-107C10.svg?logo=xbox&logoColor=white)](https://www.xbox.com/en-US/games/store/balatro/9PK087LNGJC5)
 [![Balatro on Humble Bundle](https://img.shields.io/badge/Balatro%20on%20Humble%20Bundle-%23494F5C.svg?logo=HumbleBundle&logoColor=white)](https://www.humblebundle.com/store/balatro?srsltid=AfmBOoqS2De8T4kizzWxJS1pbvQosJ_bYCl4qvC6LA1YLPAh4sZ8vJqO)
 
-![Example](https://github.com/cellos51/balatro-gba/blob/main/example.gif)
+![Example](https://github.com/cellos51/balatro-gba/blob/main/example.gif) 
+
+<!---Gif Needs Updated--->
+### Controls: 
+(A: Pick Card/Make Selections)
+
+(B: Deselect All Cards) 
+
+(L: Sell Joker)
+
+(R: Sort Suit/Rank)
+
+(D-Pad: Navigation) 
+
+(Start: Pause (Not implemented)
 
 # **Build Instructions:**
 
