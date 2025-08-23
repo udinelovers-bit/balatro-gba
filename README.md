@@ -1,5 +1,12 @@
 # Balatro-GBA
 
+[![Build Status](https://img.shields.io/github/actions/workflow/status/cellos51/balatro-gba/build_ci_workflow.yml?branch=main&label=Builds&labelColor=gray&color=default)](https://github.com/cellos51/balatro-gba/actions)
+[![Open Issues](https://img.shields.io/github/issues/cellos51/balatro-gba?label=Issues&labelColor=gray&color=red)](https://github.com/cellos51/balatro-gba/issues)
+[![Pull Requests](https://img.shields.io/github/issues-pr/cellos51/balatro-gba?label=Pull%20Requests&labelColor=gray&color=indigo)](https://github.com/cellos51/balatro-gba/pulls)
+[![Forks](https://img.shields.io/github/forks/cellos51/balatro-gba?style=flat&label=Forks&labelColor=gray&color=blue)](https://github.com/cellos51/balatro-gba/network/members)
+[![Watchers](https://img.shields.io/github/watchers/cellos51/balatro-gba?style=flat&label=Watchers&labelColor=gray&color=lightgray)](https://github.com/cellos51/balatro-gba/watchers)
+[![Stars](https://custom-icon-badges.demolab.com/github/stars/cellos51/balatro-gba?logo=star&style=flat&labelColor=gray&color=yellow&label=Stars)](https://github.com/cellos51/balatro-gba)
+
 This is an attempt to recreate the game **'Balatro'** as accurately as possible, including all of the visual effects that make Balatro feel satisfying to play.
 
 This **tech-demo/proof of concept** is strictly limited in content to a minimal version of Balatro and will **NOT** recreate the full game. **This version is intended for people who already own and know how the official full game works.** Please refer to the Balatro Wiki for any information regarding Joker effects and such.
