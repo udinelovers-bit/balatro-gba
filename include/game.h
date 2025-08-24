@@ -28,6 +28,7 @@
 
 enum GameState
 {
+    GAME_SPLASH_SCREEN,
     GAME_MAIN_MENU,
     GAME_PLAYING,
     GAME_ROUND_END,
@@ -77,6 +78,7 @@ enum HandType
 // Game functions
 void game_init();
 void game_update();
+void game_set_state(enum GameState new_game_state);
 
 // Forward declaration
 struct List; 

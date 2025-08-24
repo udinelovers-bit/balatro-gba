@@ -16,6 +16,7 @@
 #include "tonc_video.h"
 #include "audio_utils.h"
 #include "selection_grid.h"
+#include "splash_screen.h"
 
 #include "background_gfx.h"
 #include "background_shop_gfx.h"
@@ -34,7 +35,7 @@ static uint timer = 0; // This might already exist in libtonc but idk so i'm jus
 static int game_speed = 1;
 static int background = 0;
 
-static enum GameState game_state = GAME_MAIN_MENU; // The current game state, this is used to determine what the game is doing at any given time
+static enum GameState game_state = GAME_SPLASH_SCREEN; // The current game state, this is used to determine what the game is doing at any given time
 static enum HandState hand_state = HAND_DRAW;
 static enum PlayState play_state = PLAY_PLAYING;
 static int state = 0; // General state variable, used for switch statements in each game state related function
@@ -252,6 +253,7 @@ static const BG_POINT JOKER_DISCARD_TARGET  = {240,     30};
 #define ITEM_SHOP_Y 71 // TODO: Needs to be a rect?
 
 #define MAIN_MENU_BUTTONS 4
+#define MAIN_MENU_IMPLEMENTED_BUTTONS 1 // Remove this once all buttons are implemented
 
 //TODO: Properly define and use
 #define MENU_POP_OUT_ANIM_FRAMES 20
@@ -993,9 +995,10 @@ static void game_round_init()
     deck_shuffle(); // Shuffle the deck at the start of the round
 }
 
-void game_main_menu_init()
+static void game_main_menu_init()
 {
     affine_background_change_background(AFFINE_BG_MAIN_MENU);
+    change_background(BG_ID_MAIN_MENU);
     main_menu_ace = card_object_new(card_new(SPADES, ACE));
     card_object_set_sprite(main_menu_ace, 0); // Set the sprite for the ace of spades
     main_menu_ace->sprite_object->sprite->obj->attr0 |= ATTR0_AFF_DBL; // Make the sprite double sized
@@ -1033,6 +1036,9 @@ static void init_game_state(enum GameState game_state_to_init)
     // Switch written out, add init for states as needed
     switch (game_state_to_init)
     {
+    case GAME_SPLASH_SCREEN:
+        splash_screen_init();
+        break;
     case GAME_MAIN_MENU:
         game_main_menu_init();
         break;
@@ -1057,7 +1063,7 @@ static void init_game_state(enum GameState game_state_to_init)
 }
 
 // Game functions
-static void game_set_state(enum GameState new_game_state)
+void game_set_state(enum GameState new_game_state)
 {
     timer = 0; // Reset the timer
     init_game_state(new_game_state);
@@ -1077,7 +1083,7 @@ void jokers_available_to_shop_init()
 
 void game_init()
 {
-    change_background(BG_ID_MAIN_MENU);
+    //change_background(BG_ID_MAIN_MENU);
     jokers_available_to_shop_init();
 
     // Initialize jokers list
@@ -2660,7 +2666,6 @@ void game_shop()
             }
         }
     }
-    
 
     if (timer % 20 == 0)
     {
@@ -2895,7 +2900,7 @@ void game_main_menu()
     }
     else if (key_hit(KEY_RIGHT))
     {
-        if (selection_x < MAIN_MENU_BUTTONS)
+        if (selection_x < MAIN_MENU_IMPLEMENTED_BUTTONS)
         {
             selection_x++;
         }
@@ -2936,7 +2941,6 @@ static void discarded_jokers_update_loop()
             joker_object_destroy(&joker_object);        
         }
     }
-    
 }
 
 static void held_jokers_update_loop()
@@ -3005,6 +3009,9 @@ void game_update()
 
     switch (game_state)
     {
+        case GAME_SPLASH_SCREEN:
+            splash_screen_update(timer);
+            break;
         case GAME_MAIN_MENU:
             game_main_menu();
             break;
