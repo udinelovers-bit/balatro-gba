@@ -1111,8 +1111,6 @@ void game_start()
     card_destroy(&main_menu_ace->card);
     card_object_destroy(&main_menu_ace);
 
-    jokers_avialable_to_shop_init();
-
     hands = max_hands;
     discards = max_discards;
 
@@ -1142,6 +1140,8 @@ void game_start()
     display_money(money); // Set the money display
 
     tte_printf("#{P:%d,%d; cx:0x%X000}%d#{cx:0x%X000}/%d", ANTE_TEXT_RECT.left, ANTE_TEXT_RECT.top, TTE_YELLOW_PB, ante, TTE_WHITE_PB, MAX_ANTE); // Ante
+
+    game_set_state(GAME_BLIND_SELECT);
 }
 
 static void game_playing_process_hand_select_input()
