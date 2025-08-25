@@ -7,17 +7,17 @@
 [![Stars](https://custom-icon-badges.demolab.com/github/stars/cellos51/balatro-gba?logo=star&style=flat&labelColor=gray&color=yellow&label=Stars&v=2)](https://github.com/cellos51/balatro-gba)
 
 This is an attempt to recreate the game **'Balatro'** as accurately as possible, including all of the visual effects that make Balatro feel satisfying to play.
-This **tech-demo/proof of concept** is strictly limited in content to a minimal version of Balatro and will **NOT** recreate the full game. **This version is intended for people who already own and know how the official full game works.** Please refer to the Balatro Wiki for any information regarding Joker effects and such. 
+This **tech-demo/proof of concept** is strictly limited in content to a minimal version of Balatro and will **NOT** recreate the full game. **This version is intended for people who already own and know how the official full game works.** Please refer to the Balatro Wiki if you need help understanding certain mechanics or abilities.
 
 <a href="https://balatrowiki.org/">
   <img src="https://custom-icon-badges.demolab.com/badge/Balatro%20Wiki-194c84?logo=bigjoker&logoColor=fff" alt="Balatro Wiki" width="160">
 </a>
 
 ### Disclaimer: This project is NOT endorsed by or affiliated with Playstack or LocalThunk
-#### This is a non-profit community fan project solely aimed to recreate a minimal version of Balatro on the Game Boy Advance as a tribute to the full Balatro and is not intended to infringe or draw sales away from the full game's release or any of the established works by Playstack and LocalThunk. 
+#### This is a non-profit community fan project solely aimed to recreate a minimal version of Balatro on the Game Boy Advance as a tribute to the full Balatro and is not intended to infringe or draw sales away from the full game's release or any of the established works by Playstack and LocalThunk.
 #### All rights are reserved to their respective holders. 
 
-### Please buy the official full version from these sources below to support Playstack and LocalThunk:
+### Please buy the official full version from these sources below:
 [![Balatro on Steam](https://custom-icon-badges.demolab.com/badge/Balatro%20on%20Steam-194c84?logo=steam&logoColor=fff)](https://store.steampowered.com/app/2379780/Balatro/)
 [![Balatro on Google Play](https://custom-icon-badges.demolab.com/badge/Balatro%20on%20Google%20Play-414141?logo=Google-play&logoColor=fff)](https://play.google.com/store/apps/details?id=com.playstack.balatro.android)
 [![Balatro on Apple App Store](https://custom-icon-badges.demolab.com/badge/Balatro%20on%20Apple%20App%20Store-0D96F6?logo=app-store&logoColor=fff)](https://apps.apple.com/us/app/balatro/id6502453075)
