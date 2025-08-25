@@ -1084,7 +1084,6 @@ void jokers_available_to_shop_init()
 
 void game_init()
 {
-    //change_background(BG_ID_MAIN_MENU);
     jokers_available_to_shop_init();
 
     // Initialize jokers list
