@@ -4,7 +4,6 @@
 [![Open Issues](https://custom-icon-badges.demolab.com/github/issues/cellos51/balatro-gba?logo=bug&style=flat&label=Issues&labelColor=gray&color=red)](https://github.com/cellos51/balatro-gba/issues)
 [![Pull Requests](https://custom-icon-badges.demolab.com/github/issues-pr/cellos51/balatro-gba?logo=git-pull-request&style=flat&label=Pull%20Requests&labelColor=gray&color=indigo&v=1)](https://github.com/cellos51/balatro-gba/pulls)
 [![Forks](https://custom-icon-badges.demolab.com/github/forks/cellos51/balatro-gba?logo=repo-forked&style=flat&label=Forks&labelColor=gray&color=blue)](https://github.com/cellos51/balatro-gba/network/members)
-[![Watchers](https://custom-icon-badges.demolab.com/github/watchers/cellos51/balatro-gba?logo=eye&style=flat&label=Watchers&labelColor=gray&color=lightgray&v=1)](https://github.com/cellos51/balatro-gba/watchers)
 [![Stars](https://custom-icon-badges.demolab.com/github/stars/cellos51/balatro-gba?logo=star&style=flat&labelColor=gray&color=yellow&label=Stars&v=1)](https://github.com/cellos51/balatro-gba)
 
 This is an attempt to recreate the game **'Balatro'** as accurately as possible, including all of the visual effects that make Balatro feel satisfying to play.
