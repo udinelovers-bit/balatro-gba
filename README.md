@@ -3,8 +3,6 @@
 [![Build Status](https://img.shields.io/github/actions/workflow/status/cellos51/balatro-gba/build_ci_workflow.yml?style=flat&logo=github&branch=main&label=Builds&labelColor=gray&color=default&v=1)](https://github.com/cellos51/balatro-gba/actions)
 [![Open Issues](https://custom-icon-badges.demolab.com/github/issues/cellos51/balatro-gba?logo=bug&style=flat&label=Issues&labelColor=gray&color=red)](https://github.com/cellos51/balatro-gba/issues)
 [![Pull Requests](https://custom-icon-badges.demolab.com/github/issues-pr/cellos51/balatro-gba?logo=git-pull-request&style=flat&label=Pull%20Requests&labelColor=gray&color=indigo&v=1)](https://github.com/cellos51/balatro-gba/pulls)
-[![Forks](https://custom-icon-badges.demolab.com/github/forks/cellos51/balatro-gba?logo=repo-forked&style=flat&label=Forks&labelColor=gray&color=blue)](https://github.com/cellos51/balatro-gba/network/members)
-[![Stars](https://custom-icon-badges.demolab.com/github/stars/cellos51/balatro-gba?logo=star&style=flat&labelColor=gray&color=yellow&label=Stars&v=2)](https://github.com/cellos51/balatro-gba)
 
 This is an attempt to recreate the game **'Balatro'** as accurately as possible, including all of the visual effects that make Balatro feel satisfying to play.
 This **tech-demo/proof of concept** is strictly limited in content to a minimal version of Balatro and will **NOT** recreate the full game. **This version is intended for people who already own and know how the official full game works.** Please refer to the Balatro Wiki if you need help understanding certain mechanics or abilities.
