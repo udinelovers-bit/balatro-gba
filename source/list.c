@@ -1,12 +1,13 @@
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include "list.h"
 #include "util.h"
 
-IntList *int_list_new(int init_size) {
-    IntList *list = (IntList *)malloc(sizeof(IntList));
+List *list_new(int init_size) {
+    List *list = (List *)malloc(sizeof(List));
     if (list == NULL) return NULL;
-    list->_array = (int *)malloc(sizeof(int) * init_size);
+    list->_array = (void **)malloc(sizeof(void*) * init_size);
     if (!list->_array) 
     {
         free(list);
@@ -17,7 +18,7 @@ IntList *int_list_new(int init_size) {
     return list;
 }
 
-void int_list_destroy(IntList **list) {
+void list_destroy(List **list) {
     if (list == NULL || *list == NULL)
         return; 
     {
@@ -28,22 +29,28 @@ void int_list_destroy(IntList **list) {
     *list = NULL;
 }
 
-bool int_list_append(IntList *list, int value) 
+bool int_list_append(List *list, intptr_t value) 
+{
+    return list_append(list, (void*)value);
+}
+
+bool list_append(List *list, void *value)
 {
     if (list->size >= list->allocated_size) 
     {
         int new_size = list->allocated_size * 2;
-        int *new_arr = (int *)realloc(list->_array, sizeof(int) * new_size);
+        void **new_arr = (void **)realloc(list->_array, sizeof(void*) * new_size);
         if (new_arr == NULL) 
             return false;
         list->_array = new_arr;
         list->allocated_size = new_size;
     }
+
     list->_array[list->size++] = value;
     return true;
 }
 
-bool int_list_remove_by_idx(IntList *list, int index) {
+bool list_remove_by_idx(List *list, int index) {
     if (index < 0 || index >= list->size) 
         return false;
     for (int i = index; i < list->size - 1; ++i) 
@@ -54,27 +61,37 @@ bool int_list_remove_by_idx(IntList *list, int index) {
     return true;
 }
 
-bool int_list_remove_by_value(IntList *list, int value)
+bool list_remove_by_value(List *list, void* value)
 {
     for (int i = 0; i < list->size; i++)
     {
         if (list->_array[i] == value)
         {
-            return int_list_remove_by_idx(list, i);
+            return list_remove_by_idx(list, i);
         }
     }
 
     return false;
 }
 
-int int_list_get(IntList *list, int index) 
+bool int_list_remove_by_value(List *list, intptr_t value)
+{
+    return list_remove_by_value(list, (void*)value);
+}
+
+void* list_get(List *list, int index)
 {
     if (index < 0 || index >= list->size) 
-        return 0;
+        return NULL;
     return list->_array[index];
 }
 
-int int_list_get_size(IntList *list)
+intptr_t int_list_get(List *list, int index) 
+{
+    return (intptr_t)list_get(list, index);
+}
+
+int list_get_size(List *list)
 {
     if (list == NULL)
     {
