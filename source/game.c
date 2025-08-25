@@ -2900,7 +2900,7 @@ void game_main_menu()
     }
     else if (key_hit(KEY_RIGHT))
     {
-        if (selection_x < MAIN_MENU_IMPLEMENTED_BUTTONS)
+        if (selection_x < MAIN_MENU_IMPLEMENTED_BUTTONS - 1)
         {
             selection_x++;
         }
