@@ -254,6 +254,8 @@ static const BG_POINT JOKER_DISCARD_TARGET  = {240,     30};
 
 #define MAIN_MENU_BUTTONS 4
 #define MAIN_MENU_IMPLEMENTED_BUTTONS 1 // Remove this once all buttons are implemented
+#define MAIN_MENU_PLAY_BUTTON_MAIN_COLOR_PID 5
+#define MAIN_MENU_PLAY_BUTTON_OUTLINE_COLOR_PID 3
 
 //TODO: Properly define and use
 #define MENU_POP_OUT_ANIM_FRAMES 20
@@ -641,8 +643,7 @@ void change_background(int id)
         GRIT_CPY(&se_mem[MAIN_BG_SBB], background_main_menu_gfxMap);
 
         // Disable the button highlight colors
-        // Select button PID is 5 and the outline is 3
-        memcpy16(&pal_bg_mem[3], &pal_bg_mem[5], 1);
+        memcpy16(&pal_bg_mem[MAIN_MENU_PLAY_BUTTON_OUTLINE_COLOR_PID], &pal_bg_mem[MAIN_MENU_PLAY_BUTTON_MAIN_COLOR_PID], 1);
     }
     else
     {
@@ -2909,7 +2910,7 @@ void game_main_menu()
     if (selection_x == 0) // Play button
     {   
         // Select button PID is 5 and the outline is 3
-        memset16(&pal_bg_mem[3], CLR_WHITE, 1);
+        memset16(&pal_bg_mem[MAIN_MENU_PLAY_BUTTON_OUTLINE_COLOR_PID], HIGHLIGHT_COLOR, 1);
 
         if (key_hit(KEY_A))
         {
@@ -2920,7 +2921,7 @@ void game_main_menu()
     else
     {
         // Select button PID is 5 and the outline is 3
-        memcpy16(&pal_bg_mem[3], &pal_bg_mem[5], 1);
+        memcpy16(&pal_bg_mem[MAIN_MENU_PLAY_BUTTON_OUTLINE_COLOR_PID], &pal_bg_mem[MAIN_MENU_PLAY_BUTTON_MAIN_COLOR_PID], 1);
     }
 }
 
