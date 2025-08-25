@@ -5,6 +5,8 @@
 #include "graphic_utils.h"
 #include "game.h"
 
+static const Rect COUNTDOWN_TIMER_RECT = {208, 144, 240, 152};
+
 void splash_screen_init()
 {
     tte_printf("#{P:72,8; cx:0xF000}DISCLAIMER");
@@ -16,8 +18,8 @@ void splash_screen_update(uint timer)
 {
     if (timer < SPLASH_DURATION_FRAMES)
     {
-        tte_erase_rect_wrapper((Rect){208, 144, 240, 152});
-        tte_printf("#{P:208,144; cx:0xF000}%d", 1 + (SPLASH_DURATION_FRAMES - timer) / SPLASH_FPS);
+        tte_erase_rect_wrapper(COUNTDOWN_TIMER_RECT);
+        tte_printf("#{P:%d,%d; cx:0xF000}%d", COUNTDOWN_TIMER_RECT.left, COUNTDOWN_TIMER_RECT.top, 1 + (SPLASH_DURATION_FRAMES - timer) / SPLASH_FPS);
 
         if (!key_hit(KEY_ANY))
         {
