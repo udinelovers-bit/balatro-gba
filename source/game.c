@@ -252,10 +252,10 @@ static const BG_POINT JOKER_DISCARD_TARGET  = {240,     30};
 
 #define ITEM_SHOP_Y 71 // TODO: Needs to be a rect?
 
-#define MAIN_MENU_BUTTONS 4
+#define MAIN_MENU_BUTTONS 2
 #define MAIN_MENU_IMPLEMENTED_BUTTONS 1 // Remove this once all buttons are implemented
 #define MAIN_MENU_PLAY_BUTTON_MAIN_COLOR_PID 5
-#define MAIN_MENU_PLAY_BUTTON_OUTLINE_COLOR_PID 3
+#define MAIN_MENU_PLAY_BUTTON_OUTLINE_COLOR_PID 2
 
 //TODO: Properly define and use
 #define MENU_POP_OUT_ANIM_FRAMES 20
