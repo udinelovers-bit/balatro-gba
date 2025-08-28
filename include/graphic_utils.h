@@ -24,7 +24,6 @@
 #define AFFINE_BG_SBB 2
 #define AFFINE_BG_CBB 2
 #define PAL_ROW_LEN 16
-#define PAL_BG_MAX_SIZE (PAL_ROW_LEN * 9)
 #define NUM_PALETTES 16
 
 #define TTE_BIT_UNPACK_OFFSET 14
