@@ -445,8 +445,8 @@ void change_background(int id)
             
             // Load the tiles and palette
             // Background
-            memcpy16(pal_bg_mem, background_gfxPal, PAL_BG_MAX_SIZE); // This '64" isn't a specific number, I'm just using it to prevent the text colors from being overridden
-            GRIT_CPY(&tile8_mem[MAIN_BG_CBB], background_gfxTiles); // Deadass i have no clue how any of these memory things work but I just messed with them until stuff worked
+            GRIT_CPY(pal_bg_mem, background_gfxPal);
+            GRIT_CPY(&tile8_mem[MAIN_BG_CBB], background_gfxTiles); 
             GRIT_CPY(&se_mem[MAIN_BG_SBB], background_gfxMap);
 
             if (current_blind == BIG_BLIND) // Change text and palette depending on blind type
@@ -507,7 +507,7 @@ void change_background(int id)
     {
         toggle_windows(false, true);
 
-        memcpy16(pal_bg_mem, background_shop_gfxPal, PAL_BG_MAX_SIZE);
+        GRIT_CPY(pal_bg_mem, background_shop_gfxPal);
         GRIT_CPY(&tile_mem[MAIN_BG_CBB], background_shop_gfxTiles);
         GRIT_CPY(&se_mem[MAIN_BG_SBB], background_shop_gfxMap);
 
@@ -536,7 +536,7 @@ void change_background(int id)
 
         toggle_windows(false, true);
 
-        memcpy16(pal_bg_mem, background_blind_select_gfxPal, PAL_BG_MAX_SIZE);
+        GRIT_CPY(pal_bg_mem, background_blind_select_gfxPal);
         GRIT_CPY(&tile_mem[MAIN_BG_CBB], background_blind_select_gfxTiles);
         GRIT_CPY(&se_mem[MAIN_BG_SBB], background_blind_select_gfxMap);
 
@@ -548,7 +548,7 @@ void change_background(int id)
         // Select button PID is 15 and the outline is 18
         memcpy16(&pal_bg_mem[18], &pal_bg_mem[15], 1);
         // Skip button PID is 10 and the outline is 5
-        memcpy16(&pal_bg_mem[10 ], &pal_bg_mem[5], 1);
+        memcpy16(&pal_bg_mem[10], &pal_bg_mem[5], 1);
 
         for (int i = 0; i < MAX_BLINDS; i++)
         {
@@ -638,7 +638,7 @@ void change_background(int id)
         toggle_windows(false, false);
 
         tte_erase_screen();
-        memcpy16(pal_bg_mem, background_main_menu_gfxPal, PAL_BG_MAX_SIZE);
+        GRIT_CPY(pal_bg_mem, background_main_menu_gfxPal);
         GRIT_CPY(&tile_mem[MAIN_BG_CBB], background_main_menu_gfxTiles);
         GRIT_CPY(&se_mem[MAIN_BG_SBB], background_main_menu_gfxMap);
 
