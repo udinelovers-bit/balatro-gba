@@ -1,20 +1,23 @@
 #include "affine_background.h"
 #include "affine_background_gfx.h"
+#include "affine_main_menu_background_gfx.h"
 
 #include "graphic_utils.h"
 
+#define ANIMATION_SPEED_DIVISOR 16
+
 BG_AFFINE bgaff_arr[SCREEN_HEIGHT + 1];
+
+BG_AFFINE bgaff;
+AFF_SRC_EX asx = {0};
+
+enum AffineBackgroundID background = AFFINE_BG_MAIN_MENU;
 
 static uint timer = 0;
 
-#define ANIMATION_SPEED_DIVISOR 16
-
-
 void affine_background_init()
-{
-    memcpy32_tile8_with_palette_offset((u32*)&tile8_mem[AFFINE_BG_CBB], (const u32*)affine_background_gfxTiles, affine_background_gfxTilesLen/4, AFFINE_BG_PB);
-    GRIT_CPY(&se_mem[AFFINE_BG_SBB], affine_background_gfxMap);
-    affine_background_load_palette(affine_background_gfxPal);
+{   
+    affine_background_update();
 
     REG_BG_AFFINE[AFFINE_BG_IDX] = bg_aff_default;
 }
@@ -35,10 +38,10 @@ IWRAM_CODE void affine_background_prep_bgaff_arr()
 
         asx.scr_x = (SCREEN_WIDTH / 2); // 128 on x and y is an offset used to center the rotation
         asx.scr_y = vcount_s16 - (SCREEN_HEIGHT / 2); // scr_y must equal vcount otherwise the background will have no vertical difference
-        asx.tex_x = vcount_sine;
-        asx.tex_y = vcount_sine / 64;
-        asx.sx = vcount_sine / 32;
-        asx.sy = vcount_sine / 16;
+        asx.tex_x = (1000 * 1000) + (vcount_sine);
+        asx.tex_y = (1000 * 1000);
+        asx.sx = 128;
+        asx.sy = 128;
         asx.alpha = vcount_sine + (timer_s32 / ANIMATION_SPEED_DIVISOR);
 
         bg_rotscale_ex(&bgaff_arr[vcount], &asx);
@@ -72,7 +75,7 @@ void affine_background_update()
 
 void affine_background_set_color(COLOR color)
 {
-    memcpy16(&pal_bg_mem[AFFINE_BG_PB], affine_background_gfxPal, AFFINE_BG_PAL_LEN);
+    affine_background_change_background(background); // Reload the palette to reset any previous color scaling
     for (int i = 0; i < AFFINE_BG_PAL_LEN; i++)
     {
         clr_rgbscale(&pal_bg_mem[AFFINE_BG_PB] + i, &pal_bg_mem[AFFINE_BG_PB] + i, 1, color);
@@ -82,4 +85,29 @@ void affine_background_set_color(COLOR color)
 void affine_background_load_palette(const u16 *src)
 {
     memcpy16(&pal_bg_mem[AFFINE_BG_PB], src, AFFINE_BG_PAL_LEN);
+}
+
+void affine_background_change_background(enum AffineBackgroundID new_bg)
+{
+    background = new_bg;
+
+    switch (background)
+    {
+    case AFFINE_BG_MAIN_MENU:
+        REG_BG2CNT &= ~BG_AFF_32x32;
+        REG_BG2CNT |= BG_AFF_16x16;
+
+        memcpy32_tile8_with_palette_offset((u32*)&tile8_mem[AFFINE_BG_CBB], (const u32*)affine_main_menu_background_gfxTiles, affine_main_menu_background_gfxTilesLen/4, AFFINE_BG_PB);
+        GRIT_CPY(&se_mem[AFFINE_BG_SBB], affine_main_menu_background_gfxMap);
+        affine_background_load_palette(affine_main_menu_background_gfxPal);
+        break;
+    case AFFINE_BG_GAME:
+        REG_BG2CNT &= ~BG_AFF_16x16;
+        REG_BG2CNT |= BG_AFF_32x32;
+
+        memcpy32_tile8_with_palette_offset((u32*)&tile8_mem[AFFINE_BG_CBB], (const u32*)affine_background_gfxTiles, affine_background_gfxTilesLen/4, AFFINE_BG_PB);
+        GRIT_CPY(&se_mem[AFFINE_BG_SBB], affine_background_gfxMap);
+        affine_background_load_palette(affine_background_gfxPal);
+        break;
+    }
 }
