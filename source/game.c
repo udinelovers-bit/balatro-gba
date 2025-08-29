@@ -81,7 +81,7 @@ static bool sort_by_suit = false;
 
 static List *jokers = NULL;
 static List *discarded_jokers = NULL;
-static List* jokers_available_to_shop; // List of joker IDs
+static List *jokers_available_to_shop; // List of joker IDs
 
 // Stacks
 static CardObject *played[MAX_SELECTION_SIZE] = {NULL};
@@ -161,7 +161,15 @@ List *get_jokers(void) {
     return jokers;
 }
 
+void add_joker(JokerObject *joker_object)
+{
+    list_append(jokers, joker_object);
+}
 
+void remove_held_joker(int joker_idx)
+{
+    list_remove_by_idx(jokers, joker_idx);
+}
 
 int get_deck_top(void) {
     return deck_top;
@@ -2413,7 +2421,7 @@ void game_sell_joker(int joker_idx)
     display_money(money);
     erase_price_under_sprite_object(joker_object->sprite_object);
 
-    list_remove_by_idx(jokers, joker_idx);
+    remove_held_joker(joker_idx);
     int_list_append(jokers_available_to_shop, (intptr_t)joker_object->joker->id);
 
     joker_start_discard_animation(joker_object);
@@ -2435,10 +2443,10 @@ static int shop_top_row_get_size()
     return list_get_size(shop_jokers) + 1; // + 1 to account for next round button
 }
 
-void add_joker(JokerObject *joker_object)
+static void add_to_held_jokers(JokerObject *joker_object)
 {
-    list_append(jokers, joker_object);
     joker_object->sprite_object->ty = int2fx(HELD_JOKERS_POS.y);
+    add_joker(joker_object);
 }
 
 static void game_shop_buy_joker(int shop_joker_idx)
@@ -2449,8 +2457,7 @@ static void game_shop_buy_joker(int shop_joker_idx)
     display_money(money);                // Update the money display
     erase_price_under_sprite_object(joker_object->sprite_object);
     sprite_object_set_focus(joker_object->sprite_object, false);
-
-    add_joker(joker_object);
+    add_to_held_jokers(joker_object);
     list_remove_by_idx(shop_jokers, shop_joker_idx); // Remove the joker from the shop
 }
 
@@ -2490,8 +2497,6 @@ static void shop_top_row_on_key_hit(SelectionGrid* selection_grid, Selection* se
         selection_grid_move_selection_horz(selection_grid, -1);
     }
 }
-
-
 
 static void shop_top_row_on_selection_changed(SelectionGrid* selection_grid, int row_idx, 
                                               const Selection* prev_selection, 
