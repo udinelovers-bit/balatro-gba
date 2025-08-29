@@ -2,13 +2,13 @@
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/cellos51/balatro-gba/build_ci_workflow.yml?style=flat&logo=github&branch=main&label=Builds&labelColor=gray&color=default&v=1)](https://github.com/cellos51/balatro-gba/actions)
 [![Open Issues](https://custom-icon-badges.demolab.com/github/issues/cellos51/balatro-gba?logo=bug&style=flat&label=Issues&labelColor=gray&color=red&v=2)](https://github.com/cellos51/balatro-gba/issues)
-[![Pull Requests](https://custom-icon-badges.demolab.com/github/issues-pr/cellos51/balatro-gba?logo=git-pull-request&style=flat&label=Pull%20Requests&labelColor=gray&color=indigo&v=2)](https://github.com/cellos51/balatro-gba/pulls)
+[![Pull Requests](https://custom-icon-badges.demolab.com/github/issues-pr/cellos51/balatro-gba?logo=git-pull-request&style=flat&label=Pull%20Requests&labelColor=gray&color=indigo&v=3)](https://github.com/cellos51/balatro-gba/pulls)
 
 This is an attempt to recreate the game **'Balatro'** as accurately as possible, including all of the visual effects that make Balatro feel satisfying to play.
 This **tech-demo/proof of concept** is strictly limited in content to a minimal version of Balatro and will **NOT** recreate the full game. **This version is intended for people who already own and know how the official full game works.** Please refer to the Balatro Wiki if you need help understanding certain mechanics or abilities.
 
 <a href="https://balatrowiki.org/">
-  <img src="https://custom-icon-badges.demolab.com/badge/Balatro%20Wiki-194c84?logo=bigjoker&logoColor=fff" alt="Balatro Wiki" width="160">
+  <img src="https://custom-icon-badges.demolab.com/badge/Balatro%20Wiki-194c84?logo=bigjoker&logoColor=fff" alt="Balatro Wiki" width="155">
 </a>
 
 ### Disclaimer: This project is NOT endorsed by or affiliated with Playstack or LocalThunk
@@ -26,7 +26,6 @@ This **tech-demo/proof of concept** is strictly limited in content to a minimal 
 
 <!-- The Gif is a little blurry but I think it looks fine -->
 <img src="example.gif" alt="Example GIF" width="800">
-
 
 ### Controls: 
 (A: Pick Card/Make Selections)
@@ -53,7 +52,7 @@ This **tech-demo/proof of concept** is strictly limited in content to a minimal 
 5.) Type `make` into the window and press Enter to start building the rom.
 
 6.) After it completes, navigate through the `build` directory in the project folder and look for `balatro-gba.gba` and load it on an emulator or flashcart.
-### Without Git
+### Without `Git`
 Disregard Step 3 and instead click the green code button on the main repository page and press `Download Zip`. Unzip the folder and place it wherever you like. Then continue from Step 4.
 
 Video Tutorial: https://youtu.be/72Zzo1VDYzQ?si=UDmEdbST1Cx1zZV2
