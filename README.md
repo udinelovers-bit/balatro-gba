@@ -1,8 +1,8 @@
 # Balatro-GBA
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/cellos51/balatro-gba/build_ci_workflow.yml?style=flat&logo=github&branch=main&label=Builds&labelColor=gray&color=default&v=1)](https://github.com/cellos51/balatro-gba/actions)
-[![Open Issues](https://custom-icon-badges.demolab.com/github/issues/cellos51/balatro-gba?logo=bug&style=flat&label=Issues&labelColor=gray&color=red)](https://github.com/cellos51/balatro-gba/issues)
-[![Pull Requests](https://custom-icon-badges.demolab.com/github/issues-pr/cellos51/balatro-gba?logo=git-pull-request&style=flat&label=Pull%20Requests&labelColor=gray&color=indigo&v=1)](https://github.com/cellos51/balatro-gba/pulls)
+[![Open Issues](https://custom-icon-badges.demolab.com/github/issues/cellos51/balatro-gba?logo=bug&style=flat&label=Issues&labelColor=gray&color=red&v=2)](https://github.com/cellos51/balatro-gba/issues)
+[![Pull Requests](https://custom-icon-badges.demolab.com/github/issues-pr/cellos51/balatro-gba?logo=git-pull-request&style=flat&label=Pull%20Requests&labelColor=gray&color=indigo&v=2)](https://github.com/cellos51/balatro-gba/pulls)
 
 This is an attempt to recreate the game **'Balatro'** as accurately as possible, including all of the visual effects that make Balatro feel satisfying to play.
 This **tech-demo/proof of concept** is strictly limited in content to a minimal version of Balatro and will **NOT** recreate the full game. **This version is intended for people who already own and know how the official full game works.** Please refer to the Balatro Wiki if you need help understanding certain mechanics or abilities.
@@ -41,38 +41,32 @@ This **tech-demo/proof of concept** is strictly limited in content to a minimal 
 # **Build Instructions:**
 
 ## **-Windows-**
-1. Install `devkitPro` from https://github.com/devkitPro/installer by downloading the latest release.
+### With `Git` (not required)
+1.) Install `devkitPro` from https://github.com/devkitPro/installer by downloading the latest release, unzipping the archive, and then running the installer. You only need to install the tools for the GBA development so ensure you have it selected and install it to the default directory. You may need to create a temp folder for the project.
 
-2. Open it and follow the installation instructions, you only need to install the tools for the GBA development so ensure you have it selected and install it to the default directory.
+2.) Search for `MSys2` in the Start Menu and open it.
 
-3. Go to the Start Menu and search for `MSys2` and open it.
+3.) Clone the project by putting `git clone https://github.com/cellos51/balatro-gba.git` in the MSys2 window.
 
-4. Install `Git` by typing this command: `pacman -S git` if you don't have it already installed.
+4.) Use `cd` and drag the new folder into the window to add the file path and press Enter.
 
-5. Navigate to where you want to clone the project such as your desktop or Documents folder. 
-The easiest way to properly `cd` to the directory is to type `cd` and drag and drop the folder into the terminal window and press Enter. 
-- Example: `cd /home/user/OneDrive/Desktop/balatro-gba` or something like this.
+5.) Type `make` into the window and press Enter to start building the rom.
 
-6. Clone the project with `git clone https://github.com/cellos51/balatro-gba.git` in the terminal window.
+6.) After it completes, navigate through the `build` directory in the project folder and look for `balatro-gba.gba` and load it on an emulator or flashcart.
+### Without Git
+Disregard Step 3 and instead click the green code button on the main repository page and press `Download Zip`. Unzip the folder and place it wherever you like. Then continue from Step 4.
 
-7. Use `cd` and drag the newly generated folder into the window to add the file path and press Enter.
-
-8. Type `make` into the window and press Enter to start building the game.
-
-9. After it completes, navigate through the `build` directory in the project folder and look for `balatro-gba.gba` and load it on an emulator or flashcart.
-
+Video Tutorial: https://youtu.be/72Zzo1VDYzQ?si=UDmEdbST1Cx1zZV2
 ## **Common Issues:**
-#### 1. **When I drag the folder into the window and press enter, it doesn't work!**
-- After dragging the folder, nake sure to click back into the window and press enter
 
-#### 2. **When I run `make` it errors out and won't compile!**
-- Move the project folder to your desktop and then `cd` to it by dragging the folder into the terminal window after typing `cd` first.
+#### 1. **When I run `make` it errors out and won't compile!**
+- Move the project folder to your desktop and then `cd` to it by dragging the folder into the terminal window. This error could be caused by a bad file path, placing the folder on the desktop is a failsafe.
 
-#### 3. **I can't find the compiled rom!**
+#### 2. **I can't find the compiled rom!**
 - Look for a folder called `build` inside the project folder and then find `balatro-gba.gba`.
 
-#### 4. **The Game won't start!**
+#### 3. **The Game won't start!**
 - Try a different emulator or if you are using original hardware, make sure the rom is not corrupted and try a different flashcart or SD Card. If this does not work, open an issue on the Github page because a recent commit may have broke the game.
 
-#### 5. **It says I don't have `Git` or `Make` installed!**
-- Use `pacman -S git` or `pacman -S make` although it should already be installed if you followed the instructions correctly.
+#### 4. **It says I don't have `Git` or `Make` installed!**
+- Use `pacman -S git` (not required) or `pacman -S make` although make should already be installed if you followed the instructions correctly.
