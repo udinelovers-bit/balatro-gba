@@ -40,22 +40,23 @@ This **tech-demo/proof of concept** is strictly limited in content to a minimal 
 # **Build Instructions:**
 
 ## **-Windows-**
+Video Tutorial: https://youtu.be/72Zzo1VDYzQ?si=UDmEdbST1Cx1zZV2
 ### With `Git` (not required)
 1.) Install `devkitPro` from https://github.com/devkitPro/installer by downloading the latest release, unzipping the archive, and then running the installer. You only need to install the tools for the GBA development so ensure you have it selected and install it to the default directory. You may need to create a temp folder for the project.
 
 2.) Search for `MSys2` in the Start Menu and open it.
 
-3.) Clone the project by putting `git clone https://github.com/cellos51/balatro-gba.git` in the MSys2 window.
+3.) Install `Git` by typing this command: `pacman -S git` if you don't have it already installed
 
-4.) Use `cd` and drag the new folder into the window to add the file path and press Enter.
+4.) Clone the project by putting `git clone https://github.com/cellos51/balatro-gba.git` in the MSys2 window.
 
-5.) Type `make` into the window and press Enter to start building the rom.
+5.) Use `cd` and drag the new folder into the window to add the file path and press Enter.
 
-6.) After it completes, navigate through the `build` directory in the project folder and look for `balatro-gba.gba` and load it on an emulator or flashcart.
+6.) Type `make` into the window and press Enter to start building the rom.
+
+7.) After it completes, navigate through the `build` directory in the project folder and look for `balatro-gba.gba` and load it on an emulator or flashcart.
 ### Without `Git`
-Disregard Step 3 and instead click the green code button on the main repository page and press `Download Zip`. Unzip the folder and place it wherever you like. Then continue from Step 4.
-
-Video Tutorial: https://youtu.be/72Zzo1VDYzQ?si=UDmEdbST1Cx1zZV2
+Disregard Steps 3-4 and instead click the green code button on the main repository page and press `Download Zip`. Unzip the folder and place it wherever you like. Then continue from Step 5.
 ## **Common Issues:**
 
 #### 1. **When I run `make` it errors out and won't compile!**
