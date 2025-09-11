@@ -57,6 +57,15 @@ Video Tutorial: https://youtu.be/72Zzo1VDYzQ?si=UDmEdbST1Cx1zZV2
 7.) After it completes, navigate through the `build` directory in the project folder and look for `balatro-gba.gba` and load it on an emulator or flashcart.
 ### Without `Git`
 Disregard Steps 3-4 and instead click the green code button on the main repository page and press `Download Zip`. Unzip the folder and place it wherever you like. Then continue from Step 5.
+
+## **-Linux-**
+
+1.) Add the devkitPro repo using these instructions https://devkitpro.org/wiki/devkitPro_pacman
+
+2.) Install devkitPro by running `sudo pacman -S gba-dev` and accepting all packages
+
+3.) Follow instructions from windows tutorial step 3
+
 ## **Common Issues:**
 
 #### 1. **When I run `make` it errors out and won't compile!**
