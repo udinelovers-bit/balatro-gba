@@ -64,7 +64,9 @@ Disregard Steps 3-4 and instead click the green code button on the main reposito
 
 2.) Install devkitPro by running `sudo pacman -S gba-dev` and accepting all packages
 
-3.) Follow instructions from windows tutorial step 3
+3.) Activate the devkitPro environment by running `source /etc/profile.d/devkit-env.sh` or opening a new shell
+
+4.) Follow instructions from windows tutorial step 3
 
 ## **Common Issues:**
 
