@@ -15,13 +15,13 @@
 #define NUM_JOKERS_PER_SPRITESHEET 2
 #define MAX_JOKERS 15
 
-const unsigned int *joker_gfxTiles[MAX_JOKERS] = 
+static const unsigned int *joker_gfxTiles[MAX_JOKERS] = 
 {
 #define DEF_JOKER_GFX(idx) joker_gfx##idx##Tiles,
 #include "../include/joker_table.h"
 #undef DEF_JOKER_GFX
 };
-const unsigned short *joker_gfxPal[MAX_JOKERS] = 
+static const unsigned short *joker_gfxPal[MAX_JOKERS] = 
 {
 #define DEF_JOKER_GFX(idx) joker_gfx##idx##Pal,
 #include "../include/joker_table.h"
