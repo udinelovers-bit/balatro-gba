@@ -13,9 +13,10 @@
 
 #define JOKER_SCORE_TEXT_Y 48
 #define NUM_JOKERS_PER_SPRITESHEET 2
+#define MAX_JOKERS 15
 
-const unsigned int **joker_gfxTiles;
-const unsigned short **joker_gfxPal;
+const unsigned int *joker_gfxTiles[MAX_JOKERS];
+const unsigned short *joker_gfxPal[MAX_JOKERS];
 
 const static u8 edition_price_lut[MAX_EDITIONS] =
 {
@@ -113,8 +114,6 @@ void joker_init()
 {
     // This should init once only so no need to free
     int num_spritesheets = get_num_spritesheets();
-    joker_gfxTiles = (const unsigned int**)malloc((sizeof(unsigned int*) * num_spritesheets));
-    joker_gfxPal = (const unsigned short**)malloc((sizeof(unsigned int*) * num_spritesheets));
     joker_spritesheet_pb_map = (int*)malloc(sizeof(int) * num_spritesheets);
 
 #define DEF_JOKER_GFX(idx) 							\
