@@ -1,0 +1,33 @@
+name: Build GBA ROM
+
+on:
+  workflow_dispatch: # lets you run it manually
+  push:              # or automatically when you push changes
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install devkitPro toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget tar
+          wget https://apt.devkitpro.org/install-devkitpro-pacman
+          chmod +x ./install-devkitpro-pacman
+          sudo ./install-devkitpro-pacman
+          echo "PATH=/opt/devkitpro/devkitARM/bin:$PATH" >> $GITHUB_ENV
+          sudo dkp-pacman -Sy --noconfirm gba-dev
+
+      - name: Build ROM
+        run: |
+          make
+
+      - name: Upload ROM
+        uses: actions/upload-artifact@v4
+        with:
+          name: balatro-gba
+          path: balatro-gba.gba
