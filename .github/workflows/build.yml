@@ -16,10 +16,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y git make cmake ninja-build build-essential pkg-config curl
-          sudo apt-get install -y gcc g++ libarchive-tools
-          curl https://apt.devkitpro.org/install-devkitpro-pacman | sudo bash
-          echo "PATH=/opt/devkitpro/devkitARM/bin:/opt/devkitpro/tools/bin:$PATH" >> $GITHUB_ENV
+          curl https://apt.devkitpro.org/install-devkitpro-pacman | bash
+          echo "PATH=$HOME/.local/bin:/opt/devkitpro/devkitARM/bin:/opt/devkitpro/tools/bin:$PATH" >> $GITHUB_ENV
           sudo dkp-pacman -Sy --noconfirm gba-dev
+
 
 
       - name: Build ROM
