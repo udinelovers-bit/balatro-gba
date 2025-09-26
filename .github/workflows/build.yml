@@ -1,26 +1,19 @@
 name: Build GBA ROM
 
 on:
-  workflow_dispatch: # lets you run it manually
-  push:              # or automatically when you push changes
+  workflow_dispatch:
+  push:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
+    container:
+      image: devkitpro/devkitarm:latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Install devkitPro toolchain
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git make cmake ninja-build build-essential pkg-config curl
-          curl https://apt.devkitpro.org/install-devkitpro-pacman | bash
-          echo "PATH=$HOME/.local/bin:/opt/devkitpro/devkitARM/bin:/opt/devkitpro/tools/bin:$PATH" >> $GITHUB_ENV
-          sudo dkp-pacman -Sy --noconfirm gba-dev
-
-
 
       - name: Build ROM
         run: |
@@ -30,4 +23,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: balatro-gba
-          path: balatro-gba.gba
+          path: |
+            **/*.gba
