@@ -15,12 +15,12 @@ jobs:
       - name: Install devkitPro toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget tar
-          wget https://apt.devkitpro.org/install-devkitpro-pacman
-          chmod +x ./install-devkitpro-pacman
-          sudo ./install-devkitpro-pacman
-          echo "PATH=/opt/devkitpro/devkitARM/bin:$PATH" >> $GITHUB_ENV
+          sudo apt-get install -y git make cmake ninja-build build-essential pkg-config curl
+          sudo apt-get install -y gcc g++ libarchive-tools
+          curl https://apt.devkitpro.org/install-devkitpro-pacman | sudo bash
+          echo "PATH=/opt/devkitpro/devkitARM/bin:/opt/devkitpro/tools/bin:$PATH" >> $GITHUB_ENV
           sudo dkp-pacman -Sy --noconfirm gba-dev
+
 
       - name: Build ROM
         run: |
